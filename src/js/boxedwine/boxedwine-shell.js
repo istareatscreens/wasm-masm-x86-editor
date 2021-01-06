@@ -59,7 +59,7 @@
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
-            //Modified to launch cmd 
+            //Modified to launch wineconsole 
             //cull unused functions in future!
             Config.rootZipFile = "boxedwine.zip"//getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = ""; //getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
@@ -82,7 +82,7 @@
             return ALLOW_PARAM_OVERRIDE_FROM_URL;
         }
         function getCPU(){
-            var cpu = getParameter("cpu");
+            var cpu = "";//getParameter("cpu");
             if(!allowParameterOverride()){
                 cpu = "";
             }else if(cpu == "p2") {
@@ -99,7 +99,7 @@
         }
         function getBitsPerPixel(){
 
-            var bpp =  getParameter("bpp");
+            var bpp = "";// getParameter("bpp");
             if(!allowParameterOverride()){
                 bpp = DEFAULT_BPP;
             }else if(bpp == "8") {
@@ -115,7 +115,7 @@
             return bpp;
         }
         function getGLExtensions(){ //GL not yet available from JS
-            var glext = getParameter("glext");
+            var glext = ""; //getParameter("glext");
             if(!allowParameterOverride()){
                 glext = "";
             }else{
@@ -136,8 +136,8 @@
             return glext;
         }
         function getAutoRun(){
-
-            var auto =  getParameter("auto");
+            //No  URL parsing needed
+            var auto ="";  //getParameter("auto");
             if(!allowParameterOverride()){
                 auto = DEFAULT_AUTO_RUN;
             }else if(auto == "true") {
@@ -155,14 +155,15 @@
             return auto;
         }
         function getPayload(param) {
-            var payload =  getParameter(param);
+            var payload =  "";//getParameter(param);
             if(!allowParameterOverride()){
                 payload = "";
             }
             return payload;
         }
         function getUseRangeRequests(){
-            var ondemand =  getParameter("ondemand");
+            //No need to parse URL
+            var ondemand = ""; // getParameter("ondemand");
             
             if(!allowParameterOverride()){
                 ondemand = ONDEMAND_DEFAULT;
@@ -174,7 +175,8 @@
             return ondemand;
         }
         function getSound(){
-            var soundEnabled =  getParameter("sound");
+            //No need to parse URL
+            var soundEnabled = "";// getParameter("sound");
             if(!allowParameterOverride()){
                 soundEnabled = DEFAULT_SOUND_ENABLED;
             }else if(soundEnabled == "true") {
@@ -188,11 +190,14 @@
             return soundEnabled;
         }
         function getWorkingDirectory(){
-
+            var dir = "";
+            //no need to parse URL
+            /*
             var dir =  getParameter("work");
             if(!allowParameterOverride() || dir===""){
                 dir = "";
             }else{
+                */
                 if(dir.startsWith('c:/')){
                     dir = "/home/username/.wine/dosdevices/c:/" + dir.substring(3);
                     console.log("setting working directory to: "+dir);
@@ -202,12 +207,13 @@
                 }else{
                     console.log("unable to set work directory");
                 }
-            }
+           // }
             return dir;
         }
+
         function getAppZipFile(param){
 
-            var filename =  getParameter(param);
+            var filename = ""; //getParameter(param);
             if(!allowParameterOverride() || filename===""){
                 filename = "";
                 console.log("not setting " + param + " zip file");
@@ -223,7 +229,7 @@
         //Not needed
         function getRootZipFile(param){
 
-            var filename =  getParameter(param);
+            var filename = ""; //getParameter(param);
             if(!allowParameterOverride() || filename===""){
                 filename = DEFAULT_ROOT_ZIP_FILE;
             }else{
@@ -238,7 +244,7 @@
         function getZipFileList(param){
             var zipFiles = [];
             if(Config.isRunningInline) {
-                let ondemandMinOverlay =  getParameter("inline-default-ondemand-root-overlay");
+                let ondemandMinOverlay = "";// getParameter("inline-default-ondemand-root-overlay");
                 if(ondemandMinOverlay.length > 0) {
                     if(!ondemandMinOverlay.endsWith(".zip")){
                         ondemandMinOverlay = ondemandMinOverlay + ".zip";
@@ -246,7 +252,7 @@
                     zipFiles.push(ondemandMinOverlay);
                 }
             }
-            var filenames =  getParameter(param);
+            var filenames =  ""//getParameter(param);
             if(!allowParameterOverride() || filename===""){
                 console.log("not setting " + param + " zip file(s)");
             }else{
@@ -781,7 +787,7 @@
 
         function getExecutable()
         {
-            var prog =  getParameter("p");
+            var prog =  "";//getParameter("p");
             if(!allowParameterOverride() || prog===""){
                 console.log("not setting program to execute");
             }else{
