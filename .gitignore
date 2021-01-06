@@ -1,0 +1,19 @@
+#Ignore node modules folder
+node_modules
+#Ignore compiled JavaScript/cpp folder
+lib
+public/lib
+build
+dist
+*.tgz
+#Ignore text files (used for notes)
+*.txt
+#Ignore performance testing file
+performance
+#Testing Reports
+report*
+coverage
+.nyc_output
+nyc
+*.lcov
+
