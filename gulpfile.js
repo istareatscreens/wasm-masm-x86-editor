@@ -95,6 +95,7 @@ function watchTask() {
     gulp.watch([cssPath, jsPath, jsBoxedPath,  assetsPath, htmlPath], { interval: 1000 }, parallel(cssTask, jsTask, wasmTask, assetsTask, copyHtml, jsBoxedTask, imgTask));
     gulp.watch(htmlPath).on('change', browserSync.reload);
     gulp.watch(jsPath).on('change', browserSync.reload);
+    gulp.watch(jsBoxedPath).on('change', browserSync.reload);
 }
 
 exports.cssTask = cssTask;

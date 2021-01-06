@@ -29,20 +29,20 @@
         var isRunning = false;
         var uniqueDirs = {};
         var timer = null;
-    	var index = 0;
-		var selectedItem;
-		var selectedFilename;
-		var files = []; //used for constructing tree and for retrieving files when zipping
+        var index = 0;
+        var selectedItem;
+        var selectedFilename;
+        var files = []; //used for constructing tree and for retrieving files when zipping
         var client = null;
         var alreadyBuiltFileSystem = false;
 
-		var ae = document.createElement("a");
-		document.body.appendChild(ae);
-		ae.style = "display: none";
-		var url = null;
-      	var statusElement = document.getElementById('status');
-      	var progressElement = document.getElementById('progress');
-      	var spinnerElement = document.getElementById('spinner');
+        var ae = document.createElement("a");
+        document.body.appendChild(ae);
+        ae.style = "display: none";
+        var url = null;
+          var statusElement = document.getElementById('status');
+          var progressElement = document.getElementById('progress');
+          var spinnerElement = document.getElementById('spinner');
   //      var dropzone = document.getElementById("dropzone");
 
 
@@ -59,18 +59,21 @@
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
-            Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
-            Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
-            Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            //Modified to launch cmd 
+            //cull unused functions in future!
+            Config.rootZipFile = "boxedwine.zip"//getRootZipFile("root"); //MANUAL:"base.zip";
+            Config.extraZipFiles = ""; //getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
+            Config.appZipFile = "assembler.zip"//getAppZipFile("app"); //MANUAL:"chomp.zip";
             Config.appPayload = getPayload("app-payload"); 
-            Config.extraPayload = getPayload("overlay-payload"); 
-            Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
+            Config.extraPayload = ""//getPayload("overlay-payload"); 
+            Config.Program = "cmd.bat";//getExecutable(); //MANUAL:"CHOMP.EXE";
+            //end
             Config.WorkingDir = getWorkingDirectory(); //MANUAL:"";
             Config.isSoundEnabled = getSound();
             Config.bpp = getBitsPerPixel();
             Config.useRangeRequests = getUseRangeRequests();
             Config.glext = getGLExtensions();
-			Config.cpu = getCPU();
+            Config.cpu = getCPU();
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -90,7 +93,7 @@
                 cpu = "";
             }
             if(cpu.length > 0) {
-            	console.log("setting CPU to: "+cpu);
+                console.log("setting CPU to: "+cpu);
             }
             return cpu;
         }
@@ -116,19 +119,19 @@
             if(!allowParameterOverride()){
                 glext = "";
             }else{
-            	if(glext.length > 6) {
-                	if( (glext.startsWith("%22") && glext.endsWith("%22") )
-                		|| (glext.startsWith('%27') && glext.endsWith('%27'))){
-                    	glext = glext.substring(3, glext.length - 3);
-	                	glext = glext.split('%20').join(' ');
-	                	glext = '"' + glext +  '"';
-                	}else{
-	                	console.log("glext paramater must be in quoted string");
-                	}
+                if(glext.length > 6) {
+                    if( (glext.startsWith("%22") && glext.endsWith("%22") )
+                        || (glext.startsWith('%27') && glext.endsWith('%27'))){
+                        glext = glext.substring(3, glext.length - 3);
+                        glext = glext.split('%20').join(' ');
+                        glext = '"' + glext +  '"';
+                    }else{
+                        console.log("glext paramater must be in quoted string");
+                    }
                 }
             }
             if(glext.length > 0) {
-            	console.log("setting glext to: "+glext);
+                console.log("setting glext to: "+glext);
             }
             return glext;
         }
@@ -192,12 +195,12 @@
             }else{
                 if(dir.startsWith('c:/')){
                     dir = "/home/username/.wine/dosdevices/c:/" + dir.substring(3);
-	                console.log("setting working directory to: "+dir);
+                    console.log("setting working directory to: "+dir);
                 }else if(dir.startsWith('d:/')){
                     dir = "/home/username/.wine/dosdevices/d:/" + dir.substring(3);
-    	            console.log("setting working directory to: "+dir);
+                    console.log("setting working directory to: "+dir);
                 }else{
-	                console.log("unable to set work directory");
+                    console.log("unable to set work directory");
                 }
             }
             return dir;
@@ -216,6 +219,8 @@
             }
             return filename;
         }
+
+        //Not needed
         function getRootZipFile(param){
 
             var filename =  getParameter(param);
@@ -227,12 +232,13 @@
                 }
             }
             console.log("setting " + param + " zip file to: "+filename);
+
             return filename;
         }
         function getZipFileList(param){
             var zipFiles = [];
             if(Config.isRunningInline) {
-            	let ondemandMinOverlay =  getParameter("inline-default-ondemand-root-overlay");
+                let ondemandMinOverlay =  getParameter("inline-default-ondemand-root-overlay");
                 if(ondemandMinOverlay.length > 0) {
                     if(!ondemandMinOverlay.endsWith(".zip")){
                         ondemandMinOverlay = ondemandMinOverlay + ".zip";
@@ -256,7 +262,7 @@
                 }
             }
             if(zipFiles.length > 0) {
-            	console.log("setting " + param + " zip file(s) to: "+zipFiles);
+                console.log("setting " + param + " zip file(s) to: "+zipFiles);
             }
             return zipFiles;
         }
@@ -297,8 +303,9 @@
                     console.log("Switching to In Memory store as LocalStorage is not available");
                 }
                 buildFileSystem(writableStorage, false);
-            }else if(Config.storageMode === STORAGE_DROPBOX){
-                client.authenticate({interactive:false}, auth_callback);
+            //not using drop box
+            //}else if(Config.storageMode === STORAGE_DROPBOX){
+            //    client.authenticate({interactive:false}, auth_callback);
             }else{
                 buildFileSystem(new BrowserFS.FileSystem.InMemory(), false);
             }
@@ -395,6 +402,7 @@
             pos = ( pos + ENDOFF - ENDSIZ);
             return (((buffer[pos++]) | (buffer[pos++]) << 8) | ((buffer[pos++]) | (buffer[pos++]) << 8) << 16);
         }
+
         function buildFileSystem(writableStorage, isDropBox)
         {
             spinnerElement.style.display = '';
@@ -432,6 +440,7 @@
                 });
             });
         }
+
         function buildRemoteZipFile(zipFilename, zipFileCallback)
         {
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
@@ -453,18 +462,18 @@
         function getBase64Data(base64Data)
         {
             let bytes = atob(base64Data);
-        	let contentLength = bytes.length;
-    		var contents = new Uint8Array(contentLength);
-			for (var i = 0; i < contentLength; i++) {
-        		contents[i] = bytes.charCodeAt(i);
-    		}
-    		return contents;
+            let contentLength = bytes.length;
+            var contents = new Uint8Array(contentLength);
+            for (var i = 0; i < contentLength; i++) {
+                contents[i] = bytes.charCodeAt(i);
+            }
+            return contents;
         }
         function buildAppFileSystems(adapterCallback)
         {
             var Buffer = BrowserFS.BFSRequire('buffer').Buffer;
             if(Config.appPayload.length > 0){
-            	let contents = getBase64Data(Config.appPayload);
+                let contents = getBase64Data(Config.appPayload);
                 BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e4, additionalZipfs){
                     if(e4){
                         console.log(e4);
@@ -504,13 +513,13 @@
         {
             var extraFSs = [];
             if(Config.extraPayload.length > 0){
-            	let contents = getBase64Data(Config.extraPayload);
+                let contents = getBase64Data(Config.extraPayload);
                 BrowserFS.FileSystem.ZipFS.Create({"zipData":new Buffer(contents)}, function(e2, zipfs){
-                	if(e2){
-                    	console.log(e2);
-                	}
-                	extraFSs.push(zipfs);
-                	fsCallback(extraFSs);
+                    if(e2){
+                        console.log(e2);
+                    }
+                    extraFSs.push(zipfs);
+                    fsCallback(extraFSs);
                 });
             }else if(Config.extraZipFiles.length > 0){
                 for(let i = 0; i < Config.extraZipFiles.length; i++) {
@@ -757,6 +766,9 @@
             //loadScreen();
 
             Module["addRunDependency"]("setupBoxedWine");
+            initFileSystem();
+
+            /* //Not using drop box
             if(Config.storageMode === STORAGE_DROPBOX){
                 startBtn.textContent = "Login";
                 startBtn.disabled = false;
@@ -764,7 +776,9 @@
             }else{
                 initFileSystem();
             }
+            */
         }
+
         function getExecutable()
         {
             var prog =  getParameter("p");
@@ -925,7 +939,7 @@
                     params.push("/home/username/.wine/dosdevices/d:");
                 }
             }
-        	params.push("/bin/wine");
+            params.push("/bin/wine");
             if(Config.Program.length > 0){
                 if (Config.Program.endsWith('.bat')) {
                     params.push("cmd");
@@ -933,8 +947,8 @@
                 }
                 params.push(Config.Program);
             }else{
-	            params.push("explorer");
-    	        params.push("/desktop=shell");
+                params.push("explorer");
+                params.push("/desktop=shell");
             }
             console.log("Emulator params:" + params);
             return params;
@@ -1152,9 +1166,9 @@ function createFolder(parent, dir)
 }
 function createFile(dir, name, buf)
 {
-	if(dir.includes("__MACOSX")) {
-		return
-	}
+    if(dir.includes("__MACOSX")) {
+        return
+    }
     try{
         FS.createDataFile(dir, name, buf, true, true);
         //console.log("File created :" + dir + "/" + name);
@@ -1191,18 +1205,18 @@ function toggleSound() {
     Config.isSoundEnabled = el.checked;
 }
 function toggleDirectory(item){
-	var itemWidget =document.getElementById(item);
-	if(itemWidget!=null){
-		if(itemWidget.style.display=='none'){//show
-			itemWidget.style.display="";
-			document.getElementById(item+'-expand').style.display="none";
-			document.getElementById(item+'-contract').style.display="";
-		}else{//hide
-			itemWidget.style.display="none";
-			document.getElementById(item+'-expand').style.display="";
-			document.getElementById(item+'-contract').style.display="none";
-		}
-	}
+    var itemWidget =document.getElementById(item);
+    if(itemWidget!=null){
+        if(itemWidget.style.display=='none'){//show
+            itemWidget.style.display="";
+            document.getElementById(item+'-expand').style.display="none";
+            document.getElementById(item+'-contract').style.display="";
+        }else{//hide
+            itemWidget.style.display="none";
+            document.getElementById(item+'-expand').style.display="";
+            document.getElementById(item+'-contract').style.display="none";
+        }
+    }
 }
 function getParameter(inputKey){
     var retVal="";
@@ -1229,84 +1243,84 @@ function getParameter(inputKey){
     return retVal;
 }
 function select(index, dir, filename){
-	if(selectedItem != null){
-		selectedItem.style.backgroundColor = "";
-	}
-	selectedItem = document.getElementById(index + '-data');
-	selectedItem.style.backgroundColor="#94c2c5";
-	var fullpath = dir;
-	if(filename != null){
-		fullpath = fullpath + filename;
-	}
-	document.getElementById('selectedItem').value = fullpath
-	selectedFilename = filename
+    if(selectedItem != null){
+        selectedItem.style.backgroundColor = "";
+    }
+    selectedItem = document.getElementById(index + '-data');
+    selectedItem.style.backgroundColor="#94c2c5";
+    var fullpath = dir;
+    if(filename != null){
+        fullpath = fullpath + filename;
+    }
+    document.getElementById('selectedItem').value = fullpath
+    selectedFilename = filename
 }
 function endsWith(str, suffix){
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 }
 function extract(){
-	if(url != null){
-		window.URL.revokeObjectURL(url);
-	}
-	var file = document.getElementById('selectedItem').value;
-	if(file != null && file.length > 0 && files.length > 1) {
+    if(url != null){
+        window.URL.revokeObjectURL(url);
+    }
+    var file = document.getElementById('selectedItem').value;
+    if(file != null && file.length > 0 && files.length > 1) {
         if(endsWith(file,"/")){
             file = file.substring(0,file.length - 1);
         }
-		var isDirectory = false;
-		var outputFilename;
-		if(selectedFilename !=null){
-			outputFilename = selectedFilename;
-		}else{
-			isDirectory = true;
-			outputFilename = file.substring(file.lastIndexOf('/') + 1) + ".zip";
-		}
+        var isDirectory = false;
+        var outputFilename;
+        if(selectedFilename !=null){
+            outputFilename = selectedFilename;
+        }else{
+            isDirectory = true;
+            outputFilename = file.substring(file.lastIndexOf('/') + 1) + ".zip";
+        }
 
-		var blob = getFile(file, isDirectory);
-		url = window.URL.createObjectURL(blob);
-		ae.href = url;
-		ae.download = outputFilename;
-		ae.click();
-	}
+        var blob = getFile(file, isDirectory);
+        url = window.URL.createObjectURL(blob);
+        ae.href = url;
+        ae.download = outputFilename;
+        ae.click();
+    }
 }
 function done(){
-	if(url != null){
-		window.URL.revokeObjectURL(url);
-	}
+    if(url != null){
+        window.URL.revokeObjectURL(url);
+    }
 }
 function leaf(entry){
     index++;
-	var text = "<tr><td ><span id=\"" + index + "-data\" onclick=\"select(" + index + ",'" + entry.dir + "','" + entry.filename + "')\">" + entry.filename + "</span></td></tr>";
-	return text;
+    var text = "<tr><td ><span id=\"" + index + "-data\" onclick=\"select(" + index + ",'" + entry.dir + "','" + entry.filename + "')\">" + entry.filename + "</span></td></tr>";
+    return text;
 }
 function branch(entries){
-	var item = entries[index];
+    var item = entries[index];
     index++;
-	var dir = item.dir;
+    var dir = item.dir;
     var dirName = dir.substring(0, dir.length - 1);
     dirName = dirName.substring(dirName.lastIndexOf("/")+1,dirName.length);
-	var text = "<tr>";
+    var text = "<tr>";
     text = text + "<td>";
-	text = text + "<span id=\"" + index + "-expand\"><a onclick=\"toggleDirectory('" + index + "')\"><strong>+</strong></a></span>";
+    text = text + "<span id=\"" + index + "-expand\"><a onclick=\"toggleDirectory('" + index + "')\"><strong>+</strong></a></span>";
     text = text + "<span id=\"" + index + "-contract\" style=\"display:none;\"><a onclick=\"toggleDirectory('" + index + "')\"><strong>-</strong></a></span>";
     text = text + "<span id=\"" + index + "-data\" onclick=\"select(" + index + ",'" + dir + "', null)\">[" + dirName + "]</span>";
     text = text + "<div id='" + index + "' style=\"display:none;\">";
     text = text + "<table>";
     while(index < entries.length){
-    	var nextItem = entries[index];
-    	if(nextItem.dir === item.dir){
-    		text = text + leaf(nextItem);
-    	}else if(parentDir(nextItem.dir) === item.dir){
-    		text = text + branch(entries, index);
-    	}else{
-    		break;
-    	}
+        var nextItem = entries[index];
+        if(nextItem.dir === item.dir){
+            text = text + leaf(nextItem);
+        }else if(parentDir(nextItem.dir) === item.dir){
+            text = text + branch(entries, index);
+        }else{
+            break;
+        }
     }
     text = text + "</table>";
     text = text + "</div>";
-	text = text + "</td>";
-	text = text + "</tr>";
-	return text;
+    text = text + "</td>";
+    text = text + "</tr>";
+    return text;
 }
 function parentDir(childDir)
 {
@@ -1323,21 +1337,21 @@ function buildTree()
     //reset
     document.getElementById('selectedItem').value = "";
     selectedFilename = null;
-	files = [];
+    files = [];
     root.innerHTML = "";
     index = 0;
 
     var currentDir = Config.appDirPrefix;
-	readFiles(currentDir, files);
+    readFiles(currentDir, files);
 
-	//now build tree
-	var contents = "<table>";
-	contents = contents + branch(files);
-	contents = contents + "</table>";
-	document.getElementById('loadStatus').style.display="none";
+    //now build tree
+    var contents = "<table>";
+    contents = contents + branch(files);
+    contents = contents + "</table>";
+    document.getElementById('loadStatus').style.display="none";
 
-	root.innerHTML = contents;
-	toggleDirectory('1');
+    root.innerHTML = contents;
+    toggleDirectory('1');
 }
 
 function readFiles(currentDir, files)
@@ -1364,9 +1378,9 @@ function startsWith(str, prefix)
 }
 function getFile(file, isDirectory)
 {
-	if(isDirectory){//zip up directory
-		var zip = new JSZip();
-		files.forEach(function(eachFile) {
+    if(isDirectory){//zip up directory
+        var zip = new JSZip();
+        files.forEach(function(eachFile) {
             if(startsWith(eachFile.dir, file)){
                 if(eachFile.filename !== ""){
                       var fileLocation = eachFile.dir + eachFile.filename;
@@ -1376,10 +1390,10 @@ function getFile(file, isDirectory)
                         zip.file(eachFile.dir.substring(file.length), null, {dir: true});
                 }
             }
-		});
-		return zip.generate({type:"blob", compression:"DEFLATE"});
-	}else{
-		var data = FS.readFile(file, { encoding: 'binary' });
-		return new Blob([data], {type: "octet/stream"});
-	}
+        });
+        return zip.generate({type:"blob", compression:"DEFLATE"});
+    }else{
+        var data = FS.readFile(file, { encoding: 'binary' });
+        return new Blob([data], {type: "octet/stream"});
+    }
 }

@@ -2,7 +2,7 @@
 node_modules
 #Ignore compiled JavaScript/cpp folder
 lib
-public/lib
+public
 build
 dist
 *.tgz
