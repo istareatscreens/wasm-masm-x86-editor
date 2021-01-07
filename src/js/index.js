@@ -115,7 +115,8 @@ do{
 END MAIN
 
 !
-INCLUDE C:/irvine/Irvine32.inc
+
+INCLUDE D:/irvine/Irvine32.inc
 .data                          ;data decleration
 
 txtColor  DWORD ?
@@ -199,10 +200,16 @@ getColorCombinations PROC USES esi eax ebx ecx
    xor eax, eax                ;eax=0              
    xor ebx, ebx                ;ebx=0
 
+   mov ecx, 0
+
+   D2:
+
+   loop D2
+
 C1:                            ;Model nested for loop (eax=0 to 15)
       push ecx                 ;Save ecx to restore after nested loop
       push ebx                 ;Save ebx to restore after nested loop
-      mov ecx, 16              ;Loop 16 times in inner loop
+      mov ecx, 0              ;Loop 16 times in inner loop
 
 C2:                            ;Nested loop (ebx=0 to 15)
          push eax              ;Save eax as it needs to be multiplied by 16
@@ -327,16 +334,7 @@ L2:                               ;inner loop
 
    exit                        ;Exit program
 main ENDP
-END main
-`
-
-
-
-
-
-
-//"FFFFFFFFFFFFFFF"+fileData["l.txt"];
-
+END main`
 
 
 console.log(fileData);
