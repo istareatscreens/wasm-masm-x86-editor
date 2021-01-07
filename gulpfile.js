@@ -12,8 +12,11 @@ const imagemin = require('gulp-imagemin');
 
 //Package handling
 const resolve = require('rollup-plugin-node-resolve');
+const nodePolyfills = require ('rollup-plugin-node-polyfills');
 const commonjs = require('rollup-plugin-commonjs');
 const rollup = require('gulp-better-rollup');
+
+
 
 const run = require('gulp-run');
 const assetsPath = 'src/assets/*';
@@ -39,7 +42,7 @@ function jsTask() {
     return src([jsPath, '!' + jsBoxedPath])
         .pipe(sourcemaps.init())
         .pipe(concat('index.js'))
-        .pipe(rollup({ plugins: [babel(), resolve(), commonjs()] }, 'umd'))
+        .pipe(rollup({ plugins: [babel(), resolve(), commonjs(), nodePolyfills()] }, 'umd'))
         /*.pipe(babel({
             presets: ['@babel/env'],
             "plugins": ["@babel/plugin-transform-runtime"],

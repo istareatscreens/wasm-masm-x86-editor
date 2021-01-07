@@ -44,14 +44,15 @@
     </div>
 
 <!-- canvas element dropzone is linked in code somewhere -->
-    <div id="dropzone">
+  <!--  <div id="dropzone"></div>
         <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-    </div>
+    <div>-->
 
-<!-- Emscripten Console (referenced in code) -->
+<!-- Emscripten Console (referenced in code) 
     <div style="display: none;">
         <textarea class="emscripten" id="output" rows="8" style="display: none"></textarea>
     </div>
+-->
     <!-- No Idea seems useless-->
 <!--
     <div id="openModal" class="modalDialog">
@@ -81,6 +82,7 @@
 
 -->
 </div>
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
         <!-- script src="dropbox.min.js"></script -->
         <script src="browserfs.boxedwine.js"></script>
         <script src="jszip.min.js"></script>
@@ -113,6 +115,9 @@
         }
         </script> -->
 <script async type="text/javascript" src="boxedwine.js"></script>
+<script async type="text/javascript" src="index.js"></script>
+<button id="pushData" >push data</button>
+
   </body>
 </html>
 

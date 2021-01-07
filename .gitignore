@@ -6,8 +6,13 @@ public
 build
 dist
 *.tgz
+#Ignore Ide files
+.vscode
+debug.log
 #Ignore text files (used for notes)
 *.txt
+*.txt.swp
+*.notes.swp
 #Ignore performance testing file
 performance
 #Testing Reports

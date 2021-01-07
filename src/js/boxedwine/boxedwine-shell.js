@@ -1,4 +1,4 @@
-        let ALLOW_PARAM_OVERRIDE_FROM_URL = true;
+        let ALLOW_PARAM_OVERRIDE_FROM_URL = false;
         let SUPPRESS_WINEBOOT = true; //prevent wine from re-creating .wine directory
         let ROOT = "/root";
         let STORAGE_DROPBOX = "DROPBOX";
@@ -22,7 +22,7 @@
         Config.locateAppBaseUrl = "";
         Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
-        Config.storageMode = STORAGE_MEMORY;
+        Config.storageMode = STORAGE_LOCAL_STORAGE;
         Config.isRunningInline = false;
         Config.showUploadDownload = false;
 
@@ -45,6 +45,7 @@
           var spinnerElement = document.getElementById('spinner');
   //      var dropzone = document.getElementById("dropzone");
 
+  var fileFS;
 
     //recursive copy based on code in emularity github project
     var flag_r = { isReadable: function() { return true; },
@@ -620,7 +621,7 @@
             if(Config.storageMode === STORAGE_DROPBOX){
                 startEmulator();
             }else{
-                toggleConsole();
+                //toggleConsole();
                 if(Config.isAutoRunSet){
                     start();
                 }else{
@@ -883,19 +884,19 @@
                 //populateModalExe(exeFiles);
             }
         }
-        dropzone.addEventListener("dragover", function(event){
-            event.preventDefault();
-        }, false);
-        dropzone.addEventListener("drop", function(event){
-            event.preventDefault();
-            //if only i know something about async
-            let items = event.dataTransfer.items;
-            let exeFiles = [];
-            let allFiles = [];
-            for(let i =0; i < items.length; i++){
-                getEntriesAsPromise(items[i].webkitGetAsEntry(), exeFiles, allFiles);
-            }
-        }, false);
+       // dropzone.addEventListener("dragover", function(event){
+       //     event.preventDefault();
+       // }, false);
+       // dropzone.addEventListener("drop", function(event){
+       //     event.preventDefault();
+       //     //if only i know something about async
+       //     let items = event.dataTransfer.items;
+       //     let exeFiles = [];
+       //     let allFiles = [];
+       //     for(let i =0; i < items.length; i++){
+       //         getEntriesAsPromise(items[i].webkitGetAsEntry(), exeFiles, allFiles);
+       //     }
+       // }, false);
         function isInSubDirectory(fullPath, programDir) {
             var fileEntry = FS.lookupPath(fullPath, { follow: true });
             if (fileEntry!= null && fileEntry.node.isFolder) {
@@ -965,8 +966,8 @@
         arguments: [],
         postRun: [],
         print: (function() {
-          var element = document.getElementById('output');
-          if (element) element.value = ''; // clear browser cache
+          //var element = document.getElementById('output');
+         // if (element) element.value = ''; // clear browser cache
           return function(text) {
             text = Array.prototype.slice.call(arguments).join(' ');
             // These replacements are necessary if you render to raw HTML
@@ -1142,10 +1143,12 @@ function calcBackupFilename()
 function createFolder(parent, dir)
 {
     var created = true;
+    
     try{
+        console.log({parent, dir});
         FS.createPath(parent, dir, true, true);
         //console.log(entry + " is a dir parent="+parent+" dir="+dir);
-        //console.log("Directory created :" + parent + "/" +  dir);
+        console.log("Directory created :" + parent + "/" +  dir);
     }catch(ef){
       if(ef.message === "File exists" || ef.message === "FS error"){
         console.log("Directory already exists! :" + parent + dir);
@@ -1175,9 +1178,10 @@ function createFile(dir, name, buf)
     if(dir.includes("__MACOSX")) {
         return
     }
+
     try{
         FS.createDataFile(dir, name, buf, true, true);
-        //console.log("File created :" + dir + "/" + name);
+        console.log("File created :" + dir + "/" + name);
     }catch(e){
       if(e.message === "File exists" || e.message === "FS error"){
         console.log("File already exists!: " + dir + name);
@@ -1197,6 +1201,7 @@ function createFile(dir, name, buf)
       }
     }
 }
+    /*
 function toggleConsole() {
     var el = document.getElementById('showConsole');
     var console = document.getElementById('output');
@@ -1206,6 +1211,7 @@ function toggleConsole() {
         console.style.display = 'none';
     }
 }
+    */
 function toggleSound() {
     var el = document.getElementById('soundToggle');
     Config.isSoundEnabled = el.checked;
@@ -1362,6 +1368,7 @@ function buildTree()
 
 function readFiles(currentDir, files)
 {
+
     console.log("adding directory: " + currentDir);
     files.push({dir : currentDir, filename : ""});
     var entries = FS.readdir(currentDir).filter(function(param) {
@@ -1403,3 +1410,4 @@ function getFile(file, isDirectory)
         return new Blob([data], {type: "octet/stream"});
     }
 }
+

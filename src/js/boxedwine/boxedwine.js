@@ -1,5 +1,6 @@
 var Module = typeof Module !== "undefined" ? Module : {};
 
+
 var moduleOverrides = {};
 
 var key;
@@ -3370,6 +3371,7 @@ var SYSCALLS = {
   return path;
  },
  doStat: function(func, path, buf) {
+   //console.trace("doStat");
   try {
    var stat = func(path);
   } catch (e) {
@@ -5035,7 +5037,8 @@ var Browser = {
      return;
     } else {
      if (e && typeof e === "object" && e.stack) err("exception thrown: " + [ e, e.stack ]);
-     throw e;
+     console.trace(e);
+     throw e; 
     }
    }
    if (Module["postMainLoop"]) Module["postMainLoop"]();
