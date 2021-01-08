@@ -5,6 +5,8 @@ import {Buffer} from "buffer";
 document.getElementById("pushData").addEventListener('click', ()=>{
 try{
 
+    console.log(window);
+    console.log(Module);
 //Access keys from storage
 const getFromLocalStorage = (key) => window.localStorage.getItem(key);
 const setInLocalStorage = (key,value, encoder) => window.localStorage.setItem(key,encoder(value));
@@ -29,7 +31,6 @@ console.log(fileKeyList);
 const getFileMetaData = (key)=>decodeFileMetaData(getFromLocalStorage(key)); 
 const getFileData = (key)=>decodeFileData(getFromLocalStorage(key));
 //set data
-
 
 
 //Can be cleaned up
