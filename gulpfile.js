@@ -9,6 +9,7 @@ const { src, series, parallel, dest, watch } = require('gulp');
 const babel = require('gulp-babel');
 const browserSync = require('browser-sync').create();
 const imagemin = require('gulp-imagemin');
+const webpack = require('webpack-stream');
 
 //Package handling
 const resolve = require('rollup-plugin-node-resolve');
@@ -22,6 +23,7 @@ const run = require('gulp-run');
 const assetsPath = 'src/assets/*';
 const output = 'public/';
 const jsPath = 'src/js/**/*.js';
+const jsxPath = 'src/js/**/*.jsx';
 const cssPath = 'src/css/**/*.css';
 const wasmPath = 'src/wasm/*.wasm';
 const htmlPath = 'src/html/*.html';
@@ -39,10 +41,19 @@ function jsBoxedTask() {
 }
 
 function jsTask() {
-    return src([jsPath, '!' + jsBoxedPath])
+    return src([jsPath, jsxPath, '!' + jsBoxedPath])
         .pipe(sourcemaps.init())
+        .pipe(webpack(require('./webpack.config.js')))
         .pipe(concat('index.js'))
-        .pipe(rollup({ plugins: [babel(), resolve(), commonjs(), nodePolyfills()] }, 'umd'))
+        /*
+        .pipe(rollup({ plugins: [babel({
+            presets: ["react", 'env',
+  {
+    "useBuiltIns": "entry"
+  }],
+            "plugins": ["@babel/plugin-transform-runtime"],
+        }), resolve(), commonjs(), nodePolyfills({preferBuiltins: false})] }, 'umd'))
+        */
         /*.pipe(babel({
             presets: ['@babel/env'],
             "plugins": ["@babel/plugin-transform-runtime"],

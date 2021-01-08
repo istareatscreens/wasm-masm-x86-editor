@@ -27,12 +27,14 @@
   },
   "homepage": "https://github.com/istareatscreens/GeneticMazeSolver#readme",
   "devDependencies": {
-    "@babel/cli": "^7.12.8",
+    "@babel/cli": "^7.12.10",
     "@babel/core": "^7.12.10",
-    "@babel/plugin-transform-runtime": "^7.12.1",
-    "@babel/preset-env": "^7.12.7",
+    "@babel/plugin-transform-runtime": "^7.12.10",
+    "@babel/preset-env": "^7.12.11",
+    "@babel/preset-react": "^7.12.10",
     "autoprefixer": "^9.0.0",
     "axios": "^0.21.1",
+    "babel-loader": "^8.2.2",
     "browser-sync": "^2.26.13",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
@@ -42,15 +44,18 @@
     "gulp-postcss": "^9.0.0",
     "gulp-run": "^1.7.1",
     "gulp-sourcemaps": "^3.0.0",
-    "gulp-terser": "^2.0.0",
-    "rollup": "^2.36.0",
+    "gulp-terser": "^2.0.1",
+    "rollup": "^2.36.1",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-node-polyfills": "^0.2.1",
-    "rollup-plugin-node-resolve": "^5.2.0"
-  },
-  "dependencies": {
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "webpack-stream": "^6.1.1",
     "@babel/runtime": "^7.12.5",
     "cssnano": "^4.1.10"
+  },
+  "dependencies": {
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1"
   }
 }
