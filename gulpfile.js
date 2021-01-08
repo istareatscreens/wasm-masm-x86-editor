@@ -22,8 +22,7 @@ const rollup = require('gulp-better-rollup');
 const run = require('gulp-run');
 const assetsPath = 'src/assets/*';
 const output = 'public/';
-const jsPath = 'src/js/**/*.js';
-const jsxPath = 'src/js/**/*.jsx';
+const jsPath = 'src/js/**/*.j*';
 const cssPath = 'src/css/**/*.css';
 const wasmPath = 'src/wasm/*.wasm';
 const htmlPath = 'src/html/*.html';
@@ -41,7 +40,7 @@ function jsBoxedTask() {
 }
 
 function jsTask() {
-    return src([jsPath, jsxPath, '!' + jsBoxedPath])
+    return src([jsPath, '!' + jsBoxedPath, '!node_modules'])
         .pipe(sourcemaps.init())
         .pipe(webpack(require('./webpack.config.js')))
         .pipe(concat('index.js'))

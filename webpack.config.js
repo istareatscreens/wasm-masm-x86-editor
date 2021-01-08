@@ -1,16 +1,18 @@
 const path = require('path')
 const webpack = require('webpack')
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     devtool: 'inline-source-map',
+    mode:'development',
+    target: 'web',
     module: {
-      rules: [
-        {
-            test: /\.(js|jsx)$/,
-            exclude: /(node_modules|bower_components)/,
-            loader: "babel-loader",
-            options: { presets: ["@babel/env"] }
-          },
+        rules: [
+            {
+              test: /\.(tsx?|jsx?)$/,
+              use: 'ts-loader',
+              exclude: [/node_modules/,/boxedwine/],
+            },
       ],
     },
     resolve: {

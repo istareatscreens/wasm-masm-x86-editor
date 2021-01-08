@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "outDir": "./public/",
+      "noImplicitAny": true,
+      "module": "es6",
+      "target": "es5",
+      "jsx": "react",
+      "allowJs": true,
+      "lib": [ "dom", "dom.iterable", "esnext" ],
+    },
+    "exclude": ["node_modules", "src/js/boxedwine"],
+    "include": ["src/js"]
+  }
