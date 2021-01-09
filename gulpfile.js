@@ -6,24 +6,15 @@ const postcss = require('gulp-postcss');
 const cssnano = require('cssnano');
 const autoprefixer = require('autoprefixer');
 const { src, series, parallel, dest, watch } = require('gulp');
-const babel = require('gulp-babel');
 const browserSync = require('browser-sync').create();
 const imagemin = require('gulp-imagemin');
 const webpack = require('webpack-stream');
+const sass = require("gulp-sass");
 
-//Package handling
-const resolve = require('rollup-plugin-node-resolve');
-const nodePolyfills = require ('rollup-plugin-node-polyfills');
-const commonjs = require('rollup-plugin-commonjs');
-const rollup = require('gulp-better-rollup');
-
-
-
-const run = require('gulp-run');
 const assetsPath = 'src/assets/*';
 const output = 'public/';
 const jsPath = 'src/js/**/*.j*';
-const cssPath = 'src/css/**/*.css';
+const cssPath = 'src/css/**/*';
 const wasmPath = 'src/wasm/*.wasm';
 const htmlPath = 'src/html/*.html';
 const imagePath = 'src/images/*'
@@ -41,7 +32,8 @@ function jsBoxedTask() {
 
 function jsTask() {
     return src([jsPath, '!' + jsBoxedPath, '!node_modules'])
-        .pipe(sourcemaps.init())
+        .pipe(sourcemaps.init(),
+        )
         .pipe(webpack(require('./webpack.config.js')))
         .pipe(concat('index.js'))
         /*
@@ -57,7 +49,7 @@ function jsTask() {
             presets: ['@babel/env'],
             "plugins": ["@babel/plugin-transform-runtime"],
         }))*/
-        .pipe(terser())
+        //.pipe(terser())
         .pipe(sourcemaps.write('.'))
         .pipe(browserSync.stream())
         .pipe(dest(output));
@@ -92,6 +84,7 @@ function imgTask() {
 function cssTask() {
     return src(cssPath)
         .pipe(sourcemaps.init())
+        .pipe(sass({includePaths: ['./node_modules']}).on('error', sass.logError))
         .pipe(concat('style.css'))
         .pipe(postcss([autoprefixer(), cssnano()])) //not all plugins work with postcss only the ones mentioned in their documentation
         .pipe(sourcemaps.write('.'))

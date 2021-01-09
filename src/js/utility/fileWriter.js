@@ -7,6 +7,9 @@ try{
 
     console.log(window);
     console.log(Module);
+
+
+const filesystem = Module.BrowserFS.get
 //Access keys from storage
 const getFromLocalStorage = (key) => window.localStorage.getItem(key);
 const setInLocalStorage = (key,value, encoder) => window.localStorage.setItem(key,encoder(value));
