@@ -1,24 +1,28 @@
-import React, {Component} from "react";
-import {removeScript, addScript} from '../utility/utilityFunctions.ts';
+import React, { Component, useEffect } from "react";
+import { removeScript, addScript } from "../utility/utilityFunctions.ts";
+import IFrame from "./IFrame.jsx";
 
-export class CommandPrompt extends React.Component {
+import React from "react";
 
-    render() {
-      return <canvas className={"emscripten"} id={"canvas"}></canvas>
-    }
-    //create 4 script tags
+function CommandPrompt() {
+  const scripts = [
+    "browserfs.boxedwine.js",
+    "jszip.min.js",
+    "boxedwine-shell.js",
+    "boxedwine.js",
+  ];
 
-  componentDidMount () {
-    //append the 4 required script tags for boxedwine to function
-    ["browserfs.boxedwine.js","jszip.min.js",
-    "boxedwine-shell.js", "boxedwine.js"].map((scriptName)=>addScript(scriptName));
-  }
+  const addScript = (scriptName, index) => {
+    return <script type="text/javascript" src={scriptName} key={index} />;
+  };
 
-  componentWillUnmount(){
-    //remove the 4 required script tags to fully refresh
-    ["browserfs.boxedwine.js","jszip.min.js",
-    "boxedwine-shell.js", "boxedwine.js"].map((scriptName)=>removeScript(scriptName));
-  }
+  return (
+    <IFrame>
+      <link rel="stylesheet" type="text/css" href="style.css"></link>
+      <canvas className={"emscripten"} id={"canvas"}></canvas>
+      {scripts.map((scriptName, index) => addScript(scriptName, index))}
+    </IFrame>
+  );
+}
 
-
- }
+export default CommandPrompt;

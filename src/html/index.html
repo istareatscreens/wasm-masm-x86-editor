@@ -23,10 +23,10 @@
   </div>
 
 
-<!-- Controls (buttons etc) all referenced in code somewhere -->
+<!-- Controls (buttons etc) all referenced in code somewhere 
   <div id="inline">
     <div class="emscripten" style="display: none;">
-        <button id="startbtn" style="display: none" onclick="start()">Start</button>
+       <button id="startbtn" style="display: none" onclick="start()">Start</button>
         <button id="uploadbtn" style="display: none" onclick="document.getElementById('upload').click()" >Add File(s)</button>
         <input style="display: none" id="upload" name="upload" onclick="document.getElementById('uploadbtn').click();" onchange="startWithFiles(event.target.files);"  type="file" multiple />
         <button id="downloadbtn" style="display: none" onclick="buildTree();">Get File(s)</button>
@@ -42,7 +42,7 @@
       <input type="checkbox" id="resize">Resize canvas
       <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, document.getElementById('resize').checked)">
     </div>
-
+-->
 <!-- canvas element dropzone is linked in code somewhere -->
   <!--  <div id="dropzone"></div>
         <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>

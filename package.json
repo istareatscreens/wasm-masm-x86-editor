@@ -45,6 +45,7 @@
     "gulp-better-rollup": "^4.0.1",
     "gulp-concat": "^2.6.1",
     "gulp-imagemin": "^7.1.0",
+    "gulp-livereload": "^4.0.2",
     "gulp-postcss": "^9.0.0",
     "gulp-run": "^1.7.1",
     "gulp-sass": "^4.1.0",

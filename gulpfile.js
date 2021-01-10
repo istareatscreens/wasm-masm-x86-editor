@@ -10,6 +10,7 @@ const browserSync = require('browser-sync').create();
 const imagemin = require('gulp-imagemin');
 const webpack = require('webpack-stream');
 const sass = require("gulp-sass");
+const livereload = require('gulp-livereload');
 
 const assetsPath = 'src/assets/*';
 const output = 'public/';
@@ -98,6 +99,7 @@ function watchTask() {
             baseDir: './public/'
         }
     });
+    livereload.listen();
     gulp.watch([cssPath, jsPath, jsBoxedPath,  assetsPath, htmlPath], { interval: 1000 }, parallel(cssTask, jsTask, wasmTask, assetsTask, copyHtml, jsBoxedTask, imgTask));
     gulp.watch(htmlPath).on('change', browserSync.reload);
     gulp.watch(jsPath).on('change', browserSync.reload);

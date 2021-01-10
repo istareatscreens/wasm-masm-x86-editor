@@ -747,15 +747,17 @@
         {
             isRunning = true;
 
+            /*
             document.getElementById('startbtn').style.display = 'none';
             document.getElementById('sound-checkbox').style.display = 'none';
+            */
 
             var params = getEmulatorParams();
             for(var i=0; i < params.length; i++) {
                 Module['arguments'].push(params[i]);
             }
 
-            document.getElementById('startbtn').textContent = "Running...";
+            //document.getElementById('startbtn').textContent = "Running...";
             Module["removeRunDependency"]("setupBoxedWine");
         }
         function loadScreen() {
