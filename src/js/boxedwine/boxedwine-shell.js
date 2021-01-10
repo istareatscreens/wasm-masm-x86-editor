@@ -746,8 +746,7 @@
         function startEmulator()
         {
             isRunning = true;
-
-            /*
+/*
             document.getElementById('startbtn').style.display = 'none';
             document.getElementById('sound-checkbox').style.display = 'none';
             */
@@ -995,7 +994,7 @@
           }
         },
         canvas: (function() {
-          var canvas = document.getElementById('canvas');
+          var canvas = document.getElementById("canvas");
 
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
           // application robust, you may want to override this behavior before shipping!

@@ -1,2 +1,6 @@
 @import "codemirror/lib/codemirror";
 @import "codemirror/theme/material";
+
+.cm-s-material.CodeMirror {
+  height: 100%;
+}

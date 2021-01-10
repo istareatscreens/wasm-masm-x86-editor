@@ -1,6 +1,26 @@
 @import "boxedwine";
 @import "editor";
 
-body {
-  background: blue;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.App {
+  height: 100vh;
+  width: 100vw;
+}
+
+iframe {
+  height: 50vh;
+  position: absolute;
+}
+
+.Editor {
+  height: 50vh;
+}
+
+button {
+  display: none;
 }

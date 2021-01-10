@@ -644,7 +644,7 @@ var tempI64;
 
 var ASM_CONSTS = {
  5730: function($0) {
-  document.title = "BoxedWine " + $0 + " MIPS";
+  //document.title = "BoxedWine " + $0 + " MIPS";
  },
  5780: function() {},
  75050: function($0) {

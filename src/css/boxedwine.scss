@@ -1,29 +1,7 @@
-.emscripten {
-  padding-right: 0;
-  display: block;
-}
-
-textarea.emscripten {
-  font-family: monospace;
-  width: 100%;
-  color: white;
-  background-color: black;
-}
-div.emscripten {
-  text-align: center;
-}
-div.emscripten_border {
-  border: 1px solid black;
-}
-
-.parent {
-  display: flex;
-}
-
 /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
 canvas.emscripten {
-  width: 50%;
-  min-height: 500px;
+  width: 100vw;
+  height: 100vh;
   border: 0px none;
   display: absolute;
 }
@@ -123,4 +101,13 @@ canvas.emscripten {
 .scroll-style {
   max-height: 250px;
   overflow-y: scroll;
+}
+
+/* remove added elements */
+title {
+  display: none;
+}
+
+#__bs_script__ {
+  display: none;
 }
