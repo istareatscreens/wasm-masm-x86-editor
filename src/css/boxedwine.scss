@@ -1,9 +1,22 @@
 /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+
+.emscripten-overlay,
 canvas.emscripten {
   width: 100vw;
   height: 100vh;
   border: 0px none;
-  display: absolute;
+  top: 0;
+  left: 0;
+  position: absolute;
+}
+
+.emscripten-overlay {
+  background-color: transparent;
+  z-index: 10;
+}
+
+canvas.emscripten {
+  z-index: -10;
 }
 
 .spinner {

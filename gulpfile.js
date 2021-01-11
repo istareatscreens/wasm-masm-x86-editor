@@ -14,12 +14,18 @@ const livereload = require('gulp-livereload');
 
 const assetsPath = 'src/assets/*';
 const output = 'public/';
-const jsPath = 'src/js/**/*.j*';
+const jsPath = 'src/js/**/*.*';
 const cssPath = 'src/css/**/*';
 const wasmPath = 'src/wasm/*.wasm';
 const htmlPath = 'src/html/*.html';
 const imagePath = 'src/images/*'
 const jsBoxedPath = 'src/js/boxedwine/**/*.js'
+
+
+const jsBoxedwineIndexPath = "src/js/components/boxedwine/**/*.*"
+const jsEditorIndexPath = "src/js/components/editor/**/*.**"
+const jsCommonComponents = "src/js/components/common/**/*.*"
+const jsUtility = "src/js/utility/*.*"
 
 
 function jsBoxedTask() {
@@ -33,10 +39,10 @@ function jsBoxedTask() {
 
 function jsTask() {
     return src([jsPath, '!' + jsBoxedPath, '!node_modules'])
-        .pipe(sourcemaps.init(),
-        )
+        //.pipe(sourcemaps.init(),
+        //)
         .pipe(webpack(require('./webpack.config.js')))
-        .pipe(concat('index.js'))
+        //.pipe(concat(outputName))
         /*
         .pipe(rollup({ plugins: [babel({
             presets: ["react", 'env',
@@ -51,7 +57,7 @@ function jsTask() {
             "plugins": ["@babel/plugin-transform-runtime"],
         }))*/
         //.pipe(terser())
-        .pipe(sourcemaps.write('.'))
+        //.pipe(sourcemaps.write('.'))
         .pipe(browserSync.stream())
         .pipe(dest(output));
 }
@@ -106,14 +112,11 @@ function watchTask() {
     gulp.watch(jsBoxedPath).on('change', browserSync.reload);
 }
 
-exports.cssTask = cssTask;
-exports.jsTask = jsTask;
-
 exports.default = series(
-    parallel(jsTask, cssTask, wasmTask, assetsTask, copyHtml, imgTask, jsBoxedTask),
+    parallel(jsTask, jsBoxedTask, cssTask, wasmTask, assetsTask, copyHtml, imgTask),
 );
 
 exports.watch = series(
-    parallel(jsTask, cssTask, wasmTask, assetsTask, copyHtml, imgTask, jsBoxedTask),
+    parallel(jsTask, jsBoxedTask, cssTask, wasmTask, assetsTask, copyHtml, imgTask),
     watchTask
 );

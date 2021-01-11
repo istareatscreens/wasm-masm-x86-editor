@@ -1,12 +1,11 @@
 import React, { Component } from "react";
-import CommandPrompt from "./components/CommandPrompt.jsx";
-import Editor from "./components/Editor.jsx";
-import IFrame from "./components/IFrame.jsx";
+import CommandPrompt from "./CommandPrompt.jsx";
+import Editor from "./Editor.jsx";
 
 class App extends Component {
   render() {
     return (
-      <div className="App">
+      <div className="root">
         <Editor />
         <CommandPrompt />
       </div>
