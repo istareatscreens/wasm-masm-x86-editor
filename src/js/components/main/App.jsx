@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import CommandPrompt from "./CommandPrompt.jsx";
-import Editor from "./Editor.jsx";
+import CommandPrompt from "./cmd/CommandPrompt.jsx";
+import Editor from "./editor/Editor.jsx";
 
 class App extends Component {
   render() {
