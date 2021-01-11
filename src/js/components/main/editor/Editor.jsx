@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import TextEditor from "./TextEditor.jsx";
 
-function Editor(...props) {
-  const [code, setCode] = useState("");
-
+function Editor({ setCode, code }) {
   return (
     <>
       <TextEditor onChange={setCode} value={code} />
