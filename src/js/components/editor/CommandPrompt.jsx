@@ -12,6 +12,7 @@ function CommandPrompt() {
     <Iframe
       onInferredClick={handleClick}
       className="boxedwine"
+      id="boxedwine"
       width="100%"
       height="100%"
       src="boxedwine.html"

@@ -4,10 +4,18 @@ import Editor from "./Editor.jsx";
 
 class App extends Component {
   render() {
-    const handleClick = () => {};
+    const handleClick = () => {
+      //allow canvas element to know in iframe that editor has been selected so styling can be restored
+      document
+        .getElementById("boxedwine")
+        .contentWindow.postMessage(
+          JSON.stringify({ eventName: "editor-selected", data: {} }),
+          "/"
+        );
+    };
 
     return (
-      <div onClick={} className="root">
+      <div onClick={handleClick} className="root">
         <Editor />
         <CommandPrompt />
       </div>
