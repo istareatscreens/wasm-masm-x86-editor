@@ -4,8 +4,10 @@ import Editor from "./Editor.jsx";
 
 class App extends Component {
   render() {
+    const handleClick = () => {};
+
     return (
-      <div className="root">
+      <div onClick={} className="root">
         <Editor />
         <CommandPrompt />
       </div>

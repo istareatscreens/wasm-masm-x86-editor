@@ -22,17 +22,14 @@
       </div>
     </div>
 
+    <!--
     <canvas
       class="emscripten"
       id="canvas"
       oncontextmenu="event.preventDefault()"
     ></canvas>
-    <div
-      class="emscripten-overlay"
-      oncontextmenu="clickCanvas(this, event)"
-      onclick="clickCanvas(this, event)"
+    <div class="emscripten-overlay" oncontextmenu="clickCanvas(this, event)" onclick="clickCanvas(this, event)"
     ></div>
-
     <script type="text/javascript">
       "use strict";
       function clickCanvas(element, event) {
@@ -60,14 +57,15 @@
         var canceled = !elem.dispatchEvent(evt);
       };
     </script>
+-->
+
+    <div id="bw-root"></div>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <script src="index-bw.js"></script>
 
     <script src="browserfs.boxedwine.js"></script>
     <script src="jszip.min.js"></script>
     <script src="boxedwine-shell.js"></script>
     <script src="boxedwine.js"></script>
-
-    <div id="bw-root"></div>
-    <noscript> You need to enable JavaScript to run this app. </noscript>
-    <script async="true" src="index-bw.js"></script>
   </body>
 </html>

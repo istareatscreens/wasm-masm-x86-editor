@@ -6,9 +6,7 @@ import React from "react";
 function CommandPrompt() {
   const refCMD = useRef(null);
 
-  const handleClick = () => {
-    console.log("HERE");
-  };
+  const handleClick = () => {};
 
   return (
     <Iframe
