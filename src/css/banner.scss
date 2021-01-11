@@ -1,0 +1,16 @@
+.banner {
+  display: flex;
+  flex-direction: column;
+}
+
+.banner--dark {
+  background-color: black;
+}
+
+.banner__btn {
+  width: 2rem;
+  height: 2.5rem;
+}
+
+.banner__btn--build {
+}

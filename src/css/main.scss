@@ -1,5 +1,6 @@
 @import "boxedwine";
 @import "editor";
+@import "banner";
 
 * {
   margin: 0;
@@ -17,10 +18,11 @@ iframe {
   position: absolute;
 }
 
-.Editor {
-  height: 50vh;
+.banner {
+  width: 100vw;
+  height: 2.5vh;
 }
 
-button {
-  display: none;
+.Editor {
+  height: 47.5vh;
 }

@@ -5,7 +5,22 @@ import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
 
 function App() {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(
+    `INCLUDE D:/irvine/Irvine32.inc
+
+  .data                          ;data decleration
+  
+  .code                          ;code decleration
+  ode decleration
+  
+  main PROC                      ;main method starts
+  
+     call DumpRegs
+  
+     exit                        ;Exit program
+  main ENDP
+  END main`
+  );
 
   const handleClick = () => {
     //allow canvas element to know in iframe that editor has been selected so styling can be restored

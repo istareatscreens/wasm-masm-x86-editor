@@ -1,8 +1,7 @@
 import {Inode,fromBuffer}  from "./inode";
 import {Buffer} from "buffer";
 
-
-document.getElementById("pushData").addEventListener('click', ()=>{
+//document.getElementById("pushData").addEventListener('click', ()=>{
 try{
 
     console.log(window);
@@ -101,4 +100,4 @@ writeFile(FS);
 */
 
 
-});
+//});
