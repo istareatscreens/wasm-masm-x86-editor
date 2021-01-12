@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import TextEditor from "./TextEditor.jsx";
 
-function Editor({ setCode, code }) {
+function Editor({ setCode, code, filename }) {
   return (
     <>
-      <TextEditor onChange={setCode} value={code} />
+      <TextEditor filename={filename} onChange={setCode} value={code} />
     </>
   );
 }

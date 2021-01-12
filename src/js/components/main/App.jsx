@@ -5,13 +5,15 @@ import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
 
 function App() {
+  const [filename, setFilename] = useState("test");
   const [code, setCode] = useState(
     `INCLUDE D:/irvine/Irvine32.inc
 
   .data                          ;data decleration
+
   
   .code                          ;code decleration
-  ode decleration
+
   
   main PROC                      ;main method starts
   
@@ -35,7 +37,7 @@ function App() {
   return (
     <div onClick={handleClick} className="root">
       <Banner />
-      <Editor code={code} setCode={setCode} />
+      <Editor filename={filename} code={code} setCode={setCode} />
       <CommandPrompt />
     </div>
   );

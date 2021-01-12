@@ -1,3 +1,4 @@
+//Remove and add scripts for react
 export const removeScript = (scriptToremove: string): void => {
   let allsuspects = <HTMLCollectionOf<HTMLScriptElement>>(
     document.getElementsByTagName("script")
@@ -21,6 +22,8 @@ export const addScript = (scriptName: string) => {
   document.body.appendChild(script);
 };
 
+//Handle post messages and rethrow in document as event
+
 export const createMessageListner = () => {
   window.addEventListener("message", handleMessage, true);
 };
@@ -33,4 +36,15 @@ const handleMessage = (event: MessageEvent) => {
     );
     window.dispatchEvent(new Event(eventName, data));
   }
+};
+
+//Generic debounce
+export const debounce = (fn: () => any, delay: number) => {
+  let timer;
+  return (function () {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn();
+    }, delay);
+  })();
 };
