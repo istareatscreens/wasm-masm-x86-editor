@@ -4,6 +4,7 @@ import CodeMirror from "react-codemirror2";
 import "codemirror/mode/gas/gas.js";
 import { writeToAssemblyFile } from "../utility/fileWriter.js";
 import useConstant from "use-constant";
+import { debounce } from "../../../utility/utilityFunctions.ts";
 
 function TextEditor({ onChange, value, filename }) {
   const handleChange = (editor, data, value) => {

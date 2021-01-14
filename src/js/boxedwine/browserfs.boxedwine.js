@@ -2062,7 +2062,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		checkOptions: checkOptions
 	});
 	
-	 var BFSEmscriptenStreamOps = function BFSEmscriptenStreamOps(fs) {
+	var BFSEmscriptenStreamOps = function BFSEmscriptenStreamOps(fs) {
 	    this.fs = fs;
 	    this.nodefs = fs.getNodeFS();
 	    this.FS = fs.getFS();
@@ -8215,7 +8215,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	/**
 	 * Generic inode definition that can easily be serialized.
 	 */
-    var Inode = function Inode(id, size, mode, atime, mtime, ctime) {
+	var Inode = function Inode(id, size, mode, atime, mtime, ctime) {
 	    this.id = id;
 	    this.size = size;
 	    this.mode = mode;
@@ -9394,7 +9394,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * A simple in-memory key-value store backed by a JavaScript object.
 	 */
 	var InMemoryStore = function InMemoryStore() {
-		this.store = {};
+	    this.store = {};
 	};
 	InMemoryStore.prototype.name = function name () { return InMemoryFileSystem.Name; };
 	InMemoryStore.prototype.clear = function clear () { this.store = {}; };
@@ -9723,7 +9723,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 	LocalStorageStore.prototype.get = function get (key) {
 	    try {
-			//console.trace("GETTING ITEM trace")
 	        var data = global$1.localStorage.getItem(key);
 	        if (data !== null) {
 	            return Buffer.from(data, binaryEncoding);
@@ -9736,15 +9735,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return undefined;
 	};
 	LocalStorageStore.prototype.put = function put (key, data, overwrite) {
-		
-		//console.log("WHERE DATA IS BEING PULLED FROM!!")
-		//console.trace();
 	    try {
 	        if (!overwrite && global$1.localStorage.getItem(key) !== null) {
 	            // Don't want to overwrite the key!
 	            return false;
-			}
-			console.log({ "binary data: ": data, string: data.toString(binaryEncoding) });
+	        }
 	        global$1.localStorage.setItem(key, data.toString(binaryEncoding));
 	        return true;
 	    }
@@ -9830,7 +9825,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *
 	 * With no mounted file systems, `MountableFileSystem` acts as a simple `InMemory` filesystem.
 	 */
-	 var MountableFileSystem = (function (BaseFileSystem$$1) {
+	var MountableFileSystem = (function (BaseFileSystem$$1) {
 	    function MountableFileSystem() {
 	        BaseFileSystem$$1.call(this);
 	        // Contains the list of mount points in mntMap, sorted by string length in decreasing order.
@@ -10109,8 +10104,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    return MountableFileSystem;
 	}(BaseFileSystem));
-
-	exports.Module = MountableFileSystem;
 	
 	MountableFileSystem.Name = "MountableFileSystem";
 	MountableFileSystem.Options = {};
@@ -18257,7 +18250,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                    this._events[type].length);
 	      if (typeof console.trace === 'function') {
 	        // not supported in IE 10
-	        //console.trace();
+	        console.trace();
 	      }
 	    }
 	  }

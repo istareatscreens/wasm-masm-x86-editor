@@ -23,19 +23,31 @@ export const addScript = (scriptName: string) => {
 };
 
 //Handle post messages and rethrow in document as event
-
 export const createMessageListner = () => {
   window.addEventListener("message", handleMessage, true);
 };
 
 const handleMessage = (event: MessageEvent) => {
+  //prevent acting on boxedwine execution code
   if (event.data != "zero-timeout-message" && event.data != "") {
-    //prevent acting on boxedwine execution code
-    const { eventName, data } = <{ eventName: string; data: any }>(
-      JSON.parse(event.data)
-    );
-    window.dispatchEvent(new Event(eventName, data));
+    //prevent errors thrown for boxedwine events
+    try {
+      const { eventName, data } = <{ eventName: string; data: any }>(
+        JSON.parse(event.data)
+      );
+      window.dispatchEvent(new CustomEvent(eventName, { detail: data.data }));
+    } catch {}
   }
+};
+
+//send post messages
+export const postMessage = (eventName: string, data: any) => {
+  (<HTMLIFrameElement>(
+    document.getElementById("boxedwine")
+  )).contentWindow.postMessage(
+    JSON.stringify({ eventName: eventName, data: data }),
+    "/"
+  );
 };
 
 //Generic debounce

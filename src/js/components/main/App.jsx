@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
 import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
+import { postMessage } from "../../utility/utilityFunctions.ts";
 
 function App() {
   const [filename, setFilename] = useState("test");
@@ -26,17 +27,20 @@ function App() {
 
   const handleClick = () => {
     //allow canvas element to know in iframe that editor has been selected so styling can be restored
+    postMessage("editor-selected", {});
+    /*
     document
       .getElementById("boxedwine")
       .contentWindow.postMessage(
         JSON.stringify({ eventName: "editor-selected", data: {} }),
         "/"
       );
+      */
   };
 
   return (
     <div onClick={handleClick} className="root">
-      <Banner />
+      <Banner filename={filename} />
       <Editor filename={filename} code={code} setCode={setCode} />
       <CommandPrompt />
     </div>

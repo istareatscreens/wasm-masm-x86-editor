@@ -64,8 +64,6 @@ export const writeToAssemblyFile = (filename, text) => {
   //Append changes
   fileData[filename] = text;
   fileMetaData[filename].size = fileData[filename].length;
-  console.log(fileData);
-  console.log(fileMetaData);
 
   //save file
   setInLocalStorage(

@@ -1,6 +1,5 @@
 var Module = typeof Module !== "undefined" ? Module : {};
 
-
 var moduleOverrides = {};
 
 var key;
@@ -376,6 +375,96 @@ function lengthBytesUTF8(str) {
  return len;
 }
 
+var UTF16Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf-16le") : undefined;
+
+function UTF16ToString(ptr, maxBytesToRead) {
+ var endPtr = ptr;
+ var idx = endPtr >> 1;
+ var maxIdx = idx + maxBytesToRead / 2;
+ while (!(idx >= maxIdx) && HEAPU16[idx]) ++idx;
+ endPtr = idx << 1;
+ if (endPtr - ptr > 32 && UTF16Decoder) {
+  return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
+ } else {
+  var str = "";
+  for (var i = 0; !(i >= maxBytesToRead / 2); ++i) {
+   var codeUnit = HEAP16[ptr + i * 2 >> 1];
+   if (codeUnit == 0) break;
+   str += String.fromCharCode(codeUnit);
+  }
+  return str;
+ }
+}
+
+function stringToUTF16(str, outPtr, maxBytesToWrite) {
+ if (maxBytesToWrite === undefined) {
+  maxBytesToWrite = 2147483647;
+ }
+ if (maxBytesToWrite < 2) return 0;
+ maxBytesToWrite -= 2;
+ var startPtr = outPtr;
+ var numCharsToWrite = maxBytesToWrite < str.length * 2 ? maxBytesToWrite / 2 : str.length;
+ for (var i = 0; i < numCharsToWrite; ++i) {
+  var codeUnit = str.charCodeAt(i);
+  HEAP16[outPtr >> 1] = codeUnit;
+  outPtr += 2;
+ }
+ HEAP16[outPtr >> 1] = 0;
+ return outPtr - startPtr;
+}
+
+function lengthBytesUTF16(str) {
+ return str.length * 2;
+}
+
+function UTF32ToString(ptr, maxBytesToRead) {
+ var i = 0;
+ var str = "";
+ while (!(i >= maxBytesToRead / 4)) {
+  var utf32 = HEAP32[ptr + i * 4 >> 2];
+  if (utf32 == 0) break;
+  ++i;
+  if (utf32 >= 65536) {
+   var ch = utf32 - 65536;
+   str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+  } else {
+   str += String.fromCharCode(utf32);
+  }
+ }
+ return str;
+}
+
+function stringToUTF32(str, outPtr, maxBytesToWrite) {
+ if (maxBytesToWrite === undefined) {
+  maxBytesToWrite = 2147483647;
+ }
+ if (maxBytesToWrite < 4) return 0;
+ var startPtr = outPtr;
+ var endPtr = startPtr + maxBytesToWrite - 4;
+ for (var i = 0; i < str.length; ++i) {
+  var codeUnit = str.charCodeAt(i);
+  if (codeUnit >= 55296 && codeUnit <= 57343) {
+   var trailSurrogate = str.charCodeAt(++i);
+   codeUnit = 65536 + ((codeUnit & 1023) << 10) | trailSurrogate & 1023;
+  }
+  HEAP32[outPtr >> 2] = codeUnit;
+  outPtr += 4;
+  if (outPtr + 4 > endPtr) break;
+ }
+ HEAP32[outPtr >> 2] = 0;
+ return outPtr - startPtr;
+}
+
+function lengthBytesUTF32(str) {
+ var len = 0;
+ for (var i = 0; i < str.length; ++i) {
+  var codeUnit = str.charCodeAt(i);
+  if (codeUnit >= 55296 && codeUnit <= 57343) ++i;
+  len += 4;
+ }
+ return len;
+}
+
 function allocateUTF8(str) {
  var size = lengthBytesUTF8(str) + 1;
  var ret = _malloc(size);
@@ -592,9 +681,9 @@ function createWasm() {
  function receiveInstance(instance, module) {
   var exports = instance.exports;
   Module["asm"] = exports;
-  wasmMemory = Module["asm"]["Ld"];
+  wasmMemory = Module["asm"]["Vd"];
   updateGlobalBufferAndViews(wasmMemory.buffer);
-  wasmTable = Module["asm"]["Md"];
+  wasmTable = Module["asm"]["Wd"];
   removeRunDependency("wasm-instantiate");
  }
  addRunDependency("wasm-instantiate");
@@ -644,10 +733,10 @@ var tempI64;
 
 var ASM_CONSTS = {
  5730: function($0) {
-  //document.title = "BoxedWine " + $0 + " MIPS";
+  document.title = "BoxedWine " + $0 + " MIPS";
  },
  5780: function() {},
- 75050: function($0) {
+ 75066: function($0) {
   var str = UTF8ToString($0) + "\n\n" + "Abort/Retry/Ignore/AlwaysIgnore? [ariA] :";
   var reply = window.prompt(str, "i");
   if (reply === null) {
@@ -655,7 +744,7 @@ var ASM_CONSTS = {
   }
   return allocate(intArrayFromString(reply), "i8", ALLOC_NORMAL);
  },
- 112412: function($0, $1, $2) {
+ 112428: function($0, $1, $2) {
   var w = $0;
   var h = $1;
   var pixels = $2;
@@ -726,7 +815,7 @@ var ASM_CONSTS = {
   SDL2.ctx.putImageData(SDL2.image, 0, 0);
   return 0;
  },
- 113891: function($0, $1, $2, $3, $4) {
+ 113907: function($0, $1, $2, $3, $4) {
   var w = $0;
   var h = $1;
   var hot_x = $2;
@@ -763,36 +852,36 @@ var ASM_CONSTS = {
   stringToUTF8(url, urlBuf, url.length + 1);
   return urlBuf;
  },
- 114880: function($0) {
+ 114896: function($0) {
   if (Module["canvas"]) {
    Module["canvas"].style["cursor"] = UTF8ToString($0);
   }
   return 0;
  },
- 114973: function() {
+ 114989: function() {
   if (Module["canvas"]) {
    Module["canvas"].style["cursor"] = "none";
   }
  },
- 116198: function() {
+ 116214: function() {
   return screen.width;
  },
- 116225: function() {
+ 116241: function() {
   return screen.height;
  },
- 116253: function() {
+ 116269: function() {
   return window.innerWidth;
  },
- 116285: function() {
+ 116301: function() {
   return window.innerHeight;
  },
- 116363: function($0) {
+ 116379: function($0) {
   if (typeof setWindowTitle !== "undefined") {
    setWindowTitle(UTF8ToString($0));
   }
   return 0;
  },
- 116497: function() {
+ 116513: function() {
   if (typeof AudioContext !== "undefined") {
    return 1;
   } else if (typeof webkitAudioContext !== "undefined") {
@@ -800,7 +889,7 @@ var ASM_CONSTS = {
   }
   return 0;
  },
- 116663: function() {
+ 116679: function() {
   if (typeof navigator.mediaDevices !== "undefined" && typeof navigator.mediaDevices.getUserMedia !== "undefined") {
    return 1;
   } else if (typeof navigator.webkitGetUserMedia !== "undefined") {
@@ -808,7 +897,7 @@ var ASM_CONSTS = {
   }
   return 0;
  },
- 116889: function($0) {
+ 116905: function($0) {
   if (typeof Module["SDL2"] === "undefined") {
    Module["SDL2"] = {};
   }
@@ -830,11 +919,11 @@ var ASM_CONSTS = {
   }
   return SDL2.audioContext === undefined ? -1 : 0;
  },
- 117442: function() {
+ 117458: function() {
   var SDL2 = Module["SDL2"];
   return SDL2.audioContext.sampleRate;
  },
- 117512: function($0, $1, $2, $3) {
+ 117528: function($0, $1, $2, $3) {
   var SDL2 = Module["SDL2"];
   var have_microphone = function(stream) {
    if (SDL2.capture.silenceTimer !== undefined) {
@@ -875,7 +964,7 @@ var ASM_CONSTS = {
    }, have_microphone, no_microphone);
   }
  },
- 119164: function($0, $1, $2, $3) {
+ 119180: function($0, $1, $2, $3) {
   var SDL2 = Module["SDL2"];
   SDL2.audio.scriptProcessorNode = SDL2.audioContext["createScriptProcessor"]($1, 0, $0);
   SDL2.audio.scriptProcessorNode["onaudioprocess"] = function(e) {
@@ -887,7 +976,7 @@ var ASM_CONSTS = {
   };
   SDL2.audio.scriptProcessorNode["connect"](SDL2.audioContext["destination"]);
  },
- 119574: function($0, $1) {
+ 119590: function($0, $1) {
   var SDL2 = Module["SDL2"];
   var numChannels = SDL2.capture.currentCaptureBuffer.numberOfChannels;
   for (var c = 0; c < numChannels; ++c) {
@@ -906,7 +995,7 @@ var ASM_CONSTS = {
    }
   }
  },
- 120179: function($0, $1) {
+ 120195: function($0, $1) {
   var SDL2 = Module["SDL2"];
   var numChannels = SDL2.audio.currentOutputBuffer["numberOfChannels"];
   for (var c = 0; c < numChannels; ++c) {
@@ -919,7 +1008,7 @@ var ASM_CONSTS = {
    }
   }
  },
- 120659: function($0) {
+ 120675: function($0) {
   var SDL2 = Module["SDL2"];
   if ($0) {
    if (SDL2.capture.silenceTimer !== undefined) {
@@ -3371,7 +3460,6 @@ var SYSCALLS = {
   return path;
  },
  doStat: function(func, path, buf) {
-   //console.trace("doStat");
   try {
    var stat = func(path);
   } catch (e) {
@@ -4844,6 +4932,798 @@ function ___sys_unlink(path) {
  }
 }
 
+function getShiftFromSize(size) {
+ switch (size) {
+ case 1:
+  return 0;
+
+ case 2:
+  return 1;
+
+ case 4:
+  return 2;
+
+ case 8:
+  return 3;
+
+ default:
+  throw new TypeError("Unknown type size: " + size);
+ }
+}
+
+function embind_init_charCodes() {
+ var codes = new Array(256);
+ for (var i = 0; i < 256; ++i) {
+  codes[i] = String.fromCharCode(i);
+ }
+ embind_charCodes = codes;
+}
+
+var embind_charCodes = undefined;
+
+function readLatin1String(ptr) {
+ var ret = "";
+ var c = ptr;
+ while (HEAPU8[c]) {
+  ret += embind_charCodes[HEAPU8[c++]];
+ }
+ return ret;
+}
+
+var awaitingDependencies = {};
+
+var registeredTypes = {};
+
+var typeDependencies = {};
+
+var char_0 = 48;
+
+var char_9 = 57;
+
+function makeLegalFunctionName(name) {
+ if (undefined === name) {
+  return "_unknown";
+ }
+ name = name.replace(/[^a-zA-Z0-9_]/g, "$");
+ var f = name.charCodeAt(0);
+ if (f >= char_0 && f <= char_9) {
+  return "_" + name;
+ } else {
+  return name;
+ }
+}
+
+function createNamedFunction(name, body) {
+ name = makeLegalFunctionName(name);
+ return new Function("body", "return function " + name + "() {\n" + '    "use strict";' + "    return body.apply(this, arguments);\n" + "};\n")(body);
+}
+
+function extendError(baseErrorType, errorName) {
+ var errorClass = createNamedFunction(errorName, function(message) {
+  this.name = errorName;
+  this.message = message;
+  var stack = new Error(message).stack;
+  if (stack !== undefined) {
+   this.stack = this.toString() + "\n" + stack.replace(/^Error(:[^\n]*)?\n/, "");
+  }
+ });
+ errorClass.prototype = Object.create(baseErrorType.prototype);
+ errorClass.prototype.constructor = errorClass;
+ errorClass.prototype.toString = function() {
+  if (this.message === undefined) {
+   return this.name;
+  } else {
+   return this.name + ": " + this.message;
+  }
+ };
+ return errorClass;
+}
+
+var BindingError = undefined;
+
+function throwBindingError(message) {
+ throw new BindingError(message);
+}
+
+var InternalError = undefined;
+
+function throwInternalError(message) {
+ throw new InternalError(message);
+}
+
+function whenDependentTypesAreResolved(myTypes, dependentTypes, getTypeConverters) {
+ myTypes.forEach(function(type) {
+  typeDependencies[type] = dependentTypes;
+ });
+ function onComplete(typeConverters) {
+  var myTypeConverters = getTypeConverters(typeConverters);
+  if (myTypeConverters.length !== myTypes.length) {
+   throwInternalError("Mismatched type converter count");
+  }
+  for (var i = 0; i < myTypes.length; ++i) {
+   registerType(myTypes[i], myTypeConverters[i]);
+  }
+ }
+ var typeConverters = new Array(dependentTypes.length);
+ var unregisteredTypes = [];
+ var registered = 0;
+ dependentTypes.forEach(function(dt, i) {
+  if (registeredTypes.hasOwnProperty(dt)) {
+   typeConverters[i] = registeredTypes[dt];
+  } else {
+   unregisteredTypes.push(dt);
+   if (!awaitingDependencies.hasOwnProperty(dt)) {
+    awaitingDependencies[dt] = [];
+   }
+   awaitingDependencies[dt].push(function() {
+    typeConverters[i] = registeredTypes[dt];
+    ++registered;
+    if (registered === unregisteredTypes.length) {
+     onComplete(typeConverters);
+    }
+   });
+  }
+ });
+ if (0 === unregisteredTypes.length) {
+  onComplete(typeConverters);
+ }
+}
+
+function registerType(rawType, registeredInstance, options) {
+ options = options || {};
+ if (!("argPackAdvance" in registeredInstance)) {
+  throw new TypeError("registerType registeredInstance requires argPackAdvance");
+ }
+ var name = registeredInstance.name;
+ if (!rawType) {
+  throwBindingError('type "' + name + '" must have a positive integer typeid pointer');
+ }
+ if (registeredTypes.hasOwnProperty(rawType)) {
+  if (options.ignoreDuplicateRegistrations) {
+   return;
+  } else {
+   throwBindingError("Cannot register type '" + name + "' twice");
+  }
+ }
+ registeredTypes[rawType] = registeredInstance;
+ delete typeDependencies[rawType];
+ if (awaitingDependencies.hasOwnProperty(rawType)) {
+  var callbacks = awaitingDependencies[rawType];
+  delete awaitingDependencies[rawType];
+  callbacks.forEach(function(cb) {
+   cb();
+  });
+ }
+}
+
+function __embind_register_bool(rawType, name, size, trueValue, falseValue) {
+ var shift = getShiftFromSize(size);
+ name = readLatin1String(name);
+ registerType(rawType, {
+  name: name,
+  "fromWireType": function(wt) {
+   return !!wt;
+  },
+  "toWireType": function(destructors, o) {
+   return o ? trueValue : falseValue;
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": function(pointer) {
+   var heap;
+   if (size === 1) {
+    heap = HEAP8;
+   } else if (size === 2) {
+    heap = HEAP16;
+   } else if (size === 4) {
+    heap = HEAP32;
+   } else {
+    throw new TypeError("Unknown boolean type size: " + name);
+   }
+   return this["fromWireType"](heap[pointer >> shift]);
+  },
+  destructorFunction: null
+ });
+}
+
+var emval_free_list = [];
+
+var emval_handle_array = [ {}, {
+ value: undefined
+}, {
+ value: null
+}, {
+ value: true
+}, {
+ value: false
+} ];
+
+function __emval_decref(handle) {
+ if (handle > 4 && 0 === --emval_handle_array[handle].refcount) {
+  emval_handle_array[handle] = undefined;
+  emval_free_list.push(handle);
+ }
+}
+
+function count_emval_handles() {
+ var count = 0;
+ for (var i = 5; i < emval_handle_array.length; ++i) {
+  if (emval_handle_array[i] !== undefined) {
+   ++count;
+  }
+ }
+ return count;
+}
+
+function get_first_emval() {
+ for (var i = 5; i < emval_handle_array.length; ++i) {
+  if (emval_handle_array[i] !== undefined) {
+   return emval_handle_array[i];
+  }
+ }
+ return null;
+}
+
+function init_emval() {
+ Module["count_emval_handles"] = count_emval_handles;
+ Module["get_first_emval"] = get_first_emval;
+}
+
+function __emval_register(value) {
+ switch (value) {
+ case undefined:
+  {
+   return 1;
+  }
+
+ case null:
+  {
+   return 2;
+  }
+
+ case true:
+  {
+   return 3;
+  }
+
+ case false:
+  {
+   return 4;
+  }
+
+ default:
+  {
+   var handle = emval_free_list.length ? emval_free_list.pop() : emval_handle_array.length;
+   emval_handle_array[handle] = {
+    refcount: 1,
+    value: value
+   };
+   return handle;
+  }
+ }
+}
+
+function simpleReadValueFromPointer(pointer) {
+ return this["fromWireType"](HEAPU32[pointer >> 2]);
+}
+
+function __embind_register_emval(rawType, name) {
+ name = readLatin1String(name);
+ registerType(rawType, {
+  name: name,
+  "fromWireType": function(handle) {
+   var rv = emval_handle_array[handle].value;
+   __emval_decref(handle);
+   return rv;
+  },
+  "toWireType": function(destructors, value) {
+   return __emval_register(value);
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": simpleReadValueFromPointer,
+  destructorFunction: null
+ });
+}
+
+function _embind_repr(v) {
+ if (v === null) {
+  return "null";
+ }
+ var t = typeof v;
+ if (t === "object" || t === "array" || t === "function") {
+  return v.toString();
+ } else {
+  return "" + v;
+ }
+}
+
+function floatReadValueFromPointer(name, shift) {
+ switch (shift) {
+ case 2:
+  return function(pointer) {
+   return this["fromWireType"](HEAPF32[pointer >> 2]);
+  };
+
+ case 3:
+  return function(pointer) {
+   return this["fromWireType"](HEAPF64[pointer >> 3]);
+  };
+
+ default:
+  throw new TypeError("Unknown float type: " + name);
+ }
+}
+
+function __embind_register_float(rawType, name, size) {
+ var shift = getShiftFromSize(size);
+ name = readLatin1String(name);
+ registerType(rawType, {
+  name: name,
+  "fromWireType": function(value) {
+   return value;
+  },
+  "toWireType": function(destructors, value) {
+   if (typeof value !== "number" && typeof value !== "boolean") {
+    throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+   }
+   return value;
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": floatReadValueFromPointer(name, shift),
+  destructorFunction: null
+ });
+}
+
+function new_(constructor, argumentList) {
+ if (!(constructor instanceof Function)) {
+  throw new TypeError("new_ called with constructor type " + typeof constructor + " which is not a function");
+ }
+ var dummy = createNamedFunction(constructor.name || "unknownFunctionName", function() {});
+ dummy.prototype = constructor.prototype;
+ var obj = new dummy();
+ var r = constructor.apply(obj, argumentList);
+ return r instanceof Object ? r : obj;
+}
+
+function runDestructors(destructors) {
+ while (destructors.length) {
+  var ptr = destructors.pop();
+  var del = destructors.pop();
+  del(ptr);
+ }
+}
+
+function craftInvokerFunction(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc) {
+ var argCount = argTypes.length;
+ if (argCount < 2) {
+  throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
+ }
+ var isClassMethodFunc = argTypes[1] !== null && classType !== null;
+ var needsDestructorStack = false;
+ for (var i = 1; i < argTypes.length; ++i) {
+  if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
+   needsDestructorStack = true;
+   break;
+  }
+ }
+ var returns = argTypes[0].name !== "void";
+ var argsList = "";
+ var argsListWired = "";
+ for (var i = 0; i < argCount - 2; ++i) {
+  argsList += (i !== 0 ? ", " : "") + "arg" + i;
+  argsListWired += (i !== 0 ? ", " : "") + "arg" + i + "Wired";
+ }
+ var invokerFnBody = "return function " + makeLegalFunctionName(humanName) + "(" + argsList + ") {\n" + "if (arguments.length !== " + (argCount - 2) + ") {\n" + "throwBindingError('function " + humanName + " called with ' + arguments.length + ' arguments, expected " + (argCount - 2) + " args!');\n" + "}\n";
+ if (needsDestructorStack) {
+  invokerFnBody += "var destructors = [];\n";
+ }
+ var dtorStack = needsDestructorStack ? "destructors" : "null";
+ var args1 = [ "throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam" ];
+ var args2 = [ throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1] ];
+ if (isClassMethodFunc) {
+  invokerFnBody += "var thisWired = classParam.toWireType(" + dtorStack + ", this);\n";
+ }
+ for (var i = 0; i < argCount - 2; ++i) {
+  invokerFnBody += "var arg" + i + "Wired = argType" + i + ".toWireType(" + dtorStack + ", arg" + i + "); // " + argTypes[i + 2].name + "\n";
+  args1.push("argType" + i);
+  args2.push(argTypes[i + 2]);
+ }
+ if (isClassMethodFunc) {
+  argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
+ }
+ invokerFnBody += (returns ? "var rv = " : "") + "invoker(fn" + (argsListWired.length > 0 ? ", " : "") + argsListWired + ");\n";
+ if (needsDestructorStack) {
+  invokerFnBody += "runDestructors(destructors);\n";
+ } else {
+  for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; ++i) {
+   var paramName = i === 1 ? "thisWired" : "arg" + (i - 2) + "Wired";
+   if (argTypes[i].destructorFunction !== null) {
+    invokerFnBody += paramName + "_dtor(" + paramName + "); // " + argTypes[i].name + "\n";
+    args1.push(paramName + "_dtor");
+    args2.push(argTypes[i].destructorFunction);
+   }
+  }
+ }
+ if (returns) {
+  invokerFnBody += "var ret = retType.fromWireType(rv);\n" + "return ret;\n";
+ } else {}
+ invokerFnBody += "}\n";
+ args1.push(invokerFnBody);
+ var invokerFunction = new_(Function, args1).apply(null, args2);
+ return invokerFunction;
+}
+
+function ensureOverloadTable(proto, methodName, humanName) {
+ if (undefined === proto[methodName].overloadTable) {
+  var prevFunc = proto[methodName];
+  proto[methodName] = function() {
+   if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
+    throwBindingError("Function '" + humanName + "' called with an invalid number of arguments (" + arguments.length + ") - expects one of (" + proto[methodName].overloadTable + ")!");
+   }
+   return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
+  };
+  proto[methodName].overloadTable = [];
+  proto[methodName].overloadTable[prevFunc.argCount] = prevFunc;
+ }
+}
+
+function exposePublicSymbol(name, value, numArguments) {
+ if (Module.hasOwnProperty(name)) {
+  if (undefined === numArguments || undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments]) {
+   throwBindingError("Cannot register public name '" + name + "' twice");
+  }
+  ensureOverloadTable(Module, name, name);
+  if (Module.hasOwnProperty(numArguments)) {
+   throwBindingError("Cannot register multiple overloads of a function with the same number of arguments (" + numArguments + ")!");
+  }
+  Module[name].overloadTable[numArguments] = value;
+ } else {
+  Module[name] = value;
+  if (undefined !== numArguments) {
+   Module[name].numArguments = numArguments;
+  }
+ }
+}
+
+function heap32VectorToArray(count, firstElement) {
+ var array = [];
+ for (var i = 0; i < count; i++) {
+  array.push(HEAP32[(firstElement >> 2) + i]);
+ }
+ return array;
+}
+
+function replacePublicSymbol(name, value, numArguments) {
+ if (!Module.hasOwnProperty(name)) {
+  throwInternalError("Replacing nonexistant public symbol");
+ }
+ if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
+  Module[name].overloadTable[numArguments] = value;
+ } else {
+  Module[name] = value;
+  Module[name].argCount = numArguments;
+ }
+}
+
+function getDynCaller(sig, ptr) {
+ assert(sig.indexOf("j") >= 0, "getDynCaller should only be called with i64 sigs");
+ var argCache = [];
+ return function() {
+  argCache.length = arguments.length;
+  for (var i = 0; i < arguments.length; i++) {
+   argCache[i] = arguments[i];
+  }
+  return dynCall(sig, ptr, argCache);
+ };
+}
+
+function embind__requireFunction(signature, rawFunction) {
+ signature = readLatin1String(signature);
+ function makeDynCaller() {
+  if (signature.indexOf("j") != -1) {
+   return getDynCaller(signature, rawFunction);
+  }
+  return wasmTable.get(rawFunction);
+ }
+ var fp = makeDynCaller();
+ if (typeof fp !== "function") {
+  throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
+ }
+ return fp;
+}
+
+var UnboundTypeError = undefined;
+
+function getTypeName(type) {
+ var ptr = ___getTypeName(type);
+ var rv = readLatin1String(ptr);
+ _free(ptr);
+ return rv;
+}
+
+function throwUnboundTypeError(message, types) {
+ var unboundTypes = [];
+ var seen = {};
+ function visit(type) {
+  if (seen[type]) {
+   return;
+  }
+  if (registeredTypes[type]) {
+   return;
+  }
+  if (typeDependencies[type]) {
+   typeDependencies[type].forEach(visit);
+   return;
+  }
+  unboundTypes.push(type);
+  seen[type] = true;
+ }
+ types.forEach(visit);
+ throw new UnboundTypeError(message + ": " + unboundTypes.map(getTypeName).join([ ", " ]));
+}
+
+function __embind_register_function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn) {
+ var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+ name = readLatin1String(name);
+ rawInvoker = embind__requireFunction(signature, rawInvoker);
+ exposePublicSymbol(name, function() {
+  throwUnboundTypeError("Cannot call " + name + " due to unbound types", argTypes);
+ }, argCount - 1);
+ whenDependentTypesAreResolved([], argTypes, function(argTypes) {
+  var invokerArgsArray = [ argTypes[0], null ].concat(argTypes.slice(1));
+  replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null, rawInvoker, fn), argCount - 1);
+  return [];
+ });
+}
+
+function integerReadValueFromPointer(name, shift, signed) {
+ switch (shift) {
+ case 0:
+  return signed ? function readS8FromPointer(pointer) {
+   return HEAP8[pointer];
+  } : function readU8FromPointer(pointer) {
+   return HEAPU8[pointer];
+  };
+
+ case 1:
+  return signed ? function readS16FromPointer(pointer) {
+   return HEAP16[pointer >> 1];
+  } : function readU16FromPointer(pointer) {
+   return HEAPU16[pointer >> 1];
+  };
+
+ case 2:
+  return signed ? function readS32FromPointer(pointer) {
+   return HEAP32[pointer >> 2];
+  } : function readU32FromPointer(pointer) {
+   return HEAPU32[pointer >> 2];
+  };
+
+ default:
+  throw new TypeError("Unknown integer type: " + name);
+ }
+}
+
+function __embind_register_integer(primitiveType, name, size, minRange, maxRange) {
+ name = readLatin1String(name);
+ if (maxRange === -1) {
+  maxRange = 4294967295;
+ }
+ var shift = getShiftFromSize(size);
+ var fromWireType = function(value) {
+  return value;
+ };
+ if (minRange === 0) {
+  var bitshift = 32 - 8 * size;
+  fromWireType = function(value) {
+   return value << bitshift >>> bitshift;
+  };
+ }
+ var isUnsignedType = name.indexOf("unsigned") != -1;
+ registerType(primitiveType, {
+  name: name,
+  "fromWireType": fromWireType,
+  "toWireType": function(destructors, value) {
+   if (typeof value !== "number" && typeof value !== "boolean") {
+    throw new TypeError('Cannot convert "' + _embind_repr(value) + '" to ' + this.name);
+   }
+   if (value < minRange || value > maxRange) {
+    throw new TypeError('Passing a number "' + _embind_repr(value) + '" from JS side to C/C++ side to an argument of type "' + name + '", which is outside the valid range [' + minRange + ", " + maxRange + "]!");
+   }
+   return isUnsignedType ? value >>> 0 : value | 0;
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": integerReadValueFromPointer(name, shift, minRange !== 0),
+  destructorFunction: null
+ });
+}
+
+function __embind_register_memory_view(rawType, dataTypeIndex, name) {
+ var typeMapping = [ Int8Array, Uint8Array, Int16Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array ];
+ var TA = typeMapping[dataTypeIndex];
+ function decodeMemoryView(handle) {
+  handle = handle >> 2;
+  var heap = HEAPU32;
+  var size = heap[handle];
+  var data = heap[handle + 1];
+  return new TA(buffer, data, size);
+ }
+ name = readLatin1String(name);
+ registerType(rawType, {
+  name: name,
+  "fromWireType": decodeMemoryView,
+  "argPackAdvance": 8,
+  "readValueFromPointer": decodeMemoryView
+ }, {
+  ignoreDuplicateRegistrations: true
+ });
+}
+
+function __embind_register_std_string(rawType, name) {
+ name = readLatin1String(name);
+ var stdStringIsUTF8 = name === "std::string";
+ registerType(rawType, {
+  name: name,
+  "fromWireType": function(value) {
+   var length = HEAPU32[value >> 2];
+   var str;
+   if (stdStringIsUTF8) {
+    var decodeStartPtr = value + 4;
+    for (var i = 0; i <= length; ++i) {
+     var currentBytePtr = value + 4 + i;
+     if (i == length || HEAPU8[currentBytePtr] == 0) {
+      var maxRead = currentBytePtr - decodeStartPtr;
+      var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
+      if (str === undefined) {
+       str = stringSegment;
+      } else {
+       str += String.fromCharCode(0);
+       str += stringSegment;
+      }
+      decodeStartPtr = currentBytePtr + 1;
+     }
+    }
+   } else {
+    var a = new Array(length);
+    for (var i = 0; i < length; ++i) {
+     a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
+    }
+    str = a.join("");
+   }
+   _free(value);
+   return str;
+  },
+  "toWireType": function(destructors, value) {
+   if (value instanceof ArrayBuffer) {
+    value = new Uint8Array(value);
+   }
+   var getLength;
+   var valueIsOfTypeString = typeof value === "string";
+   if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+    throwBindingError("Cannot pass non-string to std::string");
+   }
+   if (stdStringIsUTF8 && valueIsOfTypeString) {
+    getLength = function() {
+     return lengthBytesUTF8(value);
+    };
+   } else {
+    getLength = function() {
+     return value.length;
+    };
+   }
+   var length = getLength();
+   var ptr = _malloc(4 + length + 1);
+   HEAPU32[ptr >> 2] = length;
+   if (stdStringIsUTF8 && valueIsOfTypeString) {
+    stringToUTF8(value, ptr + 4, length + 1);
+   } else {
+    if (valueIsOfTypeString) {
+     for (var i = 0; i < length; ++i) {
+      var charCode = value.charCodeAt(i);
+      if (charCode > 255) {
+       _free(ptr);
+       throwBindingError("String has UTF-16 code units that do not fit in 8 bits");
+      }
+      HEAPU8[ptr + 4 + i] = charCode;
+     }
+    } else {
+     for (var i = 0; i < length; ++i) {
+      HEAPU8[ptr + 4 + i] = value[i];
+     }
+    }
+   }
+   if (destructors !== null) {
+    destructors.push(_free, ptr);
+   }
+   return ptr;
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": simpleReadValueFromPointer,
+  destructorFunction: function(ptr) {
+   _free(ptr);
+  }
+ });
+}
+
+function __embind_register_std_wstring(rawType, charSize, name) {
+ name = readLatin1String(name);
+ var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
+ if (charSize === 2) {
+  decodeString = UTF16ToString;
+  encodeString = stringToUTF16;
+  lengthBytesUTF = lengthBytesUTF16;
+  getHeap = function() {
+   return HEAPU16;
+  };
+  shift = 1;
+ } else if (charSize === 4) {
+  decodeString = UTF32ToString;
+  encodeString = stringToUTF32;
+  lengthBytesUTF = lengthBytesUTF32;
+  getHeap = function() {
+   return HEAPU32;
+  };
+  shift = 2;
+ }
+ registerType(rawType, {
+  name: name,
+  "fromWireType": function(value) {
+   var length = HEAPU32[value >> 2];
+   var HEAP = getHeap();
+   var str;
+   var decodeStartPtr = value + 4;
+   for (var i = 0; i <= length; ++i) {
+    var currentBytePtr = value + 4 + i * charSize;
+    if (i == length || HEAP[currentBytePtr >> shift] == 0) {
+     var maxReadBytes = currentBytePtr - decodeStartPtr;
+     var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
+     if (str === undefined) {
+      str = stringSegment;
+     } else {
+      str += String.fromCharCode(0);
+      str += stringSegment;
+     }
+     decodeStartPtr = currentBytePtr + charSize;
+    }
+   }
+   _free(value);
+   return str;
+  },
+  "toWireType": function(destructors, value) {
+   if (!(typeof value === "string")) {
+    throwBindingError("Cannot pass non-string to C++ string type " + name);
+   }
+   var length = lengthBytesUTF(value);
+   var ptr = _malloc(4 + length + charSize);
+   HEAPU32[ptr >> 2] = length >> shift;
+   encodeString(value, ptr + 4, length + charSize);
+   if (destructors !== null) {
+    destructors.push(_free, ptr);
+   }
+   return ptr;
+  },
+  "argPackAdvance": 8,
+  "readValueFromPointer": simpleReadValueFromPointer,
+  destructorFunction: function(ptr) {
+   _free(ptr);
+  }
+ });
+}
+
+function __embind_register_void(rawType, name) {
+ name = readLatin1String(name);
+ registerType(rawType, {
+  isVoid: true,
+  name: name,
+  "argPackAdvance": 0,
+  "fromWireType": function() {
+   return undefined;
+  },
+  "toWireType": function(destructors, o) {
+   return undefined;
+  }
+ });
+}
+
 function _abort() {
  abort();
 }
@@ -5037,8 +5917,7 @@ var Browser = {
      return;
     } else {
      if (e && typeof e === "object" && e.stack) err("exception thrown: " + [ e, e.stack ]);
-     console.trace(e);
-     throw e; 
+     throw e;
     }
    }
    if (Module["postMainLoop"]) Module["postMainLoop"]();
@@ -5284,16 +6163,15 @@ var Browser = {
    document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
    document.addEventListener("MSFullscreenChange", fullscreenChange, false);
   }
-
   var canvasContainer = document.createElement("div");
   canvas.parentNode.insertBefore(canvasContainer, canvas);
   canvasContainer.appendChild(canvas);
-//  canvasContainer.requestFullscreen = canvasContainer["requestFullscreen"] || canvasContainer["mozRequestFullScreen"] || canvasContainer["msRequestFullscreen"] || (canvasContainer["webkitRequestFullscreen"] ? function() {
-//   canvasContainer["webkitRequestFullscreen"](Element["ALLOW_KEYBOARD_INPUT"]);
-//  } : null) || (canvasContainer["webkitRequestFullScreen"] ? function() {
-//   canvasContainer["webkitRequestFullScreen"](Element["ALLOW_KEYBOARD_INPUT"]);
-//  } : null);
-//  canvasContainer.requestFullscreen();
+  canvasContainer.requestFullscreen = canvasContainer["requestFullscreen"] || canvasContainer["mozRequestFullScreen"] || canvasContainer["msRequestFullscreen"] || (canvasContainer["webkitRequestFullscreen"] ? function() {
+   canvasContainer["webkitRequestFullscreen"](Element["ALLOW_KEYBOARD_INPUT"]);
+  } : null) || (canvasContainer["webkitRequestFullScreen"] ? function() {
+   canvasContainer["webkitRequestFullScreen"](Element["ALLOW_KEYBOARD_INPUT"]);
+  } : null);
+  canvasContainer.requestFullscreen();
  },
  exitFullscreen: function() {
   if (!Browser.isFullscreen) {
@@ -6204,6 +7082,11 @@ function _eglWaitNative(nativeEngineId) {
 function _emscripten_asm_const_int(code, sigPtr, argbuf) {
  var args = readAsmConstArgs(sigPtr, argbuf);
  return ASM_CONSTS[code].apply(null, args);
+}
+
+function _emscripten_cancel_main_loop() {
+ Browser.mainLoop.pause();
+ Browser.mainLoop.func = null;
 }
 
 var JSEvents = {
@@ -9079,6 +9962,16 @@ FS.FSNode = FSNode;
 
 FS.staticInit();
 
+embind_init_charCodes();
+
+BindingError = Module["BindingError"] = extendError(Error, "BindingError");
+
+InternalError = Module["InternalError"] = extendError(Error, "InternalError");
+
+init_emval();
+
+UnboundTypeError = Module["UnboundTypeError"] = extendError(Error, "UnboundTypeError");
+
 Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) {
  Browser.requestFullscreen(lockPointer, resizeCanvas);
 };
@@ -9138,341 +10031,363 @@ __ATINIT__.push({
 });
 
 var asmLibraryArg = {
- "s": ___cxa_allocate_exception,
- "r": ___cxa_throw,
- "Jd": ___sys__newselect,
- "Ed": ___sys_access,
+ "v": ___cxa_allocate_exception,
+ "u": ___cxa_throw,
+ "Td": ___sys__newselect,
+ "Od": ___sys_access,
  "c": ___sys_fcntl64,
- "Hd": ___sys_ftruncate64,
- "Id": ___sys_getcwd,
- "Fd": ___sys_getdents64,
- "U": ___sys_ioctl,
- "Cd": ___sys_mkdir,
- "V": ___sys_open,
- "Dd": ___sys_rename,
- "Bd": ___sys_rmdir,
+ "Rd": ___sys_ftruncate64,
+ "Sd": ___sys_getcwd,
+ "Pd": ___sys_getdents64,
+ "Z": ___sys_ioctl,
+ "Md": ___sys_mkdir,
+ "_": ___sys_open,
+ "Nd": ___sys_rename,
+ "Ld": ___sys_rmdir,
  "b": ___sys_socketcall,
- "Gd": ___sys_stat64,
- "Kd": ___sys_unlink,
- "p": _abort,
- "o": _clock_gettime,
- "yd": _dlclose,
- "xd": _eglBindAPI,
- "wd": _eglChooseConfig,
- "vd": _eglCreateContext,
- "ud": _eglCreateWindowSurface,
- "td": _eglDestroyContext,
- "sd": _eglDestroySurface,
- "rd": _eglGetConfigAttrib,
- "S": _eglGetDisplay,
- "qd": _eglGetError,
- "pd": _eglGetProcAddress,
- "od": _eglInitialize,
- "nd": _eglMakeCurrent,
- "md": _eglQueryString,
- "ld": _eglSwapBuffers,
- "kd": _eglSwapInterval,
- "jd": _eglTerminate,
- "id": _eglWaitGL,
- "hd": _eglWaitNative,
+ "Qd": ___sys_stat64,
+ "Ud": ___sys_unlink,
+ "Id": __embind_register_bool,
+ "Hd": __embind_register_emval,
+ "X": __embind_register_float,
+ "Gd": __embind_register_function,
+ "e": __embind_register_integer,
+ "d": __embind_register_memory_view,
+ "W": __embind_register_std_string,
+ "s": __embind_register_std_wstring,
+ "Fd": __embind_register_void,
+ "r": _abort,
+ "q": _clock_gettime,
+ "Ed": _dlclose,
+ "Dd": _eglBindAPI,
+ "Cd": _eglChooseConfig,
+ "Bd": _eglCreateContext,
+ "Ad": _eglCreateWindowSurface,
+ "zd": _eglDestroyContext,
+ "yd": _eglDestroySurface,
+ "xd": _eglGetConfigAttrib,
+ "V": _eglGetDisplay,
+ "wd": _eglGetError,
+ "vd": _eglGetProcAddress,
+ "ud": _eglInitialize,
+ "td": _eglMakeCurrent,
+ "sd": _eglQueryString,
+ "rd": _eglSwapBuffers,
+ "qd": _eglSwapInterval,
+ "pd": _eglTerminate,
+ "od": _eglWaitGL,
+ "nd": _eglWaitNative,
  "a": _emscripten_asm_const_int,
- "gd": _emscripten_exit_fullscreen,
- "fd": _emscripten_exit_pointerlock,
- "j": _emscripten_get_device_pixel_ratio,
- "e": _emscripten_get_element_css_size,
- "R": _emscripten_get_gamepad_status,
- "ed": _emscripten_get_num_gamepads,
- "dd": _emscripten_glActiveTexture,
- "cd": _emscripten_glAttachShader,
- "bd": _emscripten_glBeginQueryEXT,
- "ad": _emscripten_glBindAttribLocation,
- "$c": _emscripten_glBindBuffer,
- "_c": _emscripten_glBindFramebuffer,
- "Zc": _emscripten_glBindRenderbuffer,
- "Yc": _emscripten_glBindTexture,
- "Xc": _emscripten_glBindVertexArrayOES,
- "Wc": _emscripten_glBlendColor,
- "Vc": _emscripten_glBlendEquation,
- "Uc": _emscripten_glBlendEquationSeparate,
- "Tc": _emscripten_glBlendFunc,
- "Sc": _emscripten_glBlendFuncSeparate,
- "Rc": _emscripten_glBufferData,
- "Qc": _emscripten_glBufferSubData,
- "Pc": _emscripten_glCheckFramebufferStatus,
- "Oc": _emscripten_glClear,
- "Nc": _emscripten_glClearColor,
- "Mc": _emscripten_glClearDepthf,
- "Lc": _emscripten_glClearStencil,
- "Kc": _emscripten_glColorMask,
- "Jc": _emscripten_glCompileShader,
- "Ic": _emscripten_glCompressedTexImage2D,
- "Hc": _emscripten_glCompressedTexSubImage2D,
- "Gc": _emscripten_glCopyTexImage2D,
- "Fc": _emscripten_glCopyTexSubImage2D,
- "Ec": _emscripten_glCreateProgram,
- "Dc": _emscripten_glCreateShader,
- "Cc": _emscripten_glCullFace,
- "Bc": _emscripten_glDeleteBuffers,
- "Ac": _emscripten_glDeleteFramebuffers,
- "zc": _emscripten_glDeleteProgram,
- "yc": _emscripten_glDeleteQueriesEXT,
- "xc": _emscripten_glDeleteRenderbuffers,
- "wc": _emscripten_glDeleteShader,
- "vc": _emscripten_glDeleteTextures,
- "uc": _emscripten_glDeleteVertexArraysOES,
- "tc": _emscripten_glDepthFunc,
- "sc": _emscripten_glDepthMask,
- "rc": _emscripten_glDepthRangef,
- "qc": _emscripten_glDetachShader,
- "pc": _emscripten_glDisable,
- "oc": _emscripten_glDisableVertexAttribArray,
- "nc": _emscripten_glDrawArrays,
- "mc": _emscripten_glDrawArraysInstancedANGLE,
- "lc": _emscripten_glDrawBuffersWEBGL,
- "kc": _emscripten_glDrawElements,
- "jc": _emscripten_glDrawElementsInstancedANGLE,
- "ic": _emscripten_glEnable,
- "hc": _emscripten_glEnableVertexAttribArray,
- "gc": _emscripten_glEndQueryEXT,
- "fc": _emscripten_glFinish,
- "ec": _emscripten_glFlush,
- "dc": _emscripten_glFramebufferRenderbuffer,
- "cc": _emscripten_glFramebufferTexture2D,
- "bc": _emscripten_glFrontFace,
- "ac": _emscripten_glGenBuffers,
- "$b": _emscripten_glGenFramebuffers,
- "_b": _emscripten_glGenQueriesEXT,
- "Zb": _emscripten_glGenRenderbuffers,
- "Yb": _emscripten_glGenTextures,
- "Xb": _emscripten_glGenVertexArraysOES,
- "Wb": _emscripten_glGenerateMipmap,
- "Vb": _emscripten_glGetActiveAttrib,
- "Ub": _emscripten_glGetActiveUniform,
- "Tb": _emscripten_glGetAttachedShaders,
- "Sb": _emscripten_glGetAttribLocation,
- "Rb": _emscripten_glGetBooleanv,
- "Qb": _emscripten_glGetBufferParameteriv,
- "Pb": _emscripten_glGetError,
- "Ob": _emscripten_glGetFloatv,
- "Nb": _emscripten_glGetFramebufferAttachmentParameteriv,
- "Mb": _emscripten_glGetIntegerv,
- "Lb": _emscripten_glGetProgramInfoLog,
- "Kb": _emscripten_glGetProgramiv,
- "Jb": _emscripten_glGetQueryObjecti64vEXT,
- "Ib": _emscripten_glGetQueryObjectivEXT,
- "Hb": _emscripten_glGetQueryObjectui64vEXT,
- "Gb": _emscripten_glGetQueryObjectuivEXT,
- "Fb": _emscripten_glGetQueryivEXT,
- "Eb": _emscripten_glGetRenderbufferParameteriv,
- "Db": _emscripten_glGetShaderInfoLog,
- "Cb": _emscripten_glGetShaderPrecisionFormat,
- "Bb": _emscripten_glGetShaderSource,
- "Ab": _emscripten_glGetShaderiv,
- "zb": _emscripten_glGetString,
- "yb": _emscripten_glGetTexParameterfv,
- "xb": _emscripten_glGetTexParameteriv,
- "wb": _emscripten_glGetUniformLocation,
- "vb": _emscripten_glGetUniformfv,
- "ub": _emscripten_glGetUniformiv,
- "tb": _emscripten_glGetVertexAttribPointerv,
- "sb": _emscripten_glGetVertexAttribfv,
- "rb": _emscripten_glGetVertexAttribiv,
- "qb": _emscripten_glHint,
- "pb": _emscripten_glIsBuffer,
- "ob": _emscripten_glIsEnabled,
- "nb": _emscripten_glIsFramebuffer,
- "mb": _emscripten_glIsProgram,
- "lb": _emscripten_glIsQueryEXT,
- "kb": _emscripten_glIsRenderbuffer,
- "jb": _emscripten_glIsShader,
- "ib": _emscripten_glIsTexture,
- "hb": _emscripten_glIsVertexArrayOES,
- "gb": _emscripten_glLineWidth,
- "fb": _emscripten_glLinkProgram,
- "eb": _emscripten_glPixelStorei,
- "db": _emscripten_glPolygonOffset,
- "cb": _emscripten_glQueryCounterEXT,
- "bb": _emscripten_glReadPixels,
- "ab": _emscripten_glReleaseShaderCompiler,
- "$a": _emscripten_glRenderbufferStorage,
- "_a": _emscripten_glSampleCoverage,
- "Za": _emscripten_glScissor,
- "Ya": _emscripten_glShaderBinary,
- "Xa": _emscripten_glShaderSource,
- "Wa": _emscripten_glStencilFunc,
- "Va": _emscripten_glStencilFuncSeparate,
- "Ua": _emscripten_glStencilMask,
- "Ta": _emscripten_glStencilMaskSeparate,
- "Sa": _emscripten_glStencilOp,
- "Ra": _emscripten_glStencilOpSeparate,
- "Qa": _emscripten_glTexImage2D,
- "Pa": _emscripten_glTexParameterf,
- "Oa": _emscripten_glTexParameterfv,
- "Na": _emscripten_glTexParameteri,
- "Ma": _emscripten_glTexParameteriv,
- "La": _emscripten_glTexSubImage2D,
- "Ka": _emscripten_glUniform1f,
- "Ja": _emscripten_glUniform1fv,
- "Ia": _emscripten_glUniform1i,
- "Ha": _emscripten_glUniform1iv,
- "Ga": _emscripten_glUniform2f,
- "Fa": _emscripten_glUniform2fv,
- "Ea": _emscripten_glUniform2i,
- "Da": _emscripten_glUniform2iv,
- "Ca": _emscripten_glUniform3f,
- "Ba": _emscripten_glUniform3fv,
- "Aa": _emscripten_glUniform3i,
- "za": _emscripten_glUniform3iv,
- "ya": _emscripten_glUniform4f,
- "xa": _emscripten_glUniform4fv,
- "wa": _emscripten_glUniform4i,
- "va": _emscripten_glUniform4iv,
- "ua": _emscripten_glUniformMatrix2fv,
- "ta": _emscripten_glUniformMatrix3fv,
- "sa": _emscripten_glUniformMatrix4fv,
- "ra": _emscripten_glUseProgram,
- "qa": _emscripten_glValidateProgram,
- "pa": _emscripten_glVertexAttrib1f,
- "oa": _emscripten_glVertexAttrib1fv,
- "na": _emscripten_glVertexAttrib2f,
- "ma": _emscripten_glVertexAttrib2fv,
- "la": _emscripten_glVertexAttrib3f,
- "ka": _emscripten_glVertexAttrib3fv,
- "ja": _emscripten_glVertexAttrib4f,
- "ia": _emscripten_glVertexAttrib4fv,
- "ha": _emscripten_glVertexAttribDivisorANGLE,
- "ga": _emscripten_glVertexAttribPointer,
- "fa": _emscripten_glViewport,
- "n": _emscripten_has_asyncify,
- "ea": _emscripten_memcpy_big,
- "da": _emscripten_request_fullscreen_strategy,
- "Q": _emscripten_request_pointerlock,
- "ca": _emscripten_resize_heap,
- "P": _emscripten_sample_gamepad_data,
- "O": _emscripten_set_beforeunload_callback_on_thread,
- "N": _emscripten_set_blur_callback_on_thread,
- "g": _emscripten_set_canvas_element_size,
- "m": _emscripten_set_element_css_size,
- "M": _emscripten_set_focus_callback_on_thread,
- "L": _emscripten_set_fullscreenchange_callback_on_thread,
- "K": _emscripten_set_gamepadconnected_callback_on_thread,
- "J": _emscripten_set_gamepaddisconnected_callback_on_thread,
- "I": _emscripten_set_keydown_callback_on_thread,
- "H": _emscripten_set_keypress_callback_on_thread,
- "G": _emscripten_set_keyup_callback_on_thread,
- "ba": _emscripten_set_main_loop,
- "F": _emscripten_set_mousedown_callback_on_thread,
- "E": _emscripten_set_mouseenter_callback_on_thread,
- "D": _emscripten_set_mouseleave_callback_on_thread,
- "C": _emscripten_set_mousemove_callback_on_thread,
- "B": _emscripten_set_mouseup_callback_on_thread,
- "A": _emscripten_set_pointerlockchange_callback_on_thread,
- "z": _emscripten_set_resize_callback_on_thread,
- "y": _emscripten_set_touchcancel_callback_on_thread,
- "x": _emscripten_set_touchend_callback_on_thread,
- "w": _emscripten_set_touchmove_callback_on_thread,
- "v": _emscripten_set_touchstart_callback_on_thread,
- "u": _emscripten_set_visibilitychange_callback_on_thread,
- "t": _emscripten_set_wheel_callback_on_thread,
- "l": _emscripten_sleep,
- "aa": _emscripten_thread_sleep,
- "Ad": _environ_get,
- "zd": _environ_sizes_get,
- "$": _exit,
- "h": _fd_close,
- "T": _fd_read,
- "Z": _fd_seek,
- "q": _fd_write,
- "_": _getentropy,
- "f": _gettimeofday,
- "k": _setTempRet0,
- "d": _sigaction,
- "Y": _signal,
- "X": _strftime_l,
- "i": _time,
- "W": _utime
+ "md": _emscripten_cancel_main_loop,
+ "ld": _emscripten_exit_fullscreen,
+ "kd": _emscripten_exit_pointerlock,
+ "l": _emscripten_get_device_pixel_ratio,
+ "g": _emscripten_get_element_css_size,
+ "U": _emscripten_get_gamepad_status,
+ "jd": _emscripten_get_num_gamepads,
+ "id": _emscripten_glActiveTexture,
+ "hd": _emscripten_glAttachShader,
+ "gd": _emscripten_glBeginQueryEXT,
+ "fd": _emscripten_glBindAttribLocation,
+ "ed": _emscripten_glBindBuffer,
+ "dd": _emscripten_glBindFramebuffer,
+ "cd": _emscripten_glBindRenderbuffer,
+ "bd": _emscripten_glBindTexture,
+ "ad": _emscripten_glBindVertexArrayOES,
+ "$c": _emscripten_glBlendColor,
+ "_c": _emscripten_glBlendEquation,
+ "Zc": _emscripten_glBlendEquationSeparate,
+ "Yc": _emscripten_glBlendFunc,
+ "Xc": _emscripten_glBlendFuncSeparate,
+ "Wc": _emscripten_glBufferData,
+ "Vc": _emscripten_glBufferSubData,
+ "Uc": _emscripten_glCheckFramebufferStatus,
+ "Tc": _emscripten_glClear,
+ "Sc": _emscripten_glClearColor,
+ "Rc": _emscripten_glClearDepthf,
+ "Qc": _emscripten_glClearStencil,
+ "Pc": _emscripten_glColorMask,
+ "Oc": _emscripten_glCompileShader,
+ "Nc": _emscripten_glCompressedTexImage2D,
+ "Mc": _emscripten_glCompressedTexSubImage2D,
+ "Lc": _emscripten_glCopyTexImage2D,
+ "Kc": _emscripten_glCopyTexSubImage2D,
+ "Jc": _emscripten_glCreateProgram,
+ "Ic": _emscripten_glCreateShader,
+ "Hc": _emscripten_glCullFace,
+ "Gc": _emscripten_glDeleteBuffers,
+ "Fc": _emscripten_glDeleteFramebuffers,
+ "Ec": _emscripten_glDeleteProgram,
+ "Dc": _emscripten_glDeleteQueriesEXT,
+ "Cc": _emscripten_glDeleteRenderbuffers,
+ "Bc": _emscripten_glDeleteShader,
+ "Ac": _emscripten_glDeleteTextures,
+ "zc": _emscripten_glDeleteVertexArraysOES,
+ "yc": _emscripten_glDepthFunc,
+ "xc": _emscripten_glDepthMask,
+ "wc": _emscripten_glDepthRangef,
+ "vc": _emscripten_glDetachShader,
+ "uc": _emscripten_glDisable,
+ "tc": _emscripten_glDisableVertexAttribArray,
+ "sc": _emscripten_glDrawArrays,
+ "rc": _emscripten_glDrawArraysInstancedANGLE,
+ "qc": _emscripten_glDrawBuffersWEBGL,
+ "pc": _emscripten_glDrawElements,
+ "oc": _emscripten_glDrawElementsInstancedANGLE,
+ "nc": _emscripten_glEnable,
+ "mc": _emscripten_glEnableVertexAttribArray,
+ "lc": _emscripten_glEndQueryEXT,
+ "kc": _emscripten_glFinish,
+ "jc": _emscripten_glFlush,
+ "ic": _emscripten_glFramebufferRenderbuffer,
+ "hc": _emscripten_glFramebufferTexture2D,
+ "gc": _emscripten_glFrontFace,
+ "fc": _emscripten_glGenBuffers,
+ "ec": _emscripten_glGenFramebuffers,
+ "dc": _emscripten_glGenQueriesEXT,
+ "cc": _emscripten_glGenRenderbuffers,
+ "bc": _emscripten_glGenTextures,
+ "ac": _emscripten_glGenVertexArraysOES,
+ "$b": _emscripten_glGenerateMipmap,
+ "_b": _emscripten_glGetActiveAttrib,
+ "Zb": _emscripten_glGetActiveUniform,
+ "Yb": _emscripten_glGetAttachedShaders,
+ "Xb": _emscripten_glGetAttribLocation,
+ "Wb": _emscripten_glGetBooleanv,
+ "Vb": _emscripten_glGetBufferParameteriv,
+ "Ub": _emscripten_glGetError,
+ "Tb": _emscripten_glGetFloatv,
+ "Sb": _emscripten_glGetFramebufferAttachmentParameteriv,
+ "Rb": _emscripten_glGetIntegerv,
+ "Qb": _emscripten_glGetProgramInfoLog,
+ "Pb": _emscripten_glGetProgramiv,
+ "Ob": _emscripten_glGetQueryObjecti64vEXT,
+ "Nb": _emscripten_glGetQueryObjectivEXT,
+ "Mb": _emscripten_glGetQueryObjectui64vEXT,
+ "Lb": _emscripten_glGetQueryObjectuivEXT,
+ "Kb": _emscripten_glGetQueryivEXT,
+ "Jb": _emscripten_glGetRenderbufferParameteriv,
+ "Ib": _emscripten_glGetShaderInfoLog,
+ "Hb": _emscripten_glGetShaderPrecisionFormat,
+ "Gb": _emscripten_glGetShaderSource,
+ "Fb": _emscripten_glGetShaderiv,
+ "Eb": _emscripten_glGetString,
+ "Db": _emscripten_glGetTexParameterfv,
+ "Cb": _emscripten_glGetTexParameteriv,
+ "Bb": _emscripten_glGetUniformLocation,
+ "Ab": _emscripten_glGetUniformfv,
+ "zb": _emscripten_glGetUniformiv,
+ "yb": _emscripten_glGetVertexAttribPointerv,
+ "xb": _emscripten_glGetVertexAttribfv,
+ "wb": _emscripten_glGetVertexAttribiv,
+ "vb": _emscripten_glHint,
+ "ub": _emscripten_glIsBuffer,
+ "tb": _emscripten_glIsEnabled,
+ "sb": _emscripten_glIsFramebuffer,
+ "rb": _emscripten_glIsProgram,
+ "qb": _emscripten_glIsQueryEXT,
+ "pb": _emscripten_glIsRenderbuffer,
+ "ob": _emscripten_glIsShader,
+ "nb": _emscripten_glIsTexture,
+ "mb": _emscripten_glIsVertexArrayOES,
+ "lb": _emscripten_glLineWidth,
+ "kb": _emscripten_glLinkProgram,
+ "jb": _emscripten_glPixelStorei,
+ "ib": _emscripten_glPolygonOffset,
+ "hb": _emscripten_glQueryCounterEXT,
+ "gb": _emscripten_glReadPixels,
+ "fb": _emscripten_glReleaseShaderCompiler,
+ "eb": _emscripten_glRenderbufferStorage,
+ "db": _emscripten_glSampleCoverage,
+ "cb": _emscripten_glScissor,
+ "bb": _emscripten_glShaderBinary,
+ "ab": _emscripten_glShaderSource,
+ "$a": _emscripten_glStencilFunc,
+ "_a": _emscripten_glStencilFuncSeparate,
+ "Za": _emscripten_glStencilMask,
+ "Ya": _emscripten_glStencilMaskSeparate,
+ "Xa": _emscripten_glStencilOp,
+ "Wa": _emscripten_glStencilOpSeparate,
+ "Va": _emscripten_glTexImage2D,
+ "Ua": _emscripten_glTexParameterf,
+ "Ta": _emscripten_glTexParameterfv,
+ "Sa": _emscripten_glTexParameteri,
+ "Ra": _emscripten_glTexParameteriv,
+ "Qa": _emscripten_glTexSubImage2D,
+ "Pa": _emscripten_glUniform1f,
+ "Oa": _emscripten_glUniform1fv,
+ "Na": _emscripten_glUniform1i,
+ "Ma": _emscripten_glUniform1iv,
+ "La": _emscripten_glUniform2f,
+ "Ka": _emscripten_glUniform2fv,
+ "Ja": _emscripten_glUniform2i,
+ "Ia": _emscripten_glUniform2iv,
+ "Ha": _emscripten_glUniform3f,
+ "Ga": _emscripten_glUniform3fv,
+ "Fa": _emscripten_glUniform3i,
+ "Ea": _emscripten_glUniform3iv,
+ "Da": _emscripten_glUniform4f,
+ "Ca": _emscripten_glUniform4fv,
+ "Ba": _emscripten_glUniform4i,
+ "Aa": _emscripten_glUniform4iv,
+ "za": _emscripten_glUniformMatrix2fv,
+ "ya": _emscripten_glUniformMatrix3fv,
+ "xa": _emscripten_glUniformMatrix4fv,
+ "wa": _emscripten_glUseProgram,
+ "va": _emscripten_glValidateProgram,
+ "ua": _emscripten_glVertexAttrib1f,
+ "ta": _emscripten_glVertexAttrib1fv,
+ "sa": _emscripten_glVertexAttrib2f,
+ "ra": _emscripten_glVertexAttrib2fv,
+ "qa": _emscripten_glVertexAttrib3f,
+ "pa": _emscripten_glVertexAttrib3fv,
+ "oa": _emscripten_glVertexAttrib4f,
+ "na": _emscripten_glVertexAttrib4fv,
+ "ma": _emscripten_glVertexAttribDivisorANGLE,
+ "la": _emscripten_glVertexAttribPointer,
+ "ka": _emscripten_glViewport,
+ "p": _emscripten_has_asyncify,
+ "ja": _emscripten_memcpy_big,
+ "ia": _emscripten_request_fullscreen_strategy,
+ "T": _emscripten_request_pointerlock,
+ "ha": _emscripten_resize_heap,
+ "S": _emscripten_sample_gamepad_data,
+ "R": _emscripten_set_beforeunload_callback_on_thread,
+ "Q": _emscripten_set_blur_callback_on_thread,
+ "i": _emscripten_set_canvas_element_size,
+ "o": _emscripten_set_element_css_size,
+ "P": _emscripten_set_focus_callback_on_thread,
+ "O": _emscripten_set_fullscreenchange_callback_on_thread,
+ "N": _emscripten_set_gamepadconnected_callback_on_thread,
+ "M": _emscripten_set_gamepaddisconnected_callback_on_thread,
+ "L": _emscripten_set_keydown_callback_on_thread,
+ "K": _emscripten_set_keypress_callback_on_thread,
+ "J": _emscripten_set_keyup_callback_on_thread,
+ "ga": _emscripten_set_main_loop,
+ "I": _emscripten_set_mousedown_callback_on_thread,
+ "H": _emscripten_set_mouseenter_callback_on_thread,
+ "G": _emscripten_set_mouseleave_callback_on_thread,
+ "F": _emscripten_set_mousemove_callback_on_thread,
+ "E": _emscripten_set_mouseup_callback_on_thread,
+ "D": _emscripten_set_pointerlockchange_callback_on_thread,
+ "C": _emscripten_set_resize_callback_on_thread,
+ "B": _emscripten_set_touchcancel_callback_on_thread,
+ "A": _emscripten_set_touchend_callback_on_thread,
+ "z": _emscripten_set_touchmove_callback_on_thread,
+ "y": _emscripten_set_touchstart_callback_on_thread,
+ "x": _emscripten_set_visibilitychange_callback_on_thread,
+ "w": _emscripten_set_wheel_callback_on_thread,
+ "n": _emscripten_sleep,
+ "fa": _emscripten_thread_sleep,
+ "Kd": _environ_get,
+ "Jd": _environ_sizes_get,
+ "ea": _exit,
+ "j": _fd_close,
+ "Y": _fd_read,
+ "ca": _fd_seek,
+ "t": _fd_write,
+ "da": _getentropy,
+ "h": _gettimeofday,
+ "m": _setTempRet0,
+ "f": _sigaction,
+ "ba": _signal,
+ "aa": _strftime_l,
+ "k": _time,
+ "$": _utime
 };
 
 var asm = createWasm();
 
 var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
- return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["Nd"]).apply(null, arguments);
+ return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["Xd"]).apply(null, arguments);
 };
 
 var _main = Module["_main"] = function() {
- return (_main = Module["_main"] = Module["asm"]["Od"]).apply(null, arguments);
+ return (_main = Module["_main"] = Module["asm"]["Yd"]).apply(null, arguments);
 };
 
 var ___errno_location = Module["___errno_location"] = function() {
- return (___errno_location = Module["___errno_location"] = Module["asm"]["Pd"]).apply(null, arguments);
+ return (___errno_location = Module["___errno_location"] = Module["asm"]["Zd"]).apply(null, arguments);
+};
+
+var _free = Module["_free"] = function() {
+ return (_free = Module["_free"] = Module["asm"]["_d"]).apply(null, arguments);
 };
 
 var _malloc = Module["_malloc"] = function() {
- return (_malloc = Module["_malloc"] = Module["asm"]["Qd"]).apply(null, arguments);
+ return (_malloc = Module["_malloc"] = Module["asm"]["$d"]).apply(null, arguments);
+};
+
+var ___getTypeName = Module["___getTypeName"] = function() {
+ return (___getTypeName = Module["___getTypeName"] = Module["asm"]["ae"]).apply(null, arguments);
+};
+
+var ___embind_register_native_and_builtin_types = Module["___embind_register_native_and_builtin_types"] = function() {
+ return (___embind_register_native_and_builtin_types = Module["___embind_register_native_and_builtin_types"] = Module["asm"]["be"]).apply(null, arguments);
 };
 
 var _emscripten_GetProcAddress = Module["_emscripten_GetProcAddress"] = function() {
- return (_emscripten_GetProcAddress = Module["_emscripten_GetProcAddress"] = Module["asm"]["Rd"]).apply(null, arguments);
+ return (_emscripten_GetProcAddress = Module["_emscripten_GetProcAddress"] = Module["asm"]["ce"]).apply(null, arguments);
 };
 
 var _ntohs = Module["_ntohs"] = function() {
- return (_ntohs = Module["_ntohs"] = Module["asm"]["Sd"]).apply(null, arguments);
+ return (_ntohs = Module["_ntohs"] = Module["asm"]["de"]).apply(null, arguments);
 };
 
 var _htons = Module["_htons"] = function() {
- return (_htons = Module["_htons"] = Module["asm"]["Td"]).apply(null, arguments);
+ return (_htons = Module["_htons"] = Module["asm"]["ee"]).apply(null, arguments);
 };
 
 var stackSave = Module["stackSave"] = function() {
- return (stackSave = Module["stackSave"] = Module["asm"]["Ud"]).apply(null, arguments);
+ return (stackSave = Module["stackSave"] = Module["asm"]["fe"]).apply(null, arguments);
 };
 
 var stackRestore = Module["stackRestore"] = function() {
- return (stackRestore = Module["stackRestore"] = Module["asm"]["Vd"]).apply(null, arguments);
+ return (stackRestore = Module["stackRestore"] = Module["asm"]["ge"]).apply(null, arguments);
 };
 
 var stackAlloc = Module["stackAlloc"] = function() {
- return (stackAlloc = Module["stackAlloc"] = Module["asm"]["Wd"]).apply(null, arguments);
+ return (stackAlloc = Module["stackAlloc"] = Module["asm"]["he"]).apply(null, arguments);
 };
 
 var dynCall_ji = Module["dynCall_ji"] = function() {
- return (dynCall_ji = Module["dynCall_ji"] = Module["asm"]["Xd"]).apply(null, arguments);
+ return (dynCall_ji = Module["dynCall_ji"] = Module["asm"]["ie"]).apply(null, arguments);
 };
 
 var dynCall_iij = Module["dynCall_iij"] = function() {
- return (dynCall_iij = Module["dynCall_iij"] = Module["asm"]["Yd"]).apply(null, arguments);
+ return (dynCall_iij = Module["dynCall_iij"] = Module["asm"]["je"]).apply(null, arguments);
 };
 
 var dynCall_jij = Module["dynCall_jij"] = function() {
- return (dynCall_jij = Module["dynCall_jij"] = Module["asm"]["Zd"]).apply(null, arguments);
+ return (dynCall_jij = Module["dynCall_jij"] = Module["asm"]["ke"]).apply(null, arguments);
 };
 
 var dynCall_iiiiiij = Module["dynCall_iiiiiij"] = function() {
- return (dynCall_iiiiiij = Module["dynCall_iiiiiij"] = Module["asm"]["_d"]).apply(null, arguments);
+ return (dynCall_iiiiiij = Module["dynCall_iiiiiij"] = Module["asm"]["le"]).apply(null, arguments);
 };
 
 var dynCall_iijiji = Module["dynCall_iijiji"] = function() {
- return (dynCall_iijiji = Module["dynCall_iijiji"] = Module["asm"]["$d"]).apply(null, arguments);
+ return (dynCall_iijiji = Module["dynCall_iijiji"] = Module["asm"]["me"]).apply(null, arguments);
 };
 
 var dynCall_viijii = Module["dynCall_viijii"] = function() {
- return (dynCall_viijii = Module["dynCall_viijii"] = Module["asm"]["ae"]).apply(null, arguments);
+ return (dynCall_viijii = Module["dynCall_viijii"] = Module["asm"]["ne"]).apply(null, arguments);
 };
 
 var dynCall_jiji = Module["dynCall_jiji"] = function() {
- return (dynCall_jiji = Module["dynCall_jiji"] = Module["asm"]["be"]).apply(null, arguments);
+ return (dynCall_jiji = Module["dynCall_jiji"] = Module["asm"]["oe"]).apply(null, arguments);
 };
 
 var dynCall_iiiiij = Module["dynCall_iiiiij"] = function() {
- return (dynCall_iiiiij = Module["dynCall_iiiiij"] = Module["asm"]["ce"]).apply(null, arguments);
+ return (dynCall_iiiiij = Module["dynCall_iiiiij"] = Module["asm"]["pe"]).apply(null, arguments);
 };
 
 var dynCall_iiiiijj = Module["dynCall_iiiiijj"] = function() {
- return (dynCall_iiiiijj = Module["dynCall_iiiiijj"] = Module["asm"]["de"]).apply(null, arguments);
+ return (dynCall_iiiiijj = Module["dynCall_iiiiijj"] = Module["asm"]["qe"]).apply(null, arguments);
 };
 
 var dynCall_iiiiiijj = Module["dynCall_iiiiiijj"] = function() {
- return (dynCall_iiiiiijj = Module["dynCall_iiiiiijj"] = Module["asm"]["ee"]).apply(null, arguments);
+ return (dynCall_iiiiiijj = Module["dynCall_iiiiiijj"] = Module["asm"]["re"]).apply(null, arguments);
 };
 
 Module["addRunDependency"] = addRunDependency;
