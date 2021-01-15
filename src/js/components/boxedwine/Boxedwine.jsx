@@ -12,14 +12,8 @@ function Boxedwine() {
     };
   }, []);
 
-  const writeToConsole = (data) => {
-    //source: https://stackoverflow.com/questions/35143695/how-can-i-simulate-a-keypress-in-javascript
-    console.log(window);
-    console.log(Module);
+  const resetAndBuild = (filename) => {
     Module.killLoop();
-    //window.abort();
-    // window.emscripten_cancel_main_loop();
-    // Module.emscripten_cancel_main_loop();
     window.callMain([
       "-root",
       "/root/base",
@@ -32,9 +26,12 @@ function Boxedwine() {
       "/bin/wine",
       "cmd",
       "/c",
-      "cmd.bat",
+      `start build.bat ${filename} 1`,
     ]);
-    Module["removeRunDependency"]("setupBoxedWine"); //start emulator
+  };
+
+  const writeToConsole = (data) => {
+    //source: https://stackoverflow.com/questions/35143695/how-can-i-simulate-a-keypress-in-javascript
     data.forEach((key) => {
       const event = new KeyboardEvent("keydown", {
         bubbles: true,
@@ -50,9 +47,9 @@ function Boxedwine() {
 
   const createBuildListener = (event) => {
     window.addEventListener("build-code", (event) => {
-      console.log(window);
-      console.log(event);
-      writeToConsole(event.detail);
+      //writeToConsole(event.detail);
+      console.log(event.detail);
+      resetAndBuild(event.detail.filename);
     });
   };
 

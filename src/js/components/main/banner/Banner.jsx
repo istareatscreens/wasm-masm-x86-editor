@@ -6,7 +6,8 @@ function Banner({ filename }) {
   const build = () => {
     //console.log([..."assemble"], "spacebar", [...filename], [...".asm"], "enter");
     postMessage("build-code", {
-      data: [..."assemble ", "spacebar", ...filename, "enter"],
+      //data: [..."assemble ", "spacebar", ...filename, "enter"],
+      data: { filename },
     });
   };
 
