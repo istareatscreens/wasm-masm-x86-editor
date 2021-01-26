@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import FileSystem from "./utility/FileSystem";
 
+import FileDrawer from "./filedrawer/FileDrawer.jsx";
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
 import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
+
+import FileSystem from "./utility/FileSystem";
 import { postMessage } from "../../utility/utilityFunctions.ts";
 //import { FileSystem } from "./utility/FileSystem.js";
 
@@ -32,14 +34,16 @@ function App() {
   useEffect(() => {
     //Load file list
     const getFileList = async () => {
-      setFileList(await FileSystem.init());
+      await FileSystem.init();
     };
     getFileList();
     //set focused file
 
+    console.log(fileList);
     const asmFiles = fileList.filter((fileName) =>
       new RegExp(/.asm$/).match(fileName)
     );
+    console.log(asmFiles);
 
     if (!fileList || !asmFiles.length) {
       console.log("No file to edit");
@@ -56,7 +60,10 @@ function App() {
   return (
     <div onClick={handleClick} className="root">
       <Banner filename={filename} />
-      <Editor filename={filename} code={code} setCode={setCode} />
+      <div className="Code-Area">
+        <FileDrawer fileList={FileList} fileSelected={filename} />
+        <Editor filename={filename} code={code} setCode={setCode} />
+      </div>
       <CommandPrompt />
     </div>
   );

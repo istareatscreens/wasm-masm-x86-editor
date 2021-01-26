@@ -23,6 +23,18 @@ iframe {
   height: 2.5vh;
 }
 
-.Editor {
+.Code-Area {
   height: 47.5vh;
+  display: flex;
+  flex-direction: row;
+}
+
+.Editor {
+  order: 0;
+  width: 70%;
+}
+
+.FileDrawer {
+  order: 1;
+  width: 30%;
 }
