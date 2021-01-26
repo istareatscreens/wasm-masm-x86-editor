@@ -4,12 +4,15 @@ import { generateRandomID } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./FSHelperFunctions.js";
 
 //Helper functions:
-export class FileSystem {
+export default class FileSystem {
   static locked = false;
   static fileListKey;
 
-  static init() {
+  static async init() {
+    //check to see if local storage was loaded
+    while (hf.getFromLocalStorage("/") == null) {}
     FileSystem._readFileListKey();
+    return FileSystem.getFileList();
   }
 
   //reads file list
@@ -75,6 +78,7 @@ export class FileSystem {
         btoa
       );
 
+      //Write to console (needs to be passed as a message right now localized to boxed wine)
       window.dispatchEvent(
         new CustomEvent("write-command", {
           detail: [

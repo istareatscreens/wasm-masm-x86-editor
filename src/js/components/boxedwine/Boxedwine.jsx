@@ -33,16 +33,16 @@ function Boxedwine() {
   };
 
   const writeToConsole = (data) => {
-    //source: https://stackoverflow.com/questions/35143695/how-can-i-simulate-a-keypress-in-javascript
     let press = "keydown";
     data.forEach((key) => {
+      //check to see if you need symbols could be improved by making symbol list
       if (key == "/shift") {
         press = "keyup";
         key = "shift";
       } else if (press == "keyup") {
         press = "keydown";
       }
-
+      //Check if upper case letter if so push down shift key and release it
       if (key.toLowerCase() != key.toUpperCase() && key == key.toUpperCase()) {
         {
           const event = new KeyboardEvent("keydown", {
@@ -76,6 +76,7 @@ function Boxedwine() {
           window.dispatchEvent(event);
         }
       } else {
+        //source: https://stackoverflow.com/questions/35143695/how-can-i-simulate-a-keypress-in-javascript
         const event = new KeyboardEvent(press, {
           bubbles: true,
           cancelable: true,

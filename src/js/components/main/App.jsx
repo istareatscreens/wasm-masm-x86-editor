@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import FileSystem from "./utility/FileSystem";
 
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
 import Editor from "./editor/Editor.jsx";
@@ -8,6 +9,8 @@ import { postMessage } from "../../utility/utilityFunctions.ts";
 
 function App() {
   const [filename, setFilename] = useState("test");
+  const [fileList, setFileList] = useState([]);
+
   const [code, setCode] = useState(
     `INCLUDE D:/irvine/Irvine32.inc
 
@@ -26,17 +29,28 @@ function App() {
   END main`
   );
 
+  useEffect(() => {
+    //Load file list
+    const getFileList = async () => {
+      setFileList(await FileSystem.init());
+    };
+    getFileList();
+    //set focused file
+
+    const asmFiles = fileList.filter((fileName) =>
+      new RegExp(/.asm$/).match(fileName)
+    );
+
+    if (!fileList || !asmFiles.length) {
+      console.log("No file to edit");
+    } else {
+      console.log(asmFiles);
+    }
+  }, []);
+
   const handleClick = () => {
     //allow canvas element to know in iframe that editor has been selected so styling can be restored
     postMessage("editor-selected", {});
-    /*
-    document
-      .getElementById("boxedwine")
-      .contentWindow.postMessage(
-        JSON.stringify({ eventName: "editor-selected", data: {} }),
-        "/"
-      );
-      */
   };
 
   return (
