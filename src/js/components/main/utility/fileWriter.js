@@ -14,6 +14,10 @@ const encodeFileMetaData = (data) => data.toBuffer().toString("base64");
 const decodeFileData = (value) => atob(value);
 const encodeFileData = (value) => btoa(value);
 
+//pull data
+const getFileMetaData = (key) => decodeFileMetaData(getFromLocalStorage(key));
+const getFileData = (key) => decodeFileData(getFromLocalStorage(key));
+
 /*
 ToDo:
 Move to an object or apply a functional state
@@ -35,25 +39,27 @@ export const writeToAssemblyFile = (filename, text) => {
 
   //get rootData
   const rootData = decodeFileMetaData(getFromLocalStorage("/"));
+  console.log(rootData);
   const fileKeyList = JSON.parse(atob(getFromLocalStorage(rootData.id)));
-  //pull data
-  const getFileMetaData = (key) => decodeFileMetaData(getFromLocalStorage(key));
-  const getFileData = (key) => decodeFileData(getFromLocalStorage(key));
+  console.log(fileKeyList);
 
   //Can be cleaned up
   //convert to object to list
   const data = Object.entries(fileKeyList);
+  console.log(data);
   //convert Keys to Data
   const newData = data.map((arr) => [
     arr[0].toString(),
     getFileMetaData(arr[1]),
   ]);
+  console.log(newData);
 
   //convert Return Object structure
   const fileMetaData = newData.reduce(
     (acc, [k, v]) => ({ ...acc, [k]: v }),
     {}
   );
+  console.log(fileMetaData);
 
   //get list of files
   let fileData = {};

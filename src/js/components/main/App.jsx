@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
 import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
 import { postMessage } from "../../utility/utilityFunctions.ts";
+//import { FileSystem } from "./utility/FileSystem.js";
 
 function App() {
   const [filename, setFilename] = useState("test");

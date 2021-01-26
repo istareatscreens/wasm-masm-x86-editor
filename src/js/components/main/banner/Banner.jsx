@@ -4,10 +4,9 @@ import { postMessage } from "../../../utility/utilityFunctions.ts";
 
 function Banner({ filename }) {
   const build = () => {
-    //console.log([..."assemble"], "spacebar", [...filename], [...".asm"], "enter");
     postMessage("build-code", {
-      //data: [..."assemble ", "spacebar", ...filename, "enter"],
-      data: { filename },
+      //data: { filename },
+      data: [..."assemble ", "spacebar", ...filename, "enter"],
     });
   };
 

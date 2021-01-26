@@ -16,7 +16,7 @@ function TextEditor({ onChange, value, filename }) {
   const writeToLocalStorage = useConstant(() => {
     return (filename, value) => {
       debounce(() => {
-        writeToAssemblyFile(filename, value);
+        // writeToAssemblyFile(filename, value);
       }, 250);
     };
   });

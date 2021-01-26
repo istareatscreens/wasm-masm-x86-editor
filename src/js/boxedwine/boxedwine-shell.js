@@ -332,6 +332,7 @@ function initFileSystem() {
     //not using drop box
     //}else if(Config.storageMode === STORAGE_DROPBOX){
     //    client.authenticate({interactive:false}, auth_callback);
+    Module.writableStorage = writableStorage;
   } else {
     buildFileSystem(new BrowserFS.FileSystem.InMemory(), false);
   }
@@ -1138,7 +1139,9 @@ var Module = {
         console.trace(text);
       }
       */
-      console.log(text);
+      console.groupCollapsed(text);
+      console.trace(text);
+      console.groupEnd();
       //remove in browser console
       /*if (element) { 
               element.value += text + "\n";
@@ -1153,7 +1156,8 @@ var Module = {
       // XXX disabled for safety typeof dump == 'function') {
       dump(text + "\n"); // fast, straight to the real console
     } else {
-      console.error(text);
+      window.dispatchEvent(new CustomEvent("cmd-crash", {}));
+      //console.error(text);
     }
   },
   canvas: (function () {
@@ -1376,6 +1380,8 @@ function createFile(dir, name, buf) {
       );
       if (replace) {
         try {
+          console.log("unlink");
+          console.log(dir + "/" + name);
           FS.unlink(dir + "/" + name);
           FS.createDataFile(dir, name, buf, true, true);
           console.log("File replaced: " + dir + name);
