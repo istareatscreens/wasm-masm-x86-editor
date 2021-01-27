@@ -1,0 +1,23 @@
+.FileDrawer__list {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.FileDrawer__listItem {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  justify-content: right;
+  padding-left: 0.2rem;
+  line-height: 1.2rem;
+}
+
+.FileDrawer__menu {
+  height: 1.2rem;
+  width: 100%;
+}
+
+.FileDrawer__listItem--selected {
+  background: grey;
+}

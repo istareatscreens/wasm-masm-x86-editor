@@ -8,6 +8,7 @@ const FileDrawer = React.memo(function FileDrawer({
   console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <div className="FileDrawer">
+      <div className="FileDrawer__menu"></div>
       <ol className="FileDrawer__list">
         {fileList.length
           ? fileList.map((filename, index) => (
@@ -18,7 +19,7 @@ const FileDrawer = React.memo(function FileDrawer({
                 }}
                 className={
                   filename == fileSelected
-                    ? "FileDrawer__listItem selected-item"
+                    ? "FileDrawer__listItem FileDrawer__listItem--selected"
                     : "FileDrawer__listItem"
                 }
                 key={index}
