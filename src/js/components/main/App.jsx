@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import FileDrawer from "./filedrawer/FileDrawer.jsx";
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
@@ -24,11 +24,10 @@ function App() {
     if (!fileList || !asmFiles.length) {
       postMessage("reset", {});
       FileSystem.createFile({ filename: "test" }, true);
-      setFilename("test");
+      switchFile("test");
     } else {
-      setFilename(asmFiles[0]);
+      switchFile(asmFiles[0]);
     }
-    setCode(FileSystem.getFileData(filename));
     setFileList(asmFiles);
   };
 
@@ -40,20 +39,28 @@ function App() {
     initFileList();
   }, []);
 
-  const changeCode = (code) => {
-    setCode(code);
-  };
-
   const handleClick = () => {
     //allow canvas element to know in iframe that editor has been selected so styling can be restored
     postMessage("editor-selected", {});
   };
 
+  const switchFile = useCallback(
+    (filename) => {
+      setFilename(filename);
+      setCode(FileSystem.getFileData(filename));
+    },
+    [filename]
+  );
+
   return (
     <div onClick={handleClick} className="root">
       <Banner filename={filename} />
       <div className="Code-Area">
-        <FileDrawer fileList={fileList} fileSelected={filename} />
+        <FileDrawer
+          fileList={fileList}
+          fileSelected={filename}
+          switchFile={switchFile}
+        />
         <Editor filename={filename} code={code} setCode={setCode} />
       </div>
       <CommandPrompt />

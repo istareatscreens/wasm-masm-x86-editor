@@ -22,7 +22,6 @@ export default class FileSystem {
           timer();
         } else {
           FileSystem._readFileListKey();
-          console.log("HERE");
           window.addEventListener("storage", () => callback());
           callback();
         }
