@@ -12,24 +12,7 @@ import { postMessage } from "../../utility/utilityFunctions.ts";
 function App() {
   const [filename, setFilename] = useState("test");
   const [fileList, setFileList] = useState([""]);
-
-  const [code, setCode] = useState(
-    `INCLUDE D:/irvine/Irvine32.inc
-
-  .data                          ;data decleration
-
-  
-  .code                          ;code decleration
-
-  
-  main PROC                      ;main method starts
-  
-     call DumpRegs
-  
-     exit                        ;Exit program
-  main ENDP
-  END main`
-  );
+  const [code, setCode] = useState("");
 
   const refreshFileList = async () => {
     const fileList = FileSystem.getFileList();
@@ -45,6 +28,7 @@ function App() {
     } else {
       setFilename(asmFiles[0]);
     }
+    setCode(FileSystem.getFileData(filename));
     setFileList(asmFiles);
   };
 
@@ -53,9 +37,12 @@ function App() {
     const initFileList = async () => {
       await FileSystem.init(refreshFileList);
     };
-
     initFileList();
   }, []);
+
+  const changeCode = (code) => {
+    setCode(code);
+  };
 
   const handleClick = () => {
     //allow canvas element to know in iframe that editor has been selected so styling can be restored
