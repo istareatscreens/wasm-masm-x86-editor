@@ -6,13 +6,28 @@ import * as hf from "./FSHelperFunctions.js";
 //Helper functions:
 export default class FileSystem {
   static locked = false;
-  static fileListKey;
+  static fileListKey = "";
 
-  static async init() {
+  static async init(callback) {
     //check to see if local storage was loaded
-    while (hf.getFromLocalStorage("/") == null) {}
-    FileSystem._readFileListKey();
-    return FileSystem.getFileList();
+    await FileSystem.checkIfLocalStorageInitiated(callback);
+    //FileSystem._readFileListKey();
+  }
+
+  static checkIfLocalStorageInitiated(callback) {
+    const timer = () =>
+      window.setTimeout(() => {
+        if (hf.getFromLocalStorage("/") == null) {
+          clearTimeout(timer);
+          timer();
+        } else {
+          FileSystem._readFileListKey();
+          console.log("HERE");
+          window.addEventListener("storage", () => callback());
+          callback();
+        }
+      }, 100);
+    timer();
   }
 
   //reads file list
@@ -33,11 +48,37 @@ export default class FileSystem {
   }
 
   //gets data from file
-  static getFileData(filename) {
+  static getFileMetaData(filename) {
     return hf.getFileMetaData(FileSystem._readFileList()[filename + ".asm"]);
   }
 
-  static createFile({ filename }) {
+  static getFileData(filename) {
+    return hf.getFileData(
+      hf.getFileMetaData(FileSystem._readFileList()[filename + ".asm"]).id
+    );
+  }
+  /**
+   * @description finds file in local storage and replaces its text
+   * @param {string} fileName name of assembly file exlcuding the .asm filename suffix
+   * @param {string?} text text to be written to the file
+   * @returns void
+   * @Example writeToAssemblyFile("file", "assembly code here")
+   */
+  static writeToFile(filename, text) {
+    //get data
+    const fileMetaDataKey = FileSystem._readFileList()[filename + ".asm"];
+    const fileMetaData = hf.getFileMetaData(fileMetaDataKey);
+
+    //Append changes
+    fileMetaData.size = text.length;
+
+    //save file
+    hf.setInLocalStorage(fileMetaDataKey, fileMetaData, hf.encodeFileMetaData); //meta data
+    hf.setInLocalStorage(fileMetaData.id, text, hf.encodeFileData); //file data
+  }
+
+  static createFile({ filename }, isInitial = false) {
+    console.log({ CreatedFile: filename });
     let fileList = FileSystem._readFileList();
     if (!(`${filename}.asm` in fileList)) {
       const template = `INCLUDE D:/irvine/Irvine32.inc
@@ -77,26 +118,27 @@ export default class FileSystem {
         JSON.stringify(fileList),
         btoa
       );
-
-      //Write to console (needs to be passed as a message right now localized to boxed wine)
-      window.dispatchEvent(
-        new CustomEvent("write-command", {
-          detail: [
-            "enter",
-            ..."echo",
-            "period",
-            "spacebar",
-            "shift",
-            "period",
-            "/shift",
-            "spacebar",
-            ...filename,
-            "period",
-            ..."asm",
-            "enter",
-          ],
-        })
-      );
+      if (!isInitial) {
+        //Write to console (needs to be passed as a message right now localized to boxed wine)
+        window.dispatchEvent(
+          new CustomEvent("write-command", {
+            detail: [
+              "enter",
+              ..."echo",
+              "period",
+              "spacebar",
+              "shift",
+              "period",
+              "/shift",
+              "spacebar",
+              ...filename,
+              "period",
+              ..."asm",
+              "enter",
+            ],
+          })
+        );
+      }
     }
   }
 

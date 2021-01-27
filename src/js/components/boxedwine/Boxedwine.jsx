@@ -9,27 +9,41 @@ function Boxedwine() {
     createClickListener(); //creates a click listener to allow selection and operator of terminal when clicked on
     createBuildListener(); //Executes build command
     createCommandWriteListener();
+    createResetListener();
     return () => {
       removeListeners();
     };
   }, []);
 
-  const resetAndBuild = (filename) => {
-    Module.reset();
-    window.callMain([
-      "-root",
-      "/root/base",
-      "-mount_drive",
-      "/root/files/",
-      "d",
-      "-nozip",
-      "-w",
-      "/home/username/.wine/dosdevices/d:",
-      "/bin/wine",
-      "cmd",
-      "/c",
-      `start build.bat ${filename} 1`,
-    ]);
+  const reset = (command = "cmd.bat") => {
+    const callMain = () =>
+      window.callMain([
+        "-root",
+        "/root/base",
+        "-mount_drive",
+        "/root/files/",
+        "d",
+        "-nozip",
+        "-w",
+        "/home/username/.wine/dosdevices/d:",
+        "/bin/wine",
+        "cmd",
+        "/c",
+        command,
+        //`start build.bat ${filename} 1`,
+      ]);
+    if (Module.reset == undefined) {
+      const timeout = () =>
+        setTimeout(() => {
+          if (Module.reset == undefined) {
+            clearTimeout();
+            timeout();
+          }
+          callMain();
+        }, 100);
+    } else {
+      callMain();
+    }
   };
 
   const writeToConsole = (data) => {
@@ -92,7 +106,20 @@ function Boxedwine() {
 
   const createCommandWriteListener = () => {
     window.addEventListener("write-command", (event) => {
-      writeToConsole(event.detail);
+      if (Module.ProcessRun == undefined) {
+        const timeout = () =>
+          setTimeout(() => {
+            if (Module.ProcessRun == undefined) {
+              clearTimeout();
+              timeout();
+            } else {
+              Module.ProcessRun.runCommand(event.detail);
+            }
+          });
+        timeout();
+      } else {
+        Module.ProcessRun.runCommand(event.detail);
+      }
     });
   };
 
@@ -100,7 +127,6 @@ function Boxedwine() {
     window.addEventListener(
       "build-code",
       (event) => {
-        console.log("HERE");
         Module.ProcessRun.runCommand("cmd.bat");
         //Module.runCommand("cmd.bat");
       }
@@ -108,9 +134,20 @@ function Boxedwine() {
     );
   };
 
+  const createResetListener = () => {
+    window.addEventListener("reset", (event) => {
+      if (event.detail) {
+        reset();
+      } else {
+        reset(event.detail);
+      }
+    });
+  };
+
   const removeListeners = () => {
     window.removeEventListener("editor-selected");
     window.removeEventListener("build-code");
+    window.removeEventListener("reset");
   };
 
   const createClickListener = () => {

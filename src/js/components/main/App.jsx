@@ -11,7 +11,7 @@ import { postMessage } from "../../utility/utilityFunctions.ts";
 
 function App() {
   const [filename, setFilename] = useState("test");
-  const [fileList, setFileList] = useState([]);
+  const [fileList, setFileList] = useState([""]);
 
   const [code, setCode] = useState(
     `INCLUDE D:/irvine/Irvine32.inc
@@ -31,25 +31,30 @@ function App() {
   END main`
   );
 
+  const refreshFileList = async () => {
+    const fileList = FileSystem.getFileList();
+    //remove all files
+    const asmFiles = fileList
+      .filter((filename) => /.asm$/g.test(filename)) //remove all non .asm files from list
+      .map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
+    //set create and set focused file
+    if (!fileList || !asmFiles.length) {
+      postMessage("reset", {});
+      FileSystem.createFile({ filename: "test" }, true);
+      setFilename("test");
+    } else {
+      setFilename(asmFiles[0]);
+    }
+    setFileList(asmFiles);
+  };
+
   useEffect(() => {
     //Load file list
-    const getFileList = async () => {
-      await FileSystem.init();
+    const initFileList = async () => {
+      await FileSystem.init(refreshFileList);
     };
-    getFileList();
-    //set focused file
 
-    console.log(fileList);
-    const asmFiles = fileList.filter((fileName) =>
-      new RegExp(/.asm$/).match(fileName)
-    );
-    console.log(asmFiles);
-
-    if (!fileList || !asmFiles.length) {
-      console.log("No file to edit");
-    } else {
-      console.log(asmFiles);
-    }
+    initFileList();
   }, []);
 
   const handleClick = () => {
@@ -61,7 +66,7 @@ function App() {
     <div onClick={handleClick} className="root">
       <Banner filename={filename} />
       <div className="Code-Area">
-        <FileDrawer fileList={FileList} fileSelected={filename} />
+        <FileDrawer fileList={fileList} fileSelected={filename} />
         <Editor filename={filename} code={code} setCode={setCode} />
       </div>
       <CommandPrompt />

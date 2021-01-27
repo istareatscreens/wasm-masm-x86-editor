@@ -2,7 +2,7 @@ import React from "react";
 import Button from "../../common/Button.jsx";
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 
-function Banner({ filename }) {
+const Banner = React.memo(function Banner({ filename }) {
   const build = () => {
     postMessage("build-code", {
       //data: { filename },
@@ -21,6 +21,6 @@ function Banner({ filename }) {
       </Button>
     </div>
   );
-}
+});
 
 export default Banner;

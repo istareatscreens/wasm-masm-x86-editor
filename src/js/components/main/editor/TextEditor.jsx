@@ -5,6 +5,7 @@ import "codemirror/mode/gas/gas.js";
 import { writeToAssemblyFile } from "../utility/fileWriter.js";
 import useConstant from "use-constant";
 import { debounce } from "../../../utility/utilityFunctions.ts";
+import FileSystem from "../utility/FileSystem.js";
 
 function TextEditor({ onChange, value, filename }) {
   const handleChange = (editor, data, value) => {
@@ -16,7 +17,7 @@ function TextEditor({ onChange, value, filename }) {
   const writeToLocalStorage = useConstant(() => {
     return (filename, value) => {
       debounce(() => {
-        // writeToAssemblyFile(filename, value);
+        FileSystem.writeToFile(filename, value);
       }, 250);
     };
   });
