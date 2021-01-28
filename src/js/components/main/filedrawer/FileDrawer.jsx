@@ -1,5 +1,6 @@
 import React from "react";
 import newFile from "../../../../images/newFile.png";
+import uploadFile from "../../../../images/uploadFile.png";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -21,6 +22,20 @@ const FileDrawer = React.memo(function FileDrawer({
     createFile(filename);
   };
 
+  //proof of concept for file upload
+  const handleUploadFiles = (event) => {
+    for (const file of event.target.files) {
+      const { name, size, type, lastModified } = file;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        console.log(event);
+        localStorage.setItem(name, event.target.result);
+      };
+      console.log(file);
+      reader.readAsDataURL(file);
+    }
+  };
+
   console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <div className="FileDrawer">
@@ -30,6 +45,23 @@ const FileDrawer = React.memo(function FileDrawer({
           src={newFile}
           alt="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
+        />
+        <img
+          className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
+          src={uploadFile}
+          alt="upload file to boxedwine for use in testing"
+          onClick={() => document.getElementById("uploadFilesInput").click()}
+        />
+        <input
+          onClick={(event) => handleUploadFiles(event)}
+          id="uploadFilesInput"
+          type="file"
+          multiple
+          style={{
+            width: "0px",
+            height: "0px",
+            opacity: 0,
+          }}
         />
       </div>
       <ul className="FileDrawer__list tree-view">

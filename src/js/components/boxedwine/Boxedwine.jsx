@@ -16,7 +16,8 @@ function Boxedwine() {
   }, []);
 
   const reset = (command = "cmd.bat") => {
-    const callMain = () =>
+    const callMain = () => {
+      Module.restartBW();
       window.callMain([
         "-root",
         "/root/base",
@@ -32,11 +33,12 @@ function Boxedwine() {
         command,
         //`start build.bat ${filename} 1`,
       ]);
+    };
     //TODO generify this structure
-    if (Module.reset == undefined) {
+    if (Module.restartBW == undefined) {
       const timeout = () =>
         setTimeout(() => {
-          if (Module.reset == undefined) {
+          if (Module.restartBW == undefined) {
             clearTimeout();
             timeout();
           }
@@ -132,7 +134,7 @@ function Boxedwine() {
 
   const createResetListener = () => {
     window.addEventListener("reset", (event) => {
-      if (event.detail) {
+      if (!event.detail) {
         reset();
       } else {
         reset(event.detail);
