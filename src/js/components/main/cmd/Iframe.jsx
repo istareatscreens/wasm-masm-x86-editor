@@ -1,3 +1,5 @@
+//refactored from: https://github.com/springload/react-iframe-click
+//To-do change onInferredClick or figure out how to surpress annoying error
 import React, { useEffect, useRef, useCallback } from "react";
 
 function Iframe(props) {
