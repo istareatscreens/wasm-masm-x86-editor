@@ -2,6 +2,7 @@
 @import "editor";
 @import "banner";
 @import "filedrawer";
+@import "variables";
 
 * {
   margin: 0;
@@ -20,22 +21,36 @@ iframe {
 }
 
 .banner {
-  width: 100vw;
-  height: 2.5vh;
+  width: 70vw;
+  height: 8%;
+  padding: 0.1rem 0.1rem 0.1rem 0.1rem;
+  box-shadow: var(--border-raised-outer), var(--border-raised-inner);
 }
 
 .Code-Area {
-  height: 47.5vh;
+  height: 50vh;
   display: flex;
   flex-direction: row;
 }
 
+.Editor__container {
+  display: flex;
+  height: 50vh;
+  width: 70%;
+  flex-direction: column;
+}
+
 .Editor {
   order: 0;
-  width: 70%;
+  width: 100%;
+  height: calc(100% - 8%);
 }
 
 .FileDrawer {
   order: 1;
-  width: 30%;
+  width: 30vw;
+}
+
+.boxedwine {
+  height: calc(100vh - 50vh);
 }

@@ -1,23 +1,194 @@
+@import "variables";
+
+.FileDrawer {
+  background: #c0c0c0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+}
+
+.FileDrawer__menu {
+  height: 6%;
+  width: 98%;
+  display: flex;
+  flex-direction: row;
+  margin: 0.5% 1% 0.5% 1%;
+  overflow: inherit;
+}
+
+.FileDrawer__menu__btn {
+  width: auto;
+  height: 100%;
+  padding: 1%;
+  padding-bottom: 1.2%;
+}
+
 .FileDrawer__list {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  height: 92%;
+  width: 98%;
+  padding: 1%;
 }
 
 .FileDrawer__listItem {
   display: flex;
   width: 100%;
   flex-direction: row;
-  justify-content: right;
+  justify-content: left;
   padding-left: 0.2rem;
   line-height: 1.2rem;
 }
 
-.FileDrawer__menu {
-  height: 1.2rem;
-  width: 100%;
+.FileDrawer__listItem--selected {
+  background: #a6caf0;
+}
+/* win98 btns */
+
+.windows--btn {
+  box-sizing: border-box;
+  /*border: none;*/
+  background: var(--surface);
+  box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+  border-radius: 0;
+  /*
+  min-width: 75px;
+  min-height: 23px;
+  padding: 0 12px;
+  */
 }
 
-.FileDrawer__listItem--selected {
-  background: grey;
+/*
+.vertical-bar {
+  width: 4px;
+  height: 20px;
+  background: #c0c0c0;
+  box-shadow: var(--border-raised-outer), var(--border-raised-inner);
+}
+*/
+
+.windows--btn:not(:disabled):active {
+  box-shadow: var(--border-sunken-outer), var(--border-sunken-inner);
+}
+
+@media (not(hover)) {
+  .windows--btn:not(:disabled):hover {
+    box-shadow: var(--border-sunken-outer), var(--border-sunken-inner);
+  }
+}
+
+.windows--btn:focus {
+  outline: 1px dotted #000000;
+  outline-offset: -4px;
+}
+
+.windows--btn::-moz-focus-inner {
+  border: 0;
+}
+
+:disabled,
+:disabled + label {
+  color: var(--button-shadow);
+  text-shadow: 1px 1px 0 var(--button-highlight);
+}
+
+/*tree list*/
+
+ul.tree-view {
+  font-family: "Pixelated MS Sans Serif", Arial;
+  -webkit-font-smoothing: none;
+  font-size: 11px;
+}
+
+ul.tree-view {
+  display: block;
+  background: var(--button-highlight);
+  box-shadow: var(--border-field);
+  padding: 6px;
+  margin: 0;
+}
+
+ul.tree-view li {
+  list-style-type: none;
+}
+
+ul.tree-view a {
+  text-decoration: none;
+  color: #000;
+}
+
+ul.tree-view a:focus {
+  background-color: var(--dialog-blue);
+  color: var(--button-highlight);
+}
+
+ul.tree-view ul,
+ul.tree-view li {
+  margin-top: 3px;
+}
+
+ul.tree-view ul {
+  margin-left: 16px;
+  padding-left: 16px;
+  /* Goes down too far */
+  border-left: 1px dotted #808080;
+}
+
+ul.tree-view ul > li {
+  position: relative;
+}
+ul.tree-view ul > li::before {
+  content: "";
+  display: block;
+  position: absolute;
+  left: -16px;
+  top: 6px;
+  width: 12px;
+  border-bottom: 1px dotted #808080;
+}
+
+/* Cover the bottom of the left dotted border */
+ul.tree-view ul > li:last-child::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: -20px;
+  top: 7px;
+  bottom: 0px;
+  width: 8px;
+  background: var(--button-highlight);
+}
+
+ul.tree-view details {
+  margin-top: 0;
+}
+
+ul.tree-view details[open] summary {
+  margin-bottom: 0;
+}
+
+ul.tree-view ul details > summary:before {
+  margin-left: -22px;
+  position: relative;
+  z-index: 1;
+}
+
+ul.tree-view details > summary:before {
+  text-align: center;
+  display: block;
+  float: left;
+  content: "+";
+  border: 1px solid #808080;
+  width: 8px;
+  height: 9px;
+  line-height: 8px;
+  margin-right: 5px;
+  padding-left: 1px;
+  background-color: #fff;
+}
+
+ul.tree-view details[open] > summary:before {
+  content: "-";
 }

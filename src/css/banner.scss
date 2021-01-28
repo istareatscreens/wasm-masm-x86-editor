@@ -1,16 +1,15 @@
+@import "variables";
+
 .banner {
   display: flex;
   flex-direction: column;
 }
 
 .banner--dark {
-  background-color: black;
+  background-color: #c0c0c0;
 }
 
 .banner__btn {
-  width: 2rem;
-  height: 2.5rem;
-}
-
-.banner__btn--build {
+  width: fit-content;
+  height: 100%;
 }

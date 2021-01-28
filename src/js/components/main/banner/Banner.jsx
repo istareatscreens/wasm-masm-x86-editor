@@ -15,7 +15,7 @@ const Banner = React.memo(function Banner({ filename }) {
       <Button
         onClick={build}
         id={"pushData"}
-        className={"banner__btn banner_btn--build"}
+        className={"banner__btn banner_btn--build windows--btn"}
       >
         {"build"}
       </Button>

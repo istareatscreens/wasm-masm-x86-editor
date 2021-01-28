@@ -1,4 +1,5 @@
 import React from "react";
+import newFile from "../../../../images/newFile.png";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -8,8 +9,14 @@ const FileDrawer = React.memo(function FileDrawer({
   console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <div className="FileDrawer">
-      <div className="FileDrawer__menu"></div>
-      <ol className="FileDrawer__list">
+      <div className="FileDrawer__menu">
+        <img
+          className="FileDrawer__menu__btn FileDrawer__menu__btn--newFile windows--btn"
+          src={newFile}
+          alt="create new assembly (.asm) text file"
+        />
+      </div>
+      <ul className="FileDrawer__list tree-view">
         {fileList.length
           ? fileList.map((filename, index) => (
               <li
@@ -28,7 +35,7 @@ const FileDrawer = React.memo(function FileDrawer({
               </li>
             ))
           : ""}
-      </ol>
+      </ul>
     </div>
   );
 });

@@ -54,14 +54,16 @@ function App() {
 
   return (
     <div onClick={handleClick} className="root">
-      <Banner filename={filename} />
       <div className="Code-Area">
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
           switchFile={switchFile}
         />
-        <Editor filename={filename} code={code} setCode={setCode} />
+        <div className="Editor__container">
+          <Banner filename={filename} />
+          <Editor filename={filename} code={code} setCode={setCode} />
+        </div>
       </div>
       <CommandPrompt />
     </div>
