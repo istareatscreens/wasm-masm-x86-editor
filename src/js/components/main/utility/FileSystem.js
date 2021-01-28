@@ -3,6 +3,8 @@ import { Buffer } from "buffer";
 import { generateRandomID } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./FSHelperFunctions.js";
 
+import { postMessage } from "../../../utility/utilityFunctions.ts";
+
 //Helper functions:
 export default class FileSystem {
   static locked = false;
@@ -118,25 +120,20 @@ export default class FileSystem {
         btoa
       );
       if (!isInitial) {
-        //Write to console (needs to be passed as a message right now localized to boxed wine)
-        window.dispatchEvent(
-          new CustomEvent("write-command", {
-            detail: [
-              "enter",
-              ..."echo",
-              "period",
-              "spacebar",
-              "shift",
-              "period",
-              "/shift",
-              "spacebar",
-              ...filename,
-              "period",
-              ..."asm",
-              "enter",
-            ],
-          })
-        );
+        //Write to console
+        postMessage("write-command", {
+          data: [
+            ..."echo",
+            "period",
+            "shift",
+            "period",
+            "/shift",
+            ...filename,
+            "period",
+            ..."asm",
+            "enter",
+          ],
+        });
       }
     }
   }

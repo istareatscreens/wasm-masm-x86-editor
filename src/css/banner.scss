@@ -2,7 +2,7 @@
 
 .banner {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .banner--dark {
@@ -12,4 +12,8 @@
 .banner__btn {
   width: fit-content;
   height: 100%;
+}
+
+.banner_btn--reset {
+  margin-left: 5px;
 }

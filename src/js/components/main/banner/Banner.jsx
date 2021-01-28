@@ -4,10 +4,14 @@ import { postMessage } from "../../../utility/utilityFunctions.ts";
 
 const Banner = React.memo(function Banner({ filename }) {
   const build = () => {
-    postMessage("build-code", {
+    postMessage("write-command", {
       //data: { filename },
       data: [..."assemble ", "spacebar", ...filename, "enter"],
     });
+  };
+
+  const reset = () => {
+    postMessage("reset", {});
   };
 
   return (
@@ -18,6 +22,13 @@ const Banner = React.memo(function Banner({ filename }) {
         className={"banner__btn banner_btn--build windows--btn"}
       >
         {"build"}
+      </Button>
+      <Button
+        onClick={reset}
+        id={"resetCMD"}
+        className={"banner__btn banner_btn--reset windows--btn"}
+      >
+        {"reset"}
       </Button>
     </div>
   );

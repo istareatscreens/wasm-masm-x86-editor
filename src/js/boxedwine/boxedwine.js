@@ -490,6 +490,13 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
  if (!dontAddNull) HEAP8[buffer >> 0] = 0;
 }
 
+function alignUp(x, multiple) {
+ if (x % multiple > 0) {
+  x += multiple - x % multiple;
+ }
+ return x;
+}
+
 var buffer, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
 
 function updateGlobalBufferAndViews(buf) {
@@ -504,7 +511,7 @@ function updateGlobalBufferAndViews(buf) {
  Module["HEAPF64"] = HEAPF64 = new Float64Array(buf);
 }
 
-var INITIAL_MEMORY = Module["INITIAL_MEMORY"] || 536870912;
+var INITIAL_MEMORY = Module["INITIAL_MEMORY"] || 16777216;
 
 var wasmTable;
 
@@ -1726,6 +1733,9 @@ var MEMFS = {
    return size;
   },
   write: function(stream, buffer, offset, length, position, canOwn) {
+   if (buffer.buffer === HEAP8.buffer) {
+    canOwn = false;
+   }
    if (!length) return 0;
    var node = stream.node;
    node.timestamp = Date.now();
@@ -9520,13 +9530,36 @@ function _emscripten_request_pointerlock(target, deferUntilInEventHandler) {
  return __requestPointerLock(target);
 }
 
-function abortOnCannotGrowMemory(requestedSize) {
- abort("OOM");
+function _emscripten_get_heap_size() {
+ return HEAPU8.length;
+}
+
+function emscripten_realloc_buffer(size) {
+ try {
+  wasmMemory.grow(size - buffer.byteLength + 65535 >>> 16);
+  updateGlobalBufferAndViews(wasmMemory.buffer);
+  return 1;
+ } catch (e) {}
 }
 
 function _emscripten_resize_heap(requestedSize) {
  requestedSize = requestedSize >>> 0;
- abortOnCannotGrowMemory(requestedSize);
+ var oldSize = _emscripten_get_heap_size();
+ var maxHeapSize = 2147483648;
+ if (requestedSize > maxHeapSize) {
+  return false;
+ }
+ var minHeapSize = 16777216;
+ for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+  var overGrownHeapSize = oldSize * (1 + .2 / cutDown);
+  overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296);
+  var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), 65536));
+  var replacement = emscripten_realloc_buffer(newSize);
+  if (replacement) {
+   return true;
+  }
+ }
+ return false;
 }
 
 function _emscripten_resume_main_loop() {

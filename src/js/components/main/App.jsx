@@ -44,10 +44,26 @@ function App() {
     postMessage("editor-selected", {});
   };
 
+  //change current file
   const switchFile = useCallback(
     (filename) => {
       setFilename(filename);
       setCode(FileSystem.getFileData(filename));
+    },
+    [filename]
+  );
+
+  const createFile = useCallback(
+    (filename) => {
+      FileSystem.createFile({ filename: filename });
+      setFilename(filename);
+      setTimeout(() => {
+        //can probably generify this
+        if (!fileList.includes(filename)) {
+          postMessage("run-command", { data: `echo.>${filename}.asm` });
+          refreshFileList();
+        }
+      }, 5000);
     },
     [filename]
   );
@@ -59,6 +75,7 @@ function App() {
           fileList={fileList}
           fileSelected={filename}
           switchFile={switchFile}
+          createFile={createFile}
         />
         <div className="Editor__container">
           <Banner filename={filename} />

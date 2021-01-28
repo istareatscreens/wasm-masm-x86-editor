@@ -7,8 +7,8 @@ function Boxedwine() {
   useEffect(() => {
     createMessageListner(); //creates message listener to intercept messages from parent document and rethrow messages as events
     createClickListener(); //creates a click listener to allow selection and operator of terminal when clicked on
-    createBuildListener(); //Executes build command
     createCommandWriteListener();
+    createCommandRunListener();
     createResetListener();
     return () => {
       removeListeners();
@@ -32,6 +32,7 @@ function Boxedwine() {
         command,
         //`start build.bat ${filename} 1`,
       ]);
+    //TODO generify this structure
     if (Module.reset == undefined) {
       const timeout = () =>
         setTimeout(() => {
@@ -104,8 +105,8 @@ function Boxedwine() {
     });
   };
 
-  const createCommandWriteListener = () => {
-    window.addEventListener("write-command", (event) => {
+  const createCommandRunListener = () => {
+    window.addEventListener("run-command", (event) => {
       if (Module.ProcessRun == undefined) {
         const timeout = () =>
           setTimeout(() => {
@@ -123,15 +124,10 @@ function Boxedwine() {
     });
   };
 
-  const createBuildListener = () => {
-    window.addEventListener(
-      "build-code",
-      (event) => {
-        Module.ProcessRun.runCommand("cmd.bat");
-        //Module.runCommand("cmd.bat");
-      }
-      //writeToConsole(event.detail)
-    );
+  const createCommandWriteListener = () => {
+    window.addEventListener("write-command", (event) => {
+      writeToConsole(event.detail);
+    });
   };
 
   const createResetListener = () => {
