@@ -3,7 +3,10 @@ import { Buffer } from "buffer";
 import { generateRandomID } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./FSHelperFunctions.js";
 
-import { postMessage } from "../../../utility/utilityFunctions.ts";
+import {
+  writeCommandToCMD,
+  postMessage,
+} from "../../../utility/utilityFunctions.ts";
 
 //Helper functions:
 export default class FileSystem {
@@ -25,7 +28,7 @@ export default class FileSystem {
         } else {
           FileSystem._readFileListKey();
           window.addEventListener("storage", () => callback());
-          callback();
+          callback(true); //first run so set to true
         }
       }, 100);
     timer();
@@ -50,12 +53,12 @@ export default class FileSystem {
 
   //gets data from file
   static getFileMetaData(filename) {
-    return hf.getFileMetaData(FileSystem._readFileList()[filename + ".asm"]);
+    return hf.getFileMetaData(FileSystem._readFileList()[filename]);
   }
 
   static getFileData(filename) {
     return hf.getFileData(
-      hf.getFileMetaData(FileSystem._readFileList()[filename + ".asm"]).id
+      hf.getFileMetaData(FileSystem._readFileList()[filename]).id
     );
   }
   /**
@@ -67,7 +70,7 @@ export default class FileSystem {
    */
   static writeToFile(filename, text) {
     //get data
-    const fileMetaDataKey = FileSystem._readFileList()[filename + ".asm"];
+    const fileMetaDataKey = FileSystem._readFileList()[filename];
     const fileMetaData = hf.getFileMetaData(fileMetaDataKey);
 
     //Append changes
@@ -78,11 +81,19 @@ export default class FileSystem {
     hf.setInLocalStorage(fileMetaData.id, text, hf.encodeFileData); //file data
   }
 
-  static createFile({ filename }, isInitial = false) {
-    console.log({ CreatedFile: filename });
-    let fileList = FileSystem._readFileList();
-    if (!(`${filename}.asm` in fileList)) {
-      const template = `INCLUDE D:/irvine/Irvine32.inc
+  static createDataFile(files) {
+    console.log("in create DATA FILE");
+    console.log(files);
+    /*
+    const { name, size, type, lastModified } = fileData;
+    console.log(fileData);
+    FileSystem.createFile(name, "type", data, lastModified);
+    */
+  }
+
+  static createAssemblyFile(filename, isInitial = false) {
+    //if (!(`${filename}.asm` in fileList)) { //turn this into a call back or something
+    const template = `INCLUDE D:/irvine/Irvine32.inc
 
   .data                          ;data decleration
 
@@ -97,46 +108,60 @@ export default class FileSystem {
      exit                        ;Exit program
   main ENDP
   END main`;
-      //generate keys and creation time
-      const time = new Date().getTime();
-      const id = generateRandomID();
-      const fileID = generateRandomID();
+    FileSystem.createFile(filename, template, new Date().getTime(), isInitial);
+    //}
+  }
 
-      //Add file to list of files
-      fileList[`${filename}.asm`] = fileID;
+  static createFile(filename, data, time, isInitial = false) {
+    console.log({ CreatedFile: filename, data: data });
+    let fileList = FileSystem._readFileList();
+    //generate keys and creation time
+    const id = generateRandomID();
+    const fileID = generateRandomID();
 
-      //store file data in local storage
-      hf.setInLocalStorage(id, template, hf.encodeFileData);
-      //console.log(Module.writableStorage.store.put(id, template, true));
+    //Add file to list of files
+    fileList[filename] = fileID;
 
-      //store file meta data
-      const metaData = new Inode(id, template.length, 33206, time, time, time);
-      hf.setInLocalStorage(fileID, metaData, hf.encodeFileMetaData);
+    //store file data in local storage
+    hf.setInLocalStorage(id, data, hf.encodeFileData);
+    //console.log(Module.writableStorage.store.put(id, template, true));
 
-      //store in file list
-      hf.setInLocalStorage(
-        FileSystem.fileListKey,
-        JSON.stringify(fileList),
-        btoa
-      );
-      if (!isInitial) {
-        //Write to console
-        postMessage("write-command", {
-          data: [
-            ..."echo",
-            "period",
-            "shift",
-            "period",
-            "/shift",
-            ...filename,
-            "period",
-            ..."asm",
-            "enter",
-          ],
-        });
-      }
+    //store file meta data
+    const metaData = new Inode(id, data.length, 33206, time, time, time);
+    console.log(metaData);
+    hf.setInLocalStorage(fileID, metaData, hf.encodeFileMetaData);
+
+    //store in file list
+    hf.setInLocalStorage(
+      FileSystem.fileListKey,
+      JSON.stringify(fileList),
+      btoa
+    );
+
+    //TODO MOVE THIS TO APP
+    if (!isInitial) {
+      //Write to console
+      writeCommandToCMD(`echo.>${filename}`);
+      //this._createFileInConsole(filename);
     }
   }
+
+  /*
+  static _createFileInConsole(command, filename) {
+    filename = filename.split("\\.");
+    filenameCharacters = [];
+    for (text of filename) {
+      filenameCharacters.push(...text);
+      filenameCharacters.push("period");
+    }
+    filenameCharacters.pop(); //remove final period
+    postMessage("write-command", {
+      data: [..."echo", "period", "shift", "period", "/shift"]
+        .concat(filenameCharacters)
+        .concat(["enter"]),
+    });
+  }
+  */
 
   static deleteFile({ filename }) {
     let fileList = FileSystem._readFileList();

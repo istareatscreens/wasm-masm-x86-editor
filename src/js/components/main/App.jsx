@@ -14,21 +14,25 @@ function App() {
   const [fileList, setFileList] = useState([""]);
   const [code, setCode] = useState("");
 
-  const refreshFileList = async () => {
+  const refreshFileList = async (initialRun = false) => {
     const fileList = FileSystem.getFileList();
     //remove all files
-    const asmFiles = fileList
-      .filter((filename) => /.asm$/g.test(filename)) //remove all non .asm files from list
-      .map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
+    const asmFiles = fileList.filter((filename) => /.asm$/g.test(filename)); //remove all non .asm files from list
+    //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
     //set create and set focused file
     if (!fileList || !asmFiles.length) {
-      postMessage("reset", {});
-      FileSystem.createFile({ filename: "test" }, true);
-      switchFile("test");
-    } else {
+      const initialFileName = "test.asm";
+      FileSystem.createAssemblyFile(initialFileName, true);
+      setTimeout(
+        //postMessage("reset", {});
+        postMessage("run-command", { data: `echo.>${initialFileName}` }),
+        1000
+      ); //wait a second
+      switchFile(initialFileName);
+    } else if (initialRun) {
       switchFile(asmFiles[0]);
     }
-    setFileList(asmFiles);
+    setFileList(fileList);
   };
 
   useEffect(() => {
@@ -55,12 +59,12 @@ function App() {
 
   const createFile = useCallback(
     (filename) => {
-      FileSystem.createFile({ filename: filename });
-      setFilename(filename);
+      FileSystem.createAssemblyFile(filename);
+      switchFile(filename);
       setTimeout(() => {
         //can probably generify this
         if (!fileList.includes(filename)) {
-          postMessage("run-command", { data: `echo.>${filename}.asm` });
+          postMessage("run-command", { data: `echo.>${filename}` });
           refreshFileList();
         }
       }, 5000);

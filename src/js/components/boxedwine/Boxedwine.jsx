@@ -17,6 +17,7 @@ function Boxedwine() {
 
   const reset = (command = "cmd.bat") => {
     const callMain = () => {
+      Module.pauseMainLoop();
       Module.restartBW();
       window.callMain([
         "-root",
@@ -51,6 +52,7 @@ function Boxedwine() {
 
   const writeToConsole = (data) => {
     let press = "keydown";
+    console.log(data);
     data.forEach((key) => {
       //check to see if you need symbols could be improved by making symbol list
       if (key == "/shift") {

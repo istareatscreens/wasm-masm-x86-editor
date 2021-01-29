@@ -8,6 +8,7 @@
       "jsx": "react",
       "allowJs": true,
       "lib": [ "dom", "dom.iterable", "esnext" ],
+      "downlevelIteration": true,
     },
     "exclude": ["node_modules", "src/js/boxedwine"],
     "include": ["src/js", "src/main/index-main.jsx", "src/main/App.jsx"]

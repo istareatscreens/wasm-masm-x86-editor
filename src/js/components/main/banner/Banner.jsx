@@ -1,13 +1,20 @@
 import React from "react";
 import Button from "../../common/Button.jsx";
-import { postMessage } from "../../../utility/utilityFunctions.ts";
+import {
+  postMessage,
+  writeCommandToCMD,
+} from "../../../utility/utilityFunctions.ts";
 
 const Banner = React.memo(function Banner({ filename }) {
   const build = () => {
-    postMessage("write-command", {
-      //data: { filename },
-      data: [..."assemble ", "spacebar", ...filename, "enter"],
-    });
+    //TODO rework assemble.bat to simplify this logic
+    if (/.asm$/.test(filename)) {
+      writeCommandToCMD(
+        `assemble ${filename.substring(0, filename.length - 4)}`
+      );
+    } else {
+      console.log("not an assembly file: " + filename);
+    }
   };
 
   const reset = () => {

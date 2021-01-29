@@ -1,6 +1,7 @@
 import React from "react";
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
+import FileSystem from "../utility/FileSystem";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -14,26 +15,36 @@ const FileDrawer = React.memo(function FileDrawer({
     do {
       //TODO: replace prompt with page popup
       filename = prompt("Please enter a filename: ", error);
-      if (/.asm$/.test(filename)) {
-        filename = filename.substring(0, filename.length - 4);
+      if (!/.asm$/.test(filename)) {
+        filename += ".asm";
       }
+      //TODO: possibly add prompt to use to allow overwritting
       error = "file already exists, please try again";
     } while (fileList.includes(filename));
     createFile(filename);
   };
 
+  const processFile = (file) => {
+    return () =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          resolve({ fileData: file, data: event.target.result });
+          //localStorage.setItem(name, event.target.result);
+        };
+        reader.readAsDataURL(file);
+      });
+  };
+
   //proof of concept for file upload
-  const handleUploadFiles = (event) => {
+  const handleUploadFiles = async function (event) {
+    let fileList = [];
     for (const file of event.target.files) {
-      const { name, size, type, lastModified } = file;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        console.log(event);
-        localStorage.setItem(name, event.target.result);
-      };
-      console.log(file);
-      reader.readAsDataURL(file);
+      fileList.push(processFile(file)); //pushes functions to list
     }
+    FileSystem.createDataFile(
+      await Promise.all(fileList.map((getFile) => getFile()))
+    );
   };
 
   console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
@@ -53,7 +64,7 @@ const FileDrawer = React.memo(function FileDrawer({
           onClick={() => document.getElementById("uploadFilesInput").click()}
         />
         <input
-          onClick={(event) => handleUploadFiles(event)}
+          onChange={(event) => handleUploadFiles(event)}
           id="uploadFilesInput"
           type="file"
           multiple
@@ -66,22 +77,24 @@ const FileDrawer = React.memo(function FileDrawer({
       </div>
       <ul className="FileDrawer__list tree-view">
         {fileList.length
-          ? fileList.map((filename, index) => (
-              <li
-                onClick={(e) => {
-                  console.log(e.currentTarget.innerText);
-                  switchFile(e.currentTarget.innerText);
-                }}
-                className={
-                  filename == fileSelected
-                    ? "FileDrawer__listItem FileDrawer__listItem--selected"
-                    : "FileDrawer__listItem"
-                }
-                key={index}
-              >
-                {filename}
-              </li>
-            ))
+          ? fileList
+              .filter((filename) => /.asm$/.test(filename)) //remove all non assembly files
+              .map((filename, index) => (
+                <li
+                  onClick={(e) => {
+                    console.log(e.currentTarget.innerText);
+                    switchFile(e.currentTarget.innerText);
+                  }}
+                  className={
+                    filename == fileSelected
+                      ? "FileDrawer__listItem FileDrawer__listItem--selected"
+                      : "FileDrawer__listItem"
+                  }
+                  key={index}
+                >
+                  {filename}
+                </li>
+              ))
           : ""}
       </ul>
     </div>

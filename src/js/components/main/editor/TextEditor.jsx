@@ -14,6 +14,7 @@ function TextEditor({ onChange, value, filename }) {
   };
 
   //debounce function to write code to local storage
+  //use constant should be used once
   const writeToLocalStorage = useConstant(() => {
     return (filename, value) => {
       debounce(() => {

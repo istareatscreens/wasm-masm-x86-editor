@@ -69,3 +69,28 @@ export const generateRandomID = (): string => {
     return v.toString(16);
   });
 };
+
+//Send commands to console
+export const writeCommandToCMD = (command: string): void => {
+  const commandArray = [];
+  for (const char of command) {
+    switch (char) {
+      case ".":
+        commandArray.push("period");
+        break;
+      case ">":
+        commandArray.push("shift");
+        commandArray.push("period");
+        commandArray.push("/shift");
+        break;
+      case " ":
+        commandArray.push("spacebar"); //check for whitespace
+      default:
+        commandArray.push(char);
+    }
+  }
+  commandArray.push("enter");
+  postMessage("write-command", {
+    data: commandArray,
+  });
+};
