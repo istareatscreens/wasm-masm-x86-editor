@@ -82,7 +82,7 @@ function App() {
           createFile={createFile}
         />
         <div className="Editor__container">
-          <Banner filename={filename} />
+          <Banner filename={filename} fileList={fileList} />
           <Editor filename={filename} code={code} setCode={setCode} />
         </div>
       </div>
