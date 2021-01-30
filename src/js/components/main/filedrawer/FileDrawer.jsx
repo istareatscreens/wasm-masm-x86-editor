@@ -39,11 +39,21 @@ const FileDrawer = React.memo(function FileDrawer({
   //proof of concept for file upload
   const handleUploadFiles = async function (event) {
     let fileList = [];
+    let isCurrentSelectedFile = false;
     for (const file of event.target.files) {
       fileList.push(processFile(file)); //pushes functions to list
+      console.log(file);
+      if (file.name == fileSelected) {
+        isCurrentSelectedFile = true;
+      }
     }
     FileSystem.createDataFile(
-      await Promise.all(fileList.map((getFile) => getFile()))
+      await Promise.all(fileList.map((getFile) => getFile())),
+      () => {
+        if (isCurrentSelectedFile) {
+          switchFile(fileSelected);
+        }
+      }
     );
   };
 

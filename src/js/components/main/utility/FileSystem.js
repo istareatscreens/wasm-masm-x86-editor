@@ -3,6 +3,8 @@ import { Buffer } from "buffer";
 import { generateRandomID } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./FSHelperFunctions.js";
 
+import { crlf } from "eol";
+
 import {
   writeCommandToCMD,
   postMessage,
@@ -13,25 +15,32 @@ export default class FileSystem {
   static locked = false;
   static fileListKey = "";
 
-  static async init(callback) {
+  static init(callback) {
     //check to see if local storage was loaded
-    await FileSystem.checkIfLocalStorageInitiated(callback);
-    //FileSystem._readFileListKey();
+    FileSystem.checkIfLocalStorageInitiated(callback);
   }
 
   static checkIfLocalStorageInitiated(callback) {
-    const timer = () =>
-      window.setTimeout(() => {
-        if (hf.getFromLocalStorage("/") == null) {
-          clearTimeout(timer);
-          timer();
-        } else {
-          FileSystem._readFileListKey();
-          window.addEventListener("storage", () => callback());
-          callback(true); //first run so set to true
-        }
-      }, 100);
-    timer();
+    const initiateFileSystem = (callback) => {
+      FileSystem._readFileListKey();
+      callback(true);
+      window.addEventListener("storage", () => callback());
+    };
+
+    if (hf.getFromLocalStorage("/") == null) {
+      const waitForKeys = () =>
+        setTimeout(() => {
+          if (hf.getFromLocalStorage("/") == null) {
+            clearTimeout(waitForKeys);
+            waitForKeys();
+          } else {
+            initiateFileSystem(callback);
+          }
+        }, 100);
+      waitForKeys();
+    } else {
+      initiateFileSystem(callback);
+    }
   }
 
   //reads file list
@@ -81,7 +90,7 @@ export default class FileSystem {
     hf.setInLocalStorage(fileMetaData.id, text, hf.encodeFileData); //file data
   }
 
-  static createDataFile(files) {
+  static createDataFile(files, callback) {
     console.log("in create DATA FILE");
     console.log(files);
 
@@ -89,18 +98,38 @@ export default class FileSystem {
       .map((file) => {
         const { fileMetaData, data } = file;
         const { name, size, type, lastModified } = fileMetaData;
+        data = data.split(",").pop(); //remove MIME
+        let isEncoded = true;
+        if (/.(asm|text|txt)$/.test(name)) {
+          data = crlf(atob(data)); //convert end of line (eol) to dos/win32 compatiable crlf
+          size = data.length;
+          isEncoded = false;
+        }
+
+        const isDuplicate = name in FileSystem._readFileList();
+
         FileSystem.createFile(
           name,
-          data.split(",").pop(),
+          data,
           lastModified,
           true,
-          true,
-          size
+          isEncoded,
+          size,
+          isDuplicate
         );
+
+        if (isDuplicate) {
+          return "";
+        }
+
         return ` echo.>${name} &`;
       })
       .join("");
-    writeCommandToCMD(command);
+
+    if (!command == "") {
+      writeCommandToCMD(command);
+    }
+    callback(); //refresh code if file is already selected
   }
 
   static createAssemblyFile(filename, isInitial = false) {
@@ -130,16 +159,44 @@ export default class FileSystem {
     time,
     shouldWriteCommand = false,
     dataIsEncoded = false,
-    size = 0
+    size = 0,
+    isDuplicate = false
   ) {
-    console.log({ CreatedFile: filename, data: data });
+    //console.log({ CreatedFile: filename, data: data });
     let fileList = FileSystem._readFileList();
-    //generate keys and creation time
-    const id = generateRandomID();
-    const fileID = generateRandomID();
 
-    //Add file to list of files
-    fileList[filename] = fileID;
+    //generate keys and creation time
+    const id = isDuplicate
+      ? hf.getFileMetaData(fileList[filename]).id
+      : generateRandomID();
+    const fileID = isDuplicate ? fileList[filename] : generateRandomID();
+
+    /*
+    console.log({ isDuplicate, id, fileID });
+    if (isDuplicate)
+      console.log({
+        id: window.localStorage.getItem(id),
+        fileID: window.localStorage.getItem(fileID),
+      });
+      */
+
+    //Delete old keys if duplicate
+    if (isDuplicate) {
+      localStorage.removeItem(id); //delete file metaData
+      localStorage.removeItem(fileID); //delete file Data
+    }
+
+    //Add file to list of files if not duplicate
+    if (!isDuplicate) {
+      fileList[filename] = fileID;
+
+      //store in file list
+      hf.setInLocalStorage(
+        FileSystem.fileListKey,
+        JSON.stringify(fileList),
+        btoa
+      );
+    }
 
     //store file data in local storage
     hf.setInLocalStorage(
@@ -147,7 +204,6 @@ export default class FileSystem {
       data,
       dataIsEncoded ? (data) => data : hf.encodeFileData //only encode data that needs to be
     );
-    //console.log(Module.writableStorage.store.put(id, template, true));
 
     //store file meta data
     const metaData = new Inode(
@@ -158,27 +214,18 @@ export default class FileSystem {
       time,
       time
     );
-    console.log(metaData);
     hf.setInLocalStorage(fileID, metaData, hf.encodeFileMetaData);
 
-    //store in file list
-    hf.setInLocalStorage(
-      FileSystem.fileListKey,
-      JSON.stringify(fileList),
-      btoa
-    );
-
-    if (!shouldWriteCommand) {
+    if (!shouldWriteCommand && !isDuplicate) {
       //Write to console
       writeCommandToCMD(`echo.>${filename}`);
     }
   }
 
-  static deleteFile({ filename }) {
+  static deleteFile(filename) {
     let fileList = FileSystem._readFileList();
-    if (`${filename}.asm` in fileList) {
-      Module.pauseMainLoop();
-      const id = fileList[`${filename}.asm`];
+    if (`${filename}` in fileList) {
+      const id = fileList[filename];
       console.log(hf.getFileMetaData(id));
       localStorage.removeItem(hf.getFileMetaData(id).id); //delete file contents
       localStorage.removeItem(id); //delete file metaData
@@ -189,7 +236,6 @@ export default class FileSystem {
         JSON.stringify(fileList),
         btoa
       );
-      Module.resumeMainLoop();
     }
   }
 }
