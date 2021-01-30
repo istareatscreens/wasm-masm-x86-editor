@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
 import FileSystem from "../utility/FileSystem";
@@ -9,6 +9,8 @@ const FileDrawer = React.memo(function FileDrawer({
   switchFile,
   createFile,
 }) {
+  const fileUploadInput = useRef(null);
+
   const handleNewFileButtonClick = () => {
     let filename = "";
     let error = "";
@@ -52,6 +54,12 @@ const FileDrawer = React.memo(function FileDrawer({
       () => {
         if (isCurrentSelectedFile) {
           switchFile(fileSelected);
+          console.log({
+            fileUploadInput,
+            current: fileUploadInput.current,
+            value: fileUploadInput.current.value,
+          });
+          fileUploadInput.current.value = "";
         }
       }
     );
@@ -76,6 +84,7 @@ const FileDrawer = React.memo(function FileDrawer({
         <input
           onChange={(event) => handleUploadFiles(event)}
           id="uploadFilesInput"
+          ref={fileUploadInput}
           type="file"
           multiple
           style={{
