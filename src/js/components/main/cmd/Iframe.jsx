@@ -1,5 +1,4 @@
 //refactored from: https://github.com/springload/react-iframe-click
-//To-do change onInferredClick or figure out how to surpress annoying error
 import React, { useEffect, useRef, useCallback } from "react";
 
 function Iframe(props) {
@@ -29,7 +28,18 @@ function Iframe(props) {
     };
   }, []);
 
-  return <iframe {...props} ref={iframeCallbackRef} />;
+  return (
+    <iframe
+      className="boxedwine"
+      id="boxedwine"
+      width="100%"
+      height="100%"
+      src="boxedwine.html"
+      sandbox="allow-scripts allow-same-origin"
+      border="none"
+      ref={iframeCallbackRef}
+    />
+  );
 }
 
 export default Iframe;
