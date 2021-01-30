@@ -29,7 +29,7 @@ const FileDrawer = React.memo(function FileDrawer({
       new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (event) => {
-          resolve({ fileData: file, data: event.target.result });
+          resolve({ fileMetaData: file, data: event.target.result });
           //localStorage.setItem(name, event.target.result);
         };
         reader.readAsDataURL(file);

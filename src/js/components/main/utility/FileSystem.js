@@ -84,11 +84,23 @@ export default class FileSystem {
   static createDataFile(files) {
     console.log("in create DATA FILE");
     console.log(files);
-    /*
-    const { name, size, type, lastModified } = fileData;
-    console.log(fileData);
-    FileSystem.createFile(name, "type", data, lastModified);
-    */
+
+    const command = files
+      .map((file) => {
+        const { fileMetaData, data } = file;
+        const { name, size, type, lastModified } = fileMetaData;
+        FileSystem.createFile(
+          name,
+          data.split(",").pop(),
+          lastModified,
+          true,
+          true,
+          size
+        );
+        return ` echo.>${name} &`;
+      })
+      .join("");
+    writeCommandToCMD(command);
   }
 
   static createAssemblyFile(filename, isInitial = false) {
@@ -112,7 +124,14 @@ export default class FileSystem {
     //}
   }
 
-  static createFile(filename, data, time, isInitial = false) {
+  static createFile(
+    filename,
+    data,
+    time,
+    shouldWriteCommand = false,
+    dataIsEncoded = false,
+    size = 0
+  ) {
     console.log({ CreatedFile: filename, data: data });
     let fileList = FileSystem._readFileList();
     //generate keys and creation time
@@ -123,11 +142,22 @@ export default class FileSystem {
     fileList[filename] = fileID;
 
     //store file data in local storage
-    hf.setInLocalStorage(id, data, hf.encodeFileData);
+    hf.setInLocalStorage(
+      id,
+      data,
+      dataIsEncoded ? (data) => data : hf.encodeFileData //only encode data that needs to be
+    );
     //console.log(Module.writableStorage.store.put(id, template, true));
 
     //store file meta data
-    const metaData = new Inode(id, data.length, 33206, time, time, time);
+    const metaData = new Inode(
+      id,
+      size ? size : data.length,
+      33206,
+      time,
+      time,
+      time
+    );
     console.log(metaData);
     hf.setInLocalStorage(fileID, metaData, hf.encodeFileMetaData);
 
@@ -138,30 +168,11 @@ export default class FileSystem {
       btoa
     );
 
-    //TODO MOVE THIS TO APP
-    if (!isInitial) {
+    if (!shouldWriteCommand) {
       //Write to console
       writeCommandToCMD(`echo.>${filename}`);
-      //this._createFileInConsole(filename);
     }
   }
-
-  /*
-  static _createFileInConsole(command, filename) {
-    filename = filename.split("\\.");
-    filenameCharacters = [];
-    for (text of filename) {
-      filenameCharacters.push(...text);
-      filenameCharacters.push("period");
-    }
-    filenameCharacters.pop(); //remove final period
-    postMessage("write-command", {
-      data: [..."echo", "period", "shift", "period", "/shift"]
-        .concat(filenameCharacters)
-        .concat(["enter"]),
-    });
-  }
-  */
 
   static deleteFile({ filename }) {
     let fileList = FileSystem._readFileList();

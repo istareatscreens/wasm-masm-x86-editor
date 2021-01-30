@@ -4,8 +4,6 @@ import Iframe from "./Iframe.jsx";
 import React from "react";
 
 function CommandPrompt() {
-  const refCMD = useRef(null);
-
   const handleClick = (e) => {};
 
   return (

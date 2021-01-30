@@ -85,6 +85,19 @@ export const writeCommandToCMD = (command: string): void => {
         break;
       case " ":
         commandArray.push("spacebar"); //check for whitespace
+        break;
+      case "-":
+        commandArray.push("dash");
+      case "_":
+        commandArray.push("shift");
+        commandArray.push("dash");
+        commandArray.push("/shift");
+        break;
+      case "&":
+        commandArray.push("shift");
+        commandArray.push("7");
+        commandArray.push("/shift");
+
       default:
         commandArray.push(char);
     }
