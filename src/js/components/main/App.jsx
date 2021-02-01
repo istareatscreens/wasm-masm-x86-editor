@@ -7,7 +7,6 @@ import Banner from "./banner/Banner.jsx";
 
 import FileSystem from "./utility/FileSystem";
 import { postMessage } from "../../utility/utilityFunctions.ts";
-//import { FileSystem } from "./utility/FileSystem.js";
 
 function App() {
   const [filename, setFilename] = useState("test");
@@ -20,7 +19,6 @@ function App() {
     const asmFiles = fileList.filter((filename) => /.asm$/g.test(filename)); //remove all non .asm files from list
     //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
     //set create and set focused file
-    console.log({ fileList, asmFiles, bool: !fileList || !asmFiles.length });
     if (!fileList || !asmFiles.length) {
       const initialFileName = "test.asm";
       FileSystem.createAssemblyFile(initialFileName, true);

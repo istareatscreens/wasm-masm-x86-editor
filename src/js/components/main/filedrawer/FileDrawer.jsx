@@ -1,7 +1,9 @@
 import React, { useRef } from "react";
+import FileSystem from "../utility/FileSystem";
+
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
-import FileSystem from "../utility/FileSystem";
+import saveFile from "../../../../images/saveFile.png";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -92,6 +94,12 @@ const FileDrawer = React.memo(function FileDrawer({
             height: "0px",
             opacity: 0,
           }}
+        />
+        <img
+          className="FileDrawer__menu__btn FileDrawer__menu__btn--saveFile windows--btn"
+          src={saveFile}
+          alt="save selected file(s)"
+          onClick={() => FileSystem.saveFile(fileSelected)}
         />
       </div>
       <ul className="FileDrawer__list tree-view">

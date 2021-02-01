@@ -1,19 +1,44 @@
 import React, { useEffect } from "react";
-import { createMessageListner } from "../../utility/utilityFunctions";
+import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
-import { FileSystem } from "../main/utility/FileSystem.js";
 
 function Boxedwine() {
   useEffect(() => {
+    createEventListeners();
+    return () => {
+      removeEventListeners();
+    };
+  }, []);
+
+  const createEventListeners = () => {
+    createZipListener();
     createMessageListner(); //creates message listener to intercept messages from parent document and rethrow messages as events
     createClickListener(); //creates a click listener to allow selection and operator of terminal when clicked on
     createCommandWriteListener();
     createCommandRunListener();
     createResetListener();
-    return () => {
-      removeListeners();
-    };
-  }, []);
+  };
+
+  const removeEventListeners = () => {
+    window.removeEventListener("editor-selected");
+    window.removeEventListener("build-code");
+    window.removeEventListener("reset");
+    window.removeEventListener("write-command");
+    window.removeEventListener("run-command");
+    window.removeEventListener("zip-files");
+  };
+
+  const createZipListener = () => {
+    window.addEventListener("zip-files", ({ detail: files }) => {
+      const zip = new window.JSZip();
+      files.map(({ name, key }) => {
+        zip.file(name, window.localStorage.getItem(key));
+      });
+      zip
+        .generateAsync({ type: "blob" })
+        .then((content) => window.localStorage.setItem("readyZip", content)); //save to local storage
+    });
+  };
 
   const reset = (command = "cmd.bat") => {
     const callMain = () => {
@@ -142,12 +167,6 @@ function Boxedwine() {
         reset(event.detail);
       }
     });
-  };
-
-  const removeListeners = () => {
-    window.removeEventListener("editor-selected");
-    window.removeEventListener("build-code");
-    window.removeEventListener("reset");
   };
 
   const createClickListener = () => {

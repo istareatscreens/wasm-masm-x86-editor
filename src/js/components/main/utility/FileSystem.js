@@ -2,13 +2,75 @@ import { Inode, fromBuffer } from "./inode";
 import { Buffer } from "buffer";
 import { generateRandomID } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./FSHelperFunctions.js";
+import { saveAs } from "file-saver";
 
 import { crlf } from "eol";
+import dataURItoBlob from "./dataURItoBlob.js";
 
 import {
   writeCommandToCMD,
   postMessage,
 } from "../../../utility/utilityFunctions.ts";
+
+const mimeType = (fileExtension) => {
+  if (fileExtension == null) {
+    return createMime("application/octet-stream");
+  }
+
+  const createMime = (mimeType) => {
+    return "data:" + mimeType + "base64,";
+  };
+  switch (fileExtension) {
+    case ".txt":
+    case ".text":
+    case ".asm":
+      return createMime("text/plain");
+    case ".exe":
+      return createMime("application/x-msdownload");
+    case ".jpg":
+    case ".jpeg":
+      return createMime("image/jpeg");
+    case ".bmp":
+      return createMime("image/bmp");
+    case ".png":
+      return createMime("image/png");
+    case ".gif":
+      return createMime("image/gif");
+    case ".wav":
+      return createMime("audio/wav");
+    case ".obj":
+    case ".bin":
+    case ".bin":
+    default:
+      return createMime("application/octet-stream");
+  }
+};
+
+function getFormatedDate() {
+  const date = new Date();
+  return [
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  ]
+    .map((value) => (String(value).length < 2 ? "0" + format : format))
+    .join("_");
+}
+
+async function callBackIsTrue(callback, delays) {
+  return new Promise((resolve) => {
+    if (callback()) resolve();
+    wait = setInterval(function () {
+      if (callback()) {
+        clearInterval(wait);
+        resolve();
+      }
+    }, delay);
+  });
+}
 
 //Helper functions:
 export default class FileSystem {
@@ -237,5 +299,36 @@ export default class FileSystem {
         btoa
       );
     }
+  }
+
+  static saveFile(filename) {
+    saveAs(
+      dataURItoBlob(
+        mimeType(filename.match(/\.[0-9a-z]+$/i)[0]) + //get file extension
+          window.localStorage.getItem(
+            hf.getFileMetaData(FileSystem._readFileList()[filename]).id
+          )
+      ),
+      filename
+    );
+  }
+
+  static async saveFiles(filenames) {
+    const fileList = FileSystem._readFileList();
+    postMessage("zip-files", {
+      data: filenames.map((filename) => ({
+        filename: filename,
+        key: hf.getFileMetaData(fileList[filename]).id,
+      })),
+    });
+    await callBackIsTrue(
+      () => window.localStorage.getItem("readyZip") == null, //check for file
+      20
+    );
+    saveAs(
+      window.localStorage.getItem("readyZip"),
+      "MASMProjectFiles" + getFormatedDate() + ".zip"
+    );
+    window.localStorage.removeItem("readyZip"); //clean up
   }
 }
