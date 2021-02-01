@@ -29,6 +29,7 @@ const jsUtility = "src/js/utility/*.*";
 function jsBoxedTask() {
   return src(["!" + jsPath, jsBoxedPath])
     .pipe(sourcemaps.init())
+    .pipe(concat("boxedwine.js"))
     .pipe(terser())
     .pipe(sourcemaps.write("."))
     .pipe(browserSync.stream())
