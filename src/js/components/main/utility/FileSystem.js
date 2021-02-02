@@ -38,6 +38,8 @@ const mimeType = (fileExtension) => {
       return createMime("image/gif");
     case ".wav":
       return createMime("audio/wav");
+    case ".zip":
+      return createMime("application/zip");
     case ".obj":
     case ".bin":
     case ".bin":
@@ -56,14 +58,17 @@ function getFormatedDate() {
     date.getMinutes(),
     date.getSeconds(),
   ]
-    .map((value) => (String(value).length < 2 ? "0" + format : format))
+    .map((value) => {
+      const format = String(value);
+      return format.length < 2 ? "0" + format : format;
+    })
     .join("_");
 }
 
-async function callBackIsTrue(callback, delays) {
+async function callBackIsTrue(callback, delay) {
   return new Promise((resolve) => {
     if (callback()) resolve();
-    wait = setInterval(function () {
+    let wait = setInterval(function () {
       if (callback()) {
         clearInterval(wait);
         resolve();
@@ -302,33 +307,53 @@ export default class FileSystem {
   }
 
   static saveFile(filename) {
+    const fileExtension = filename.match(/\.[0-9a-z]+$/i)[0];
     saveAs(
       dataURItoBlob(
-        mimeType(filename.match(/\.[0-9a-z]+$/i)[0]) + //get file extension
+        //convert to blob file for download
+        mimeType(fileExtension) + //get file extension
           window.localStorage.getItem(
             hf.getFileMetaData(FileSystem._readFileList()[filename]).id
           )
       ),
-      filename
+      filename.substring(0, filename.length - fileExtension.length) +
+        getFormatedDate +
+        fileExtension
     );
   }
 
   static async saveFiles(filenames) {
     const fileList = FileSystem._readFileList();
+    const filename = "MASMProjectFiles_" + getFormatedDate() + ".zip";
+    /*
+    send to boxedwine component as it has jsZip included, 
+    using post message to reduce bundle size, zipped file 
+    is temporarily stored in local storage after zip
+    */
     postMessage("zip-files", {
-      data: filenames.map((filename) => ({
+      data: {
+        fileList: filenames.map((filename) => ({
+          filename: filename,
+          key: hf.getFileMetaData(fileList[filename]).id,
+        })),
         filename: filename,
-        key: hf.getFileMetaData(fileList[filename]).id,
-      })),
+      },
     });
+
+    /*
+      wait for Boxedwine to finish zipping files then convert it
+      to a blob and delete it from local storage
+    */
     await callBackIsTrue(
-      () => window.localStorage.getItem("readyZip") == null, //check for file
+      () => {
+        return window.localStorage.getItem(filename) != null;
+      }, //check for file
       20
     );
     saveAs(
-      window.localStorage.getItem("readyZip"),
-      "MASMProjectFiles" + getFormatedDate() + ".zip"
+      dataURItoBlob(mimeType(".zip") + window.localStorage.getItem(filename)),
+      filename
     );
-    window.localStorage.removeItem("readyZip"); //clean up
+    window.localStorage.removeItem(filename); //clean up
   }
 }

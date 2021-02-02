@@ -29,14 +29,18 @@ function Boxedwine() {
   };
 
   const createZipListener = () => {
-    window.addEventListener("zip-files", ({ detail: files }) => {
+    window.addEventListener("zip-files", ({ detail: data }) => {
+      const { fileList, filename } = data;
       const zip = new window.JSZip();
-      files.map(({ name, key }) => {
-        zip.file(name, window.localStorage.getItem(key));
+      fileList.map(({ filename, key }) => {
+        return zip.file(filename, window.localStorage.getItem(key), {
+          base64: true,
+        });
       });
+
       zip
-        .generateAsync({ type: "blob" })
-        .then((content) => window.localStorage.setItem("readyZip", content)); //save to local storage
+        .generateAsync({ type: "base64" })
+        .then((content) => window.localStorage.setItem(filename, content)); //save to local storage
     });
   };
 

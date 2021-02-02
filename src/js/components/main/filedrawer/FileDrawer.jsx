@@ -14,6 +14,7 @@ const FileDrawer = React.memo(function FileDrawer({
   const fileUploadInput = useRef(null);
   const selectAllCheckbox = useRef(null);
   const [filesSelected, setFilesSelected] = useState([]);
+  const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
 
   useEffect(() => {
     setFilesSelected(
@@ -27,6 +28,7 @@ const FileDrawer = React.memo(function FileDrawer({
     );
   }, [fileList]);
 
+  //New file creation function
   const handleNewFileButtonClick = () => {
     let filename = "";
     let error = "";
@@ -38,10 +40,16 @@ const FileDrawer = React.memo(function FileDrawer({
       }
       //TODO: possibly add prompt to use to allow overwritting
       error = "file already exists, please try again";
-    } while (fileList.includes(filename));
+    } while (
+      fileList.includes(filename) ||
+      filename == error + ".asm" || //clicked ok on error message
+      filename == ".asm" || //wrote just a file extension
+      filename == "null.asm" //entered no input but clicked ok
+    );
     createFile(filename);
   };
 
+  //File Upload functions
   const processFile = (file) => {
     return () =>
       new Promise((resolve, reject) => {
@@ -54,7 +62,6 @@ const FileDrawer = React.memo(function FileDrawer({
       });
   };
 
-  //proof of concept for file upload
   const handleUploadFiles = async function (event) {
     let fileList = [];
     let isCurrentSelectedFile = false;
@@ -81,40 +88,74 @@ const FileDrawer = React.memo(function FileDrawer({
     );
   };
 
+  //Filter function
+  const checkIfFileIsAsm = (filename) => {
+    return /.asm$/.test(filename);
+  };
+
+  //Checkbox logic
   const handleSelectAllCheckBox = (checked) => {
     const filesSelectedUpdate = filesSelected.map((file) => {
       file.isSelected = checked;
       return file;
     });
+
+    setNumberCheckboxsSelected(() => (checked ? filesSelected.length : 0));
     setFilesSelected(filesSelectedUpdate);
   };
 
-  const checkIfFileIsAsm = (filename) => {
-    return /.asm$/.test(filename);
-  };
-
   const fileIsChecked = (checked, file) => {
-    let numberTrue = filesSelected.length;
+    let numberChecked = filesSelected.length;
     const updatedFilesSelected = filesSelected.map((cFile) => {
       if (!cFile.isSelected) {
-        numberTrue--;
+        numberChecked--;
       }
       if (file.id == cFile.id) {
         cFile.isSelected = checked;
         if (checked) {
-          numberTrue++;
+          numberChecked++;
         }
       }
       return cFile;
     });
 
-    if (numberTrue == filesSelected.length && checked) {
+    if (numberChecked == filesSelected.length && checked) {
       selectAllCheckbox.current.checked = true;
     } else {
       selectAllCheckbox.current.checked = false;
     }
 
+    setNumberCheckboxsSelected(numberChecked);
     setFilesSelected(updatedFilesSelected);
+  };
+
+  const turnOffAllCheckboxes = () => {
+    selectAllCheckbox.current.checked = false;
+    setFilesSelected(
+      filesSelected.map((file) => {
+        file.isSelected = false;
+        return file;
+      })
+    );
+  };
+
+  //Save file
+  const saveFiles = () => {
+    //handle case where Multiple files are checked
+    if (numberOfCheckboxsSelected != 1 && numberOfCheckboxsSelected) {
+      FileSystem.saveFiles(filesSelected.map((file) => file.filename));
+    } else {
+      //handle case where single file is checked
+      if (numberOfCheckboxsSelected) {
+        FileSystem.saveFile(
+          filesSelected.filter((file) => file.isSelected)[0].filename
+        );
+
+        //handle case where no file is checked
+      } else {
+        FileSystem.saveFile(fileSelected);
+      }
+    }
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
@@ -156,7 +197,7 @@ const FileDrawer = React.memo(function FileDrawer({
           className="FileDrawer__menu__btn FileDrawer__menu__btn--saveFile windows--btn"
           src={saveFile}
           alt="save selected file(s)"
-          onClick={() => FileSystem.saveFile(fileSelected)}
+          onClick={saveFiles}
         />
       </div>
       <ul className="FileDrawer__list tree-view">
