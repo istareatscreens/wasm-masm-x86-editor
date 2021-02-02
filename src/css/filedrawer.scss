@@ -24,6 +24,20 @@
   padding-bottom: 1.2%;
 }
 
+.FileDrawer__Item {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  width: 100%;
+  height: fit-content;
+}
+
+.FileDrawer__listItemCheckbox {
+  order: 1;
+  height: inherit;
+  width: 1rem;
+}
+
 .FileDrawer__list {
   display: flex;
   flex-direction: column;
@@ -34,10 +48,8 @@
 }
 
 .FileDrawer__listItem {
-  display: flex;
+  order: 2;
   width: 100%;
-  flex-direction: row;
-  justify-content: left;
   padding-left: 0.2rem;
   line-height: 1.2rem;
 }
@@ -95,7 +107,7 @@
 }
 
 /*tree list*/
-
+input,
 ul.tree-view {
   font-family: "Pixelated MS Sans Serif", Arial;
   -webkit-font-smoothing: none;
@@ -191,4 +203,70 @@ ul.tree-view details > summary:before {
 
 ul.tree-view details[open] > summary:before {
   content: "-";
+}
+/* checkbox */
+/*
+input[type="radio"],
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  margin: 0;
+  background: 0;
+  position: fixed;
+  opacity: 0;
+  border: none;
+}
+*/
+
+label {
+  display: inline-flex;
+  align-items: center;
+}
+
+input[type="radio"] + label,
+input[type="checkbox"] + label {
+  line-height: 13px;
+}
+
+input[type="checkbox"] + label {
+  position: relative;
+  margin-left: var(--checkbox-total-width);
+}
+
+input[type="checkbox"] + label::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * (var(--checkbox-total-width-precalc)));
+  display: inline-block;
+  width: var(--checkbox-width);
+  height: var(--checkbox-width);
+  background: var(--button-highlight);
+  box-shadow: var(--border-field);
+  margin-right: var(--radio-label-spacing);
+}
+
+input[type="checkbox"]:active + label::before {
+  background: var(--surface);
+}
+
+input[type="checkbox"]:checked + label::after {
+  content: "";
+  display: block;
+  width: var(--checkmark-width);
+  height: var(--checkmark-width);
+  position: absolute;
+  top: var(--checkmark-top);
+  left: calc(
+    -1 * (var(--checkbox-total-width-precalc)) + var(--checkmark-left)
+  );
+  background: svg-load("./checkmark.svg");
+}
+
+input[type="checkbox"][disabled] + label::before {
+  background: var(--surface);
+}
+
+input[type="checkbox"][disabled]:checked + label::after {
+  background: svg-load("./checkmark-disabled.svg");
 }

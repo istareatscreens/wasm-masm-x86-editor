@@ -61,12 +61,39 @@ export const debounce = (fn: () => any, delay: number) => {
   })();
 };
 
+//Generate UUID
 export const generateRandomID = (): string => {
   // From http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     var r = (Math.random() * 16) | 0;
     var v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
+  });
+};
+
+//Wait for event and then time out
+//TODO use this with FileSystem operations to enusre proper handling of files
+//even when console is not accessible, or error has occured
+export const sleepUntil = async () => (
+  callback: () => any,
+  timeoutMs: number,
+  resolutionCallback: () => any = () => {},
+  rejectionCallback: () => any = () => {},
+  delayBetweenChecks: number = 20
+): Promise<unknown> => {
+  return new Promise((resolve, reject) => {
+    if (callback()) resolve(resolutionCallback());
+    const timeWas: number = new Date().getTime();
+    let wait = setInterval(function () {
+      if (callback()) {
+        clearInterval(wait);
+        resolve(resolutionCallback());
+      } else if (new Date().getTime() - timeWas > timeoutMs) {
+        // Timeout
+        clearInterval(wait);
+        reject(rejectionCallback());
+      }
+    }, delayBetweenChecks);
   });
 };
 
@@ -107,3 +134,11 @@ export const writeCommandToCMD = (command: string): void => {
     data: commandArray,
   });
 };
+
+//Check if two arrays contain the same elements (unordered, no duplicate elements)
+export const checkIfEqualArraysNoDuplicateElements = (
+  array1: [any],
+  array2: [any]
+) =>
+  array1.length === array2.length &&
+  array1.every((val) => array2.includes(val));

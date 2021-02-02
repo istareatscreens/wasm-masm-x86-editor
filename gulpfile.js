@@ -85,13 +85,13 @@ function assetsTask() {
 
 function imgTask() {
   //only using for favicon
-  return src(imagePath + ".ico")
+  return src([imagePath + ".ico", "src/css/images/*"])
     .pipe(imagemin())
     .pipe(gulp.dest("public"));
 }
 
 function cssTask() {
-  return src(cssPath)
+  return src([cssPath + ".scss", cssPath + ".css"])
     .pipe(sourcemaps.init())
     .pipe(sass({ includePaths: ["./node_modules"] }).on("error", sass.logError))
     .pipe(concat("style.css"))

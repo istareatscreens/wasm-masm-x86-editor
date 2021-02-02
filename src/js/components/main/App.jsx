@@ -16,7 +16,10 @@ function App() {
   const refreshFileList = async (initialRun = false) => {
     let fileList = FileSystem.getFileList();
     //remove all files
-    const asmFiles = fileList.filter((filename) => /.asm$/g.test(filename)); //remove all non .asm files from list
+    const asmFiles = fileList
+      .filter((filename) => /.asm$/g.test(filename))
+      .map((filename, index) => ({ id: index, filename: filename })); //remove all non .asm files from list
+
     //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
     //set create and set focused file
     if (!fileList || !asmFiles.length) {
@@ -25,7 +28,7 @@ function App() {
       switchFile(initialFileName);
       fileList = FileSystem.getFileList();
     } else if (initialRun) {
-      switchFile(asmFiles[0]);
+      switchFile(asmFiles[0].filename);
     }
 
     setFileList(fileList);
