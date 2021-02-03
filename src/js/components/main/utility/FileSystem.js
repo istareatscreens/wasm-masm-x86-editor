@@ -281,7 +281,7 @@ export default class FileSystem {
       console.log(hf.getFileMetaData(id));
       localStorage.removeItem(hf.getFileMetaData(id).id); //delete file contents
       localStorage.removeItem(id); //delete file metaData
-      delete fileList[`${filename}.asm`];
+      delete fileList[`${filename}`];
       //remove file from file list
       hf.setInLocalStorage(
         FileSystem.fileListKey,

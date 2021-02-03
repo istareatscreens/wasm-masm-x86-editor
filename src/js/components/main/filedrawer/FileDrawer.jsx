@@ -12,6 +12,7 @@ const FileDrawer = React.memo(function FileDrawer({
   fileSelected,
   switchFile,
   createFile,
+  refreshFileList,
 }) {
   const fileUploadInput = useRef(null);
   const selectAllCheckbox = useRef(null);
@@ -161,14 +162,27 @@ const FileDrawer = React.memo(function FileDrawer({
   };
 
   //Delete file
+  //TODO reimplement for other file types
   const deleteFile = () => {
-    switchFile();
-    // could make this logic so much simplier if I worked with ids
-    /*
-    FileSystem.deleteFile(fileSelected);
-    postMessage("run-command", { data: "del " + fileSelected });
-    console.log("HERE " + "del " + fileSelected);
-    */
+    if (filesSelected.length > 1) {
+      const findFileByName = (cFilename) =>
+        filesSelected.find(({ filename }) => cFilename == filename);
+      const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
+
+      const selectedFileID = findFileByName(fileSelected).id;
+
+      if (selectedFileID == 0) {
+        switchFile(findFileByID(selectedFileID + 1).filename);
+      } else {
+        console.log(findFileByID(selectedFileID - 1).filename);
+        switchFile(findFileByID(selectedFileID - 1).filename);
+      }
+      FileSystem.deleteFile(fileSelected);
+      refreshFileList();
+    } else {
+      FileSystem.deleteFile(fileSelected);
+      refreshFileList(true);
+    }
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering

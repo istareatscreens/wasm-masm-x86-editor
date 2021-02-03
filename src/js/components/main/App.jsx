@@ -12,6 +12,7 @@ function App() {
   const [filename, setFilename] = useState("test");
   const [fileList, setFileList] = useState([""]);
   const [code, setCode] = useState("");
+  const [lockEditor, setLockEditor] = useState(false);
 
   const refreshFileList = async (initialRun = false) => {
     let fileList = FileSystem.getFileList();
@@ -19,7 +20,6 @@ function App() {
     const asmFiles = fileList
       .filter((filename) => /.asm$/g.test(filename))
       .map((filename, index) => ({ id: index, filename: filename })); //remove all non .asm files from list
-
     //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
     //set create and set focused file
     if (!fileList || !asmFiles.length) {
@@ -38,10 +38,10 @@ function App() {
     const init = async () => {
       await FileSystem.init();
       window.addEventListener("storage", () => {
-        console.log("HERE");
+        console.log("HERE SHOULD UPDATE!");
         refreshFileList();
       });
-      refreshFileList();
+      refreshFileList(true);
     };
     init();
     return () => {
@@ -87,10 +87,17 @@ function App() {
           fileSelected={filename}
           switchFile={switchFile}
           createFile={createFile}
+          refreshFileList={refreshFileList}
+          lockEditor={setLockEditor}
         />
         <div className="Editor__container">
           <Banner filename={filename} fileList={fileList} />
-          <Editor filename={filename} code={code} setCode={setCode} />
+          <Editor
+            filename={filename}
+            code={code}
+            setCode={setCode}
+            disabled={lockEditor}
+          />
         </div>
       </div>
       <CommandPrompt />
