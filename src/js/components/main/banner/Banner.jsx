@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Button from "../../common/Button.jsx";
 import {
   postMessage,
   writeCommandToCMD,
+  checkIfEqualArraysNoDuplicateElements,
 } from "../../../utility/utilityFunctions.ts";
 
-const Banner = React.memo(function Banner({ filename, fileList }) {
-  const [disableRun, setDisableRun] = useState(true);
-
+const Banner = function Banner({ filename, fileList }) {
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
     if (/.asm$/.test(filename)) {
@@ -63,6 +62,6 @@ const Banner = React.memo(function Banner({ filename, fileList }) {
       </Button>
     </div>
   );
-});
+};
 
-export default Banner;
+export default React.memo(Banner);

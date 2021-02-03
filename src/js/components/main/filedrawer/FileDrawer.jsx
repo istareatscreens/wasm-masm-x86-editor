@@ -13,6 +13,7 @@ const FileDrawer = React.memo(function FileDrawer({
   switchFile,
   createFile,
   refreshFileList,
+  setEditorLock,
 }) {
   const fileUploadInput = useRef(null);
   const selectAllCheckbox = useRef(null);
@@ -153,7 +154,6 @@ const FileDrawer = React.memo(function FileDrawer({
         FileSystem.saveFile(
           filesSelected.filter((file) => file.isSelected)[0].filename
         );
-
         //handle case where no file is checked
       } else {
         FileSystem.saveFile(fileSelected);
@@ -161,32 +161,63 @@ const FileDrawer = React.memo(function FileDrawer({
     }
   };
 
-  //Delete file
-  //TODO reimplement for other file types
-  const deleteFile = () => {
-    if (filesSelected.length > 1) {
-      const findFileByName = (cFilename) =>
-        filesSelected.find(({ filename }) => cFilename == filename);
-      const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
+  //Delete files
+  //Handle multiselection deletion
+  const deleteFiles = () => {
+    return filesSelected.filter(({ filename, isSelected }) => {
+      console.log(filename, isSelected);
+      if (isSelected) {
+        if (fileSelected == filename) {
+          return true;
+        } else {
+          FileSystem.deleteFile(filename);
+        }
+      }
+      return false;
+    });
+  };
 
+  const handleDeleteFile = () => {
+    const findFileByName = (cFilename) =>
+      filesSelected.find(({ filename }) => cFilename == filename);
+    const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
+
+    if (numberOfCheckboxsSelected != 0) {
+      if (!deleteFiles().length) {
+        //delete checked files
+        // if file selected to edit was not selected just refresh and finish
+        refreshFileList();
+        return;
+      }
+    }
+
+    setEditorLock(true);
+    //Handle general case
+    if (
+      filesSelected.length > 1 && //there is a file to switch to
+      numberOfCheckboxsSelected != filesSelected.length //all files were not selected
+    ) {
+      console.log("IN SELECTED FILE DELETE");
       const selectedFileID = findFileByName(fileSelected).id;
-
       if (selectedFileID == 0) {
         switchFile(findFileByID(selectedFileID + 1).filename);
       } else {
         console.log(findFileByID(selectedFileID - 1).filename);
         switchFile(findFileByID(selectedFileID - 1).filename);
       }
+
       FileSystem.deleteFile(fileSelected);
       refreshFileList();
     } else {
+      //Handle deleting one file
       FileSystem.deleteFile(fileSelected);
       refreshFileList(true);
     }
+    setEditorLock(false);
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
-  console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
+  //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <div className="FileDrawer">
       <div className="FileDrawer__menu">
@@ -230,7 +261,7 @@ const FileDrawer = React.memo(function FileDrawer({
           className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
           src={uploadFile}
           alt="delete selected file(s)"
-          onClick={deleteFile}
+          onClick={handleDeleteFile}
         />
       </div>
       <ul className="FileDrawer__list tree-view">

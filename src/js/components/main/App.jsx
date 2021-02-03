@@ -12,27 +12,30 @@ function App() {
   const [filename, setFilename] = useState("test");
   const [fileList, setFileList] = useState([""]);
   const [code, setCode] = useState("");
-  const [lockEditor, setLockEditor] = useState(false);
+  const [lockEditor, setEditorLock] = useState(false);
 
-  const refreshFileList = async (initialRun = false) => {
-    let fileList = FileSystem.getFileList();
-    //remove all files
-    const asmFiles = fileList
-      .filter((filename) => /.asm$/g.test(filename))
-      .map((filename, index) => ({ id: index, filename: filename })); //remove all non .asm files from list
-    //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
-    //set create and set focused file
-    if (!fileList || !asmFiles.length) {
-      const initialFileName = "test.asm";
-      FileSystem.createAssemblyFile(initialFileName, true);
-      switchFile(initialFileName);
-      fileList = FileSystem.getFileList();
-    } else if (initialRun) {
-      switchFile(asmFiles[0].filename);
-    }
+  const refreshFileList = useCallback(
+    async (initialRun = false) => {
+      let fileList = FileSystem.getFileList();
+      //remove all files
+      const asmFiles = fileList
+        .filter((filename) => /.asm$/g.test(filename))
+        .map((filename, index) => ({ id: index, filename: filename })); //remove all non .asm files from list
+      //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
+      //set create and set focused file
+      if (!fileList || !asmFiles.length) {
+        const initialFileName = "test.asm";
+        FileSystem.createAssemblyFile(initialFileName, true);
+        switchFile(initialFileName);
+        fileList = FileSystem.getFileList();
+      } else if (initialRun) {
+        switchFile(asmFiles[0].filename);
+      }
 
-    setFileList(fileList);
-  };
+      setFileList(fileList);
+    },
+    [fileList]
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -88,7 +91,7 @@ function App() {
           switchFile={switchFile}
           createFile={createFile}
           refreshFileList={refreshFileList}
-          lockEditor={setLockEditor}
+          setEditorLock={setEditorLock}
         />
         <div className="Editor__container">
           <Banner filename={filename} fileList={fileList} />
