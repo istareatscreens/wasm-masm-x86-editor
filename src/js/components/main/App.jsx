@@ -11,7 +11,6 @@ import { postMessage } from "../../utility/utilityFunctions.ts";
 function App() {
   const [filename, setFilename] = useState("test");
   const [fileList, setFileList] = useState([""]);
-  const [code, setCode] = useState("");
   const [lockEditor, setEditorLock] = useState(false);
 
   const refreshFileList = useCallback(
@@ -61,7 +60,6 @@ function App() {
   const switchFile = useCallback(
     (filename) => {
       setFilename(filename);
-      setCode(FileSystem.getFileData(filename));
     },
     [filename]
   );
@@ -95,12 +93,7 @@ function App() {
         />
         <div className="Editor__container">
           <Banner filename={filename} fileList={fileList} />
-          <Editor
-            filename={filename}
-            code={code}
-            setCode={setCode}
-            disabled={lockEditor}
-          />
+          <Editor filename={filename} disabled={lockEditor} />
         </div>
       </div>
       <CommandPrompt />
