@@ -1,8 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
 
 function Boxedwine() {
+  const canvas = useRef(null);
+
   useEffect(() => {
     createEventListeners();
     return () => {
@@ -182,8 +184,49 @@ function Boxedwine() {
     });
   };
 
+  // source https://stackoverflow.com/questions/433919/javascript-simulate-right-click-through-code?rq=1
+  function contextMenuClick(element) {
+    console.log(element.ownerDocument);
+    var evt = element.ownerDocument.createEvent("MouseEvents");
+
+    console.log(evt);
+    var RIGHT_CLICK_BUTTON_CODE = 2; // the same for FF and IE
+
+    evt.initMouseEvent(
+      "contextmenu",
+      true,
+      true,
+      element.ownerDocument.defaultView,
+      1,
+      0,
+      0,
+      0,
+      0,
+      false,
+      false,
+      false,
+      false,
+      RIGHT_CLICK_BUTTON_CODE,
+      null
+    );
+
+    if (document.createEventObject) {
+      // dispatch for IE
+      return element.fireEvent("onclick", evt);
+    } else {
+      // dispatch for firefox + others
+      return !element.dispatchEvent(evt);
+    }
+  }
+
+  //handle div click
   const handleClick = (event) => {
     event.preventDefault();
+    if (event.type == "contextmenu") {
+      contextMenuClick(document.getElementById("canvas")); //doesnt work impossible to simulate right click in browser?
+    } else {
+      canvas.current.click();
+    }
     event.target.style.pointerEvents = "none";
   };
 
@@ -198,6 +241,7 @@ function Boxedwine() {
         onContextMenu={(event) => event.preventDefault()}
         className={"emscripten"}
         id={"canvas"}
+        ref={canvas}
       />
       <div
         onClick={(event) => handleClick(event)}

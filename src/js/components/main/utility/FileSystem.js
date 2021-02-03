@@ -81,7 +81,9 @@ const callBackIsTrue = async (
   });
 };
 
-//Helper functions:
+/*
+FileSystem for mananging changes to Boxedwine files
+*/
 export default class FileSystem {
   static locked = false;
   static fileListKey = "";
@@ -205,6 +207,7 @@ export default class FileSystem {
     //}
   }
 
+  /*TODO Fix BUG should create file first in boxed wine then append to it to prevent ghost files*/
   static createFile(
     filename,
     data,
@@ -291,6 +294,10 @@ export default class FileSystem {
     }
   }
 
+  /*
+  Save file feature should be cealled from MAIN components only not Boxedwine components
+  as it uses postMessage
+  */
   static saveFile(filename) {
     const fileExtension = filename.match(/\.[0-9a-z]+$/i)[0];
     saveAs(
@@ -313,7 +320,7 @@ export default class FileSystem {
     /*
     send to boxedwine component as it has jsZip included, 
     using post message to reduce bundle size, zipped file 
-    is temporarily stored in local storage after zip
+    is temporarily stored in local storage after zip for retrieval
     */
     postMessage("zip-files", {
       data: {
