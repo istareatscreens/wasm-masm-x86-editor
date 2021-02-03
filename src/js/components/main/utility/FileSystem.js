@@ -65,49 +65,34 @@ function getFormatedDate() {
     .join("_");
 }
 
-async function callBackIsTrue(callback, delay) {
+const callBackIsTrue = async (
+  callback,
+  delay,
+  resolutionFunction = () => {}
+) => {
   return new Promise((resolve) => {
-    if (callback()) resolve();
+    if (callback()) resolve(resolutionFunction());
     let wait = setInterval(function () {
       if (callback()) {
         clearInterval(wait);
-        resolve();
+        resolve(resolutionFunction());
       }
     }, delay);
   });
-}
+};
 
 //Helper functions:
 export default class FileSystem {
   static locked = false;
   static fileListKey = "";
 
-  static init(callback) {
+  static async init() {
     //check to see if local storage was loaded
-    FileSystem.checkIfLocalStorageInitiated(callback);
-  }
-
-  static checkIfLocalStorageInitiated(callback) {
-    const initiateFileSystem = (callback) => {
-      FileSystem._readFileListKey();
-      callback(true);
-      window.addEventListener("storage", () => callback());
-    };
-
-    if (hf.getFromLocalStorage("/") == null) {
-      const waitForKeys = () =>
-        setTimeout(() => {
-          if (hf.getFromLocalStorage("/") == null) {
-            clearTimeout(waitForKeys);
-            waitForKeys();
-          } else {
-            initiateFileSystem(callback);
-          }
-        }, 100);
-      waitForKeys();
-    } else {
-      initiateFileSystem(callback);
-    }
+    return callBackIsTrue(
+      () => hf.getFromLocalStorage("/") != null,
+      100,
+      () => FileSystem._readFileListKey()
+    );
   }
 
   //reads file list

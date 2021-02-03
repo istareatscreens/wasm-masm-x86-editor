@@ -140,6 +140,7 @@ function Boxedwine() {
 
   const createCommandRunListener = () => {
     window.addEventListener("run-command", (event) => {
+      console.log(event);
       if (Module.ProcessRun == undefined) {
         const timeout = () =>
           setTimeout(() => {

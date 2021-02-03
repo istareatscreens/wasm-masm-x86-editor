@@ -35,8 +35,18 @@ function App() {
   };
 
   useEffect(() => {
-    //Load file list
-    FileSystem.init(refreshFileList);
+    const init = async () => {
+      await FileSystem.init();
+      window.addEventListener("storage", () => {
+        console.log("HERE");
+        refreshFileList();
+      });
+      refreshFileList();
+    };
+    init();
+    return () => {
+      window.removeEventListener("storage");
+    };
   }, []);
 
   const handleClick = () => {

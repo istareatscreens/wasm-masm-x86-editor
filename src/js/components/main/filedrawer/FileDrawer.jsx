@@ -5,6 +5,8 @@ import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
 import saveFile from "../../../../images/saveFile.png";
 
+import { postMessage } from "../../../utility/utilityFunctions.ts";
+
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
   fileSelected,
@@ -158,6 +160,17 @@ const FileDrawer = React.memo(function FileDrawer({
     }
   };
 
+  //Delete file
+  const deleteFile = () => {
+    switchFile();
+    // could make this logic so much simplier if I worked with ids
+    /*
+    FileSystem.deleteFile(fileSelected);
+    postMessage("run-command", { data: "del " + fileSelected });
+    console.log("HERE " + "del " + fileSelected);
+    */
+  };
+
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
   console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
@@ -198,6 +211,12 @@ const FileDrawer = React.memo(function FileDrawer({
           src={saveFile}
           alt="save selected file(s)"
           onClick={saveFiles}
+        />
+        <img
+          className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
+          src={uploadFile}
+          alt="delete selected file(s)"
+          onClick={deleteFile}
         />
       </div>
       <ul className="FileDrawer__list tree-view">
