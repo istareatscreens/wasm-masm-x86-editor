@@ -142,3 +142,35 @@ export const checkIfEqualArraysNoDuplicateElements = (
 ) =>
   array1.length === array2.length &&
   array1.every((val) => array2.includes(val));
+
+//Cancelable promise
+export const cancellablePromise = (promise: Promise<any>) => {
+  let isCanceled = false;
+
+  const wrappedPromise = new Promise((resolve, reject) => {
+    promise.then(
+      (value) => (isCanceled ? reject({ isCanceled, value }) : resolve(value)),
+      (error) => reject({ isCanceled, error })
+    );
+  });
+
+  return {
+    promise: wrappedPromise,
+    cancel: () => (isCanceled = true),
+  };
+};
+
+//Rename object key
+//Source: https://jetrockets.pro/blog/rmvzzosmz9-rename-the-key-name-in-the-javascript-object
+export const renameObjectKey = (object: any, key: string, newKey: string) => {
+  const clone = (obj: any) => Object.assign({}, obj);
+  const clonedObj = clone(object);
+
+  const targetKey = clonedObj[key];
+
+  delete clonedObj[key];
+
+  clonedObj[newKey] = targetKey;
+
+  return clonedObj;
+};

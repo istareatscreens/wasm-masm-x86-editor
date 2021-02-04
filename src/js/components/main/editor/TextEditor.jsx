@@ -2,7 +2,7 @@ import React from "react";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import CodeMirror from "react-codemirror2";
 import "codemirror/mode/gas/gas.js";
-import { writeToAssemblyFile } from "../utility/fileWriter.js";
+import { writeToAssemblyFile } from "../utility/filesystem/fileWriter.js";
 import useConstant from "use-constant";
 import { debounce } from "../../../utility/utilityFunctions.ts";
 import FileSystem from "../utility/FileSystem.js";

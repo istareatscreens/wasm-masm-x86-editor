@@ -7,6 +7,8 @@ import saveFile from "../../../../images/saveFile.png";
 
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 
+import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
   fileSelected,
@@ -18,6 +20,7 @@ const FileDrawer = React.memo(function FileDrawer({
   const fileUploadInput = useRef(null);
   const selectAllCheckbox = useRef(null);
   const [filesSelected, setFilesSelected] = useState([]);
+  //checkbox logic
   const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
 
   useEffect(() => {
@@ -216,6 +219,16 @@ const FileDrawer = React.memo(function FileDrawer({
     setEditorLock(false);
   };
 
+  //Handle rename
+  //fix double click single click confusion
+
+  const handleRenameFile = (filename, newFilename) => {
+    console.log(filename, newFilename);
+    FileSystem.renameFile(filename, newFilename);
+    switchFile(newFilename);
+    refreshFileList();
+  };
+
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
   //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
@@ -275,22 +288,15 @@ const FileDrawer = React.memo(function FileDrawer({
                     checked={file.isSelected}
                     onChange={(event) => {
                       fileIsChecked(event.target.checked, file);
-                    }} //use closure to save file name so it is passed to fileIsChecked
+                    }}
                     className="FileDrawer__listItemCheckbox"
                   />
-                  <li
-                    onClick={(e) => {
-                      console.log(e.currentTarget.innerText);
-                      switchFile(e.currentTarget.innerText);
-                    }}
-                    className={
-                      file.filename == fileSelected
-                        ? "FileDrawer__listItem FileDrawer__listItem--selected"
-                        : "FileDrawer__listItem"
-                    }
-                  >
-                    {file.filename}
-                  </li>
+                  <FilenameEditableListElement
+                    filename={file.filename}
+                    handleRename={handleRenameFile}
+                    switchFile={switchFile}
+                    isSelected={file.filename == fileSelected}
+                  />
                 </div>
               ))
           : ""}

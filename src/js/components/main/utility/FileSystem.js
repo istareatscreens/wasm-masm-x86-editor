@@ -1,11 +1,14 @@
-import { Inode, fromBuffer } from "./inode";
+import { Inode, fromBuffer } from "./filesystem/inode";
 import { Buffer } from "buffer";
-import { generateRandomID } from "../../../utility/utilityFunctions.ts";
-import * as hf from "./FSHelperFunctions.js";
+import {
+  generateRandomID,
+  renameObjectKey,
+} from "../../../utility/utilityFunctions.ts";
+import * as hf from "./filesystem/FSHelperFunctions.js";
 import { saveAs } from "file-saver";
 
 import { crlf } from "eol";
-import dataURItoBlob from "./dataURItoBlob.js";
+import dataURItoBlob from "./filesystem/dataURItoBlob.js";
 
 import {
   writeCommandToCMD,
@@ -144,6 +147,22 @@ export default class FileSystem {
     hf.setInLocalStorage(fileMetaData.id, text, hf.encodeFileData); //file data
   }
 
+  static renameFile(filename, newFileName) {
+    let fileList = FileSystem._readFileList();
+    //rename file in list
+
+    console.log({ filename, newFileName });
+    console.log(fileList);
+    fileList = renameObjectKey(fileList, filename, newFileName);
+    console.log(fileList);
+    hf.setInLocalStorage(
+      FileSystem.fileListKey,
+      JSON.stringify(fileList),
+      btoa
+    );
+  }
+
+  //TODO change INCLUDE Irvine import to correct one
   static createDataFile(files, callback) {
     console.log("in create DATA FILE");
     console.log(files);
@@ -207,7 +226,7 @@ export default class FileSystem {
     //}
   }
 
-  /*TODO Fix BUG should create file first in boxed wine then append to it to prevent ghost files*/
+  /*TODO Fix BUG should create file first in boxedwine then append (promise) to it to prevent ghost files*/
   static createFile(
     filename,
     data,
@@ -244,7 +263,6 @@ export default class FileSystem {
     //Add file to list of files if not duplicate
     if (!isDuplicate) {
       fileList[filename] = fileID;
-
       //store in file list
       hf.setInLocalStorage(
         FileSystem.fileListKey,
