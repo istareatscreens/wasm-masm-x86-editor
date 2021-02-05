@@ -21,6 +21,14 @@ function FilenameListElement({
           ? "FileDrawer__listItem FileDrawer__listItem--selected"
           : "FileDrawer__listItem"
       }
+      style={{
+        "-webkit-touch-callout": "none",
+        "-webkit-user-select": "none",
+        "-khtml-user-select": "none",
+        "-moz-user-select": "none",
+        "-ms-user-select": "none",
+        "user-select": "none",
+      }}
     >
       {children}
     </li>

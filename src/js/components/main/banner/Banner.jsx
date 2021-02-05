@@ -4,6 +4,7 @@ import {
   postMessage,
   writeCommandToCMD,
   checkIfEqualArraysNoDuplicateElements,
+  checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
 const Banner = function Banner({ filename, fileList }) {
@@ -36,12 +37,17 @@ const Banner = function Banner({ filename, fileList }) {
     }
   };
 
+  const checkIfAsm = () => {
+    return !checkFileExtension(".asm", filename);
+  };
+
   return (
     <div className={"banner banner--dark"}>
       <Button
         onClick={build}
         id={"pushData"}
         className={"banner__btn banner_btn--build windows--btn"}
+        disabled={checkIfAsm()}
       >
         {"build"}
       </Button>
@@ -54,6 +60,7 @@ const Banner = function Banner({ filename, fileList }) {
         {"run"}
       </Button>
       <Button
+        disabled={checkIfAsm()}
         onClick={reset}
         id={"resetCMD"}
         className={"banner__btn banner_btn--reset windows--btn"}

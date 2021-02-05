@@ -140,6 +140,7 @@ function Boxedwine() {
     });
   };
 
+  //TODO Fix this in boxedwine as it is extremely buggy (causes memory out of bounds bug hard crash)
   const createCommandRunListener = () => {
     window.addEventListener("run-command", (event) => {
       console.log(event);

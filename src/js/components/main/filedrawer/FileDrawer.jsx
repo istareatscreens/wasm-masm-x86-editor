@@ -8,7 +8,10 @@ import saveFile from "../../../../images/saveFile.png";
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
-import { writeCommandToCMD } from "../../../utility/utilityFunctions";
+import {
+  writeCommandToCMD,
+  checkFileExtension,
+} from "../../../utility/utilityFunctions";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -23,19 +26,24 @@ const FileDrawer = React.memo(function FileDrawer({
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
   const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
+  const [showAsm, setShowAsm] = useState(true);
 
   useEffect(() => {
     setFilesSelected(
       fileList
-        .filter((filename, id) => checkIfFileIsAsm(filename)) //consider moving filter outside component
+        .filter((filename) => {
+          const isAsm = checkFileExtension(".asm", filename);
+          return showAsm ? isAsm : !isAsm; //filter depending on mode
+        })
         .map((filename, id) => ({
           id: id,
           filename: filename,
           isSelected: false,
         }))
     );
-  }, [fileList]);
+  }, [fileList, showAsm]);
 
+  //TODO REFACTOR TO CREATE DIFFERENT FILE TYPES
   //New file creation function
   const handleNewFileButtonClick = () => {
     let filename = "";
@@ -202,7 +210,6 @@ const FileDrawer = React.memo(function FileDrawer({
       filesSelected.length > 1 && //there is a file to switch to
       numberOfCheckboxsSelected != filesSelected.length //all files were not selected
     ) {
-      console.log("IN SELECTED FILE DELETE");
       const selectedFileID = findFileByName(fileSelected).id;
       if (selectedFileID == 0) {
         switchFile(findFileByID(selectedFileID + 1).filename);
@@ -223,20 +230,37 @@ const FileDrawer = React.memo(function FileDrawer({
 
   //Handle rename
   //fix double click single click confusion
-
   const handleRenameFile = (filename, newFilename) => {
     //check if filename exists
     if (!findFileByName(newFilename)) {
       FileSystem.renameFile(filename, newFilename);
-      //writeCommandToCMD(`echo.>${newFilename}`); //using run command rather than writing to console for greater reliability
+      writeCommandToCMD(`echo.>${newFilename}`); //using run command rather than writing to console for greater reliability
+      /*
       setTimeout(() => {
         postMessage("run-command", { data: `echo.>${newFilename}` });
       }, 4000);
       //
+      */
       refreshFileList();
       return true;
     }
     return false;
+  };
+
+  //Handle file view change
+  const switchFileView = (event) => {
+    const switchStatus = !event.target.checked;
+    console.log(switchStatus);
+    const result = fileList.find((file) => {
+      const isAsm = checkFileExtension(".asm", file);
+      switchStatus ? isAsm : !isAsm;
+    });
+    if (result) {
+      //not undefined
+      switchFile(result);
+    }
+    //no file to switch to stay on current asm file
+    setShowAsm(switchStatus);
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
@@ -286,11 +310,16 @@ const FileDrawer = React.memo(function FileDrawer({
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />
+        <input
+          type="checkbox"
+          className="FileDrawer__menu__btn FileDrawer__switchFiles"
+          onClick={(event) => switchFileView(event)}
+        />
       </div>
       <ul className="FileDrawer__list tree-view">
         {filesSelected.length
           ? filesSelected
-              .filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
+              //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
               .map((file) => (
                 <div key={file.id} className="FileDrawer__Item">
                   <input

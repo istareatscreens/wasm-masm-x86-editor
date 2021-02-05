@@ -174,3 +174,7 @@ export const renameObjectKey = (object: any, key: string, newKey: string) => {
 
   return clonedObj;
 };
+
+export const checkFileExtension = (fileExtension: string, filename: string) => {
+  return new RegExp(`${fileExtension}$`).test(filename);
+};
