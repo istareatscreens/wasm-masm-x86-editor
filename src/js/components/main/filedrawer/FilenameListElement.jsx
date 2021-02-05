@@ -1,14 +1,27 @@
 import React, { useState } from "react";
 import useClickPreventionOnDoubleClick from "../utility/doubleclickfix/useClickPreventionOnDoubleClick.js";
 
-function FilenameListElement({ children, onClick, onDoubleClick }) {
+function FilenameListElement({
+  children,
+  onClick,
+  onDoubleClick,
+  isFileSelected,
+}) {
   const [handleClick, handleDoubleClick] = useClickPreventionOnDoubleClick(
     onClick,
     onDoubleClick
   );
 
   return (
-    <li onClick={handleClick} onDoubleClick={handleDoubleClick}>
+    <li
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      className={
+        isFileSelected
+          ? "FileDrawer__listItem FileDrawer__listItem--selected"
+          : "FileDrawer__listItem"
+      }
+    >
       {children}
     </li>
   );

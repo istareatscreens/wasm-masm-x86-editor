@@ -4,7 +4,7 @@ import FilenameTextInput from "./FilenameTextInput.jsx";
 
 //TODO generify this
 const FilenameEditableListElement = React.memo(
-  ({ filename, handleRename, switchFile }) => {
+  ({ filename, handleRename, switchFile, isFileSelected }) => {
     const [isInEditingMode, setEditingMode] = useState(false);
 
     const toggleEdit = () => {
@@ -29,6 +29,7 @@ const FilenameEditableListElement = React.memo(
       <FilenameListElement
         onDoubleClick={handleDoubleClick}
         onClick={handleSingleClick}
+        isFileSelected={isFileSelected}
       >
         {isInEditingMode ? (
           <FilenameTextInput

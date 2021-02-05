@@ -302,11 +302,6 @@ const FileDrawer = React.memo(function FileDrawer({
                     className="FileDrawer__listItemCheckbox"
                   />
                   <FilenameEditableListElement
-                    className={
-                      file.filename == fileSelected
-                        ? "FileDrawer__listItem FileDrawer__listItem--selected"
-                        : "FileDrawer__listItem"
-                    }
                     filename={file.filename}
                     handleRename={handleRenameFile}
                     switchFile={switchFile}
