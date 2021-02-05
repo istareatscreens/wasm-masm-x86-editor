@@ -1,7 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import onClickOutside from "react-onclickoutside";
 
-function FilenameTextInput({ filename, setEditingMode, handleRename }) {
+function FilenameTextInput({
+  filename,
+  setEditingMode,
+  handleRename,
+  isFileSelected,
+}) {
   const inputbox = useRef(null);
   const [value, setValue] = useState("");
 
@@ -10,7 +15,22 @@ function FilenameTextInput({ filename, setEditingMode, handleRename }) {
   }, [filename]);
 
   FilenameTextInput.handleClickOutside = () => {
-    handleRename(filename, inputbox.current.value);
+    completedInput();
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      completedInput();
+    }
+  };
+
+  const completedInput = () => {
+    if (filename != inputbox.current.value) {
+      //check if file exists
+      if (handleRename(filename, inputbox.current.value) && isFileSelected) {
+        switchFile(inputbox.current.value);
+      }
+    }
     setEditingMode(false);
   };
 
@@ -24,6 +44,9 @@ function FilenameTextInput({ filename, setEditingMode, handleRename }) {
     <input
       type="text"
       value={value}
+      onKeyDown={(event) => {
+        handleKeyDown(event);
+      }}
       onChange={(event) => handleChange(event)}
       ref={inputbox}
     />

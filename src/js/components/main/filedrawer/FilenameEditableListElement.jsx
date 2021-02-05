@@ -3,47 +3,46 @@ import FilenameListElement from "./FilenameListElement.jsx";
 import FilenameTextInput from "./FilenameTextInput.jsx";
 
 //TODO generify this
-function FilenameEditableListElement({
-  filename,
-  handleRename,
-  switchFile,
-  isSelected,
-}) {
-  const [isInEditingMode, setEditingMode] = useState(false);
+const FilenameEditableListElement = React.memo(
+  ({ filename, handleRename, switchFile }) => {
+    const [isInEditingMode, setEditingMode] = useState(false);
 
-  const toggleEdit = () => {
-    setEditingMode(!isInEditingMode);
-  };
+    const toggleEdit = () => {
+      setEditingMode(!isInEditingMode);
+    };
 
-  const handleDoubleClick = () => {
-    console.log("doubleclick");
-    toggleEdit();
-  };
+    const handleDoubleClick = () => {
+      if (!isInEditingMode) {
+        console.log("doubleclick");
+        toggleEdit();
+      }
+    };
 
-  return (
-    <FilenameListElement
-      onDoubleClick={handleDoubleClick}
-      onClick={(e) => {
+    const handleSingleClick = (event) => {
+      if (!isInEditingMode) {
         console.log("singleclick");
         switchFile(filename);
-      }}
-      className={
-        isSelected
-          ? "FileDrawer__listItem FileDrawer__listItem--selected"
-          : "FileDrawer__listItem"
       }
-    >
-      {isInEditingMode ? (
-        <FilenameTextInput
-          setEditingMode={setEditingMode}
-          filename={filename}
-          handleRename={handleRename}
-        />
-      ) : (
-        filename
-      )}
-    </FilenameListElement>
-  );
-}
+    };
+
+    return (
+      <FilenameListElement
+        onDoubleClick={handleDoubleClick}
+        onClick={handleSingleClick}
+      >
+        {isInEditingMode ? (
+          <FilenameTextInput
+            setEditingMode={setEditingMode}
+            filename={filename}
+            handleRename={handleRename}
+            switchFile={switchFile}
+          />
+        ) : (
+          filename
+        )}
+      </FilenameListElement>
+    );
+  }
+);
 
 export default FilenameEditableListElement;

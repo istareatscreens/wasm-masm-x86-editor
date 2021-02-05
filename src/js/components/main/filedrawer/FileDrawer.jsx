@@ -8,6 +8,7 @@ import saveFile from "../../../../images/saveFile.png";
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+import { writeCommandToCMD } from "../../../utility/utilityFunctions";
 
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
@@ -180,9 +181,10 @@ const FileDrawer = React.memo(function FileDrawer({
     });
   };
 
+  const findFileByName = (cFilename) =>
+    filesSelected.find(({ filename }) => cFilename == filename);
+
   const handleDeleteFile = () => {
-    const findFileByName = (cFilename) =>
-      filesSelected.find(({ filename }) => cFilename == filename);
     const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
 
     if (numberOfCheckboxsSelected != 0) {
@@ -223,10 +225,18 @@ const FileDrawer = React.memo(function FileDrawer({
   //fix double click single click confusion
 
   const handleRenameFile = (filename, newFilename) => {
-    console.log(filename, newFilename);
-    FileSystem.renameFile(filename, newFilename);
-    switchFile(newFilename);
-    refreshFileList();
+    //check if filename exists
+    if (!findFileByName(newFilename)) {
+      FileSystem.renameFile(filename, newFilename);
+      //writeCommandToCMD(`echo.>${newFilename}`); //using run command rather than writing to console for greater reliability
+      setTimeout(() => {
+        postMessage("run-command", { data: `echo.>${newFilename}` });
+      }, 4000);
+      //
+      refreshFileList();
+      return true;
+    }
+    return false;
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
@@ -292,10 +302,15 @@ const FileDrawer = React.memo(function FileDrawer({
                     className="FileDrawer__listItemCheckbox"
                   />
                   <FilenameEditableListElement
+                    className={
+                      file.filename == fileSelected
+                        ? "FileDrawer__listItem FileDrawer__listItem--selected"
+                        : "FileDrawer__listItem"
+                    }
                     filename={file.filename}
                     handleRename={handleRenameFile}
                     switchFile={switchFile}
-                    isSelected={file.filename == fileSelected}
+                    isFileSelected={fileSelected == file.filename}
                   />
                 </div>
               ))

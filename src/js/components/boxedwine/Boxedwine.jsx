@@ -155,6 +155,7 @@ function Boxedwine() {
           });
         timeout();
       } else {
+        console.log(event.detail);
         Module.ProcessRun.runCommand(event.detail);
       }
     });
