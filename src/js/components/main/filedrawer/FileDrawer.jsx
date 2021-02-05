@@ -4,6 +4,7 @@ import FileSystem from "../utility/FileSystem";
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
 import saveFile from "../../../../images/saveFile.png";
+import eraseFile from "../../../../images/eraseFile.png";
 
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 
@@ -306,7 +307,7 @@ const FileDrawer = React.memo(function FileDrawer({
         />
         <img
           className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
-          src={uploadFile}
+          src={eraseFile}
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />

@@ -60,7 +60,6 @@ const Banner = function Banner({ filename, fileList }) {
         {"run"}
       </Button>
       <Button
-        disabled={checkIfAsm()}
         onClick={reset}
         id={"resetCMD"}
         className={"banner__btn banner_btn--reset windows--btn"}
