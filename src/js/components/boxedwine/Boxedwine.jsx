@@ -81,6 +81,7 @@ function Boxedwine() {
     }
   };
 
+  //TODO: refactor this to remove repeated code
   const writeToConsole = (data) => {
     let press = "keydown";
     console.log(data);
@@ -186,6 +187,7 @@ function Boxedwine() {
     });
   };
 
+  //doesnt work
   // source https://stackoverflow.com/questions/433919/javascript-simulate-right-click-through-code?rq=1
   function contextMenuClick(element) {
     console.log(element.ownerDocument);

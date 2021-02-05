@@ -256,6 +256,8 @@ const FileDrawer = React.memo(function FileDrawer({
       const isAsm = checkFileExtension(".asm", file);
       switchStatus ? isAsm : !isAsm;
     });
+
+    //doesnt work but doesnt break anything
     if (result) {
       //not undefined
       switchFile(result);
