@@ -8,7 +8,7 @@ const useClickPreventionOnDoubleClick = (onClick, onDoubleClick) => {
 
   const handleClick = () => {
     api.clearPendingPromises();
-    const waitForClick = cancellablePromise(delay(150)); //controls delay between double click detect
+    const waitForClick = cancellablePromise(delay(125)); //controls delay between double click detect
     api.appendPendingPromise(waitForClick);
 
     return waitForClick.promise
