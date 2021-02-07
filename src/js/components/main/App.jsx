@@ -82,7 +82,7 @@ function App() {
 
   return (
     <div onClick={handleClick} className="root">
-      <div className="Code-Area">
+      <div className="code-area">
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
@@ -91,7 +91,7 @@ function App() {
           refreshFileList={refreshFileList}
           setEditorLock={setEditorLock}
         />
-        <div className="Editor__container">
+        <div className="editor-container">
           <Banner filename={filename} fileList={fileList} />
           <Editor filename={filename} disabled={lockEditor} />
         </div>

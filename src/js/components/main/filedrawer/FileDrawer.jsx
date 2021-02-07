@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
-import FileSystem from "../utility/FileSystem";
+import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+import Button from "../../common/Button.jsx";
 
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
@@ -7,8 +8,7 @@ import saveFile from "../../../../images/saveFile.png";
 import deleteFile from "../../../../images/deleteFile.png";
 
 import { postMessage } from "../../../utility/utilityFunctions.ts";
-
-import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+import FileSystem from "../utility/FileSystem";
 import {
   writeCommandToCMD,
   checkFileExtension,
@@ -273,18 +273,18 @@ const FileDrawer = React.memo(function FileDrawer({
       <div className="FileDrawer__menu">
         <input
           type="checkbox"
-          className="FileDrawer__menu__btn FileDrawer__selectAll"
+          className="btn FileDrawer__menu--btn FileDrawer__selectAll"
           onClick={(event) => handleSelectAllCheckBox(event.target.checked)}
           ref={selectAllCheckbox}
         />
-        <img
-          className="FileDrawer__menu__btn FileDrawer__menu__btn--newFile windows--btn"
+        <Button
+          className="btn windows--btn"
           src={newFile}
           alt="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
         />
-        <img
-          className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
+        <Button
+          className="btn windows--btn"
           src={uploadFile}
           alt="upload file to boxedwine for use in testing"
           onClick={() => document.getElementById("uploadFilesInput").click()}
@@ -301,21 +301,21 @@ const FileDrawer = React.memo(function FileDrawer({
             opacity: 0,
           }}
         />
-        <img
-          className="FileDrawer__menu__btn FileDrawer__menu__btn--saveFile windows--btn"
+        <Button
+          className="btn windows--btn"
           src={saveFile}
           alt="save selected file(s)"
           onClick={saveFiles}
         />
-        <img
-          className="FileDrawer__menu__btn FileDrawer__menu__btn--loadFiles windows--btn"
+        <Button
+          className="btn windows--btn"
           src={deleteFile}
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />
         <input
           type="checkbox"
-          className="FileDrawer__menu__btn FileDrawer__switchFiles"
+          className="switch"
           onClick={(event) => switchFileView(event)}
         />
       </div>
@@ -331,7 +331,7 @@ const FileDrawer = React.memo(function FileDrawer({
                     onChange={(event) => {
                       fileIsChecked(event.target.checked, file);
                     }}
-                    className="FileDrawer__listItemCheckbox"
+                    className="checkbox"
                   />
                   <FilenameEditableListElement
                     filename={file.filename}

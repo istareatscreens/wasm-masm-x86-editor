@@ -27,7 +27,7 @@ function TextEditor({ onChange, value, filename }) {
     <CodeMirror
       value={value}
       onBeforeChange={handleChange}
-      className="Editor"
+      className="editor"
       options={{
         lineWrapping: true,
         lineNumbers: true,

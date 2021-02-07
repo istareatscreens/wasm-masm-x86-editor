@@ -7,6 +7,8 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
+import deleteFile from "../../../../images/deleteFile.png";
+
 const Banner = function Banner({ filename, fileList }) {
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
@@ -42,30 +44,27 @@ const Banner = function Banner({ filename, fileList }) {
   };
 
   return (
-    <div className={"banner banner--dark"}>
+    <div className={"banner"}>
       <Button
         onClick={build}
         id={"pushData"}
-        className={"banner__btn banner_btn--build windows--btn"}
+        className={"btn btn__banner--build windows--btn"}
         disabled={checkIfAsm()}
-      >
-        {"build"}
-      </Button>
+        src={{ deleteFile }}
+      />
       <Button
         onClick={run}
         id={"runEXE"}
-        className={"banner__btn banner_btn--run windows--btn"}
+        className={"btn btn__banner--run windows--btn"}
         disabled={checkForFile()}
-      >
-        {"run"}
-      </Button>
+        src={{ deleteFile }}
+      />
       <Button
         onClick={reset}
         id={"resetCMD"}
-        className={"banner__btn banner_btn--reset windows--btn"}
-      >
-        {"reset"}
-      </Button>
+        className={"btn btn__banner--reset windows--btn"}
+        src={{ deleteFile }}
+      />
     </div>
   );
 };

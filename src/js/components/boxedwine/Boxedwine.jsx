@@ -234,10 +234,12 @@ function Boxedwine() {
     event.target.style.pointerEvents = "none";
   };
 
+  /*
   useEffect(() => {
     console.log(Module);
     //console.log(window.FS.readFile("/etc/hosts", { encoding: "utf8" }));
   });
+  */
 
   return (
     <>
