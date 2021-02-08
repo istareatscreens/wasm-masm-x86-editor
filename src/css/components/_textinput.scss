@@ -1,0 +1,21 @@
+.input-box {
+  border: none;
+  box-sizing: border-box;
+  background: transparent;
+  box-shadow: $border-field;
+  background-color: $button-highlight;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
+  font-weight: inherit;
+  font-size: inherit;
+  height: 1.6rem;
+  padding: 0.3rem 0.3rem;
+  line-height: 2rem;
+  width: 100%;
+
+  &:focus {
+    outline: none;
+  }
+}

@@ -327,7 +327,7 @@ export default class FileSystem {
           )
       ),
       filename.substring(0, filename.length - fileExtension.length) +
-        getFormatedDate +
+        getFormatedDate() +
         fileExtension
     );
   }
