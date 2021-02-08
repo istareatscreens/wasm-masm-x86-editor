@@ -18,8 +18,8 @@ function FilenameListElement({
       onDoubleClick={handleDoubleClick}
       className={
         isFileSelected
-          ? "FileDrawer__list__Item FileDrawer__list__Item--selected"
-          : "FileDrawer__list__Item"
+          ? "file-drawer__list__group--name FileDrawer__list__group--selected"
+          : "file-drawer__list__group--name"
       }
       style={{
         "-webkit-touch-callout": "none",

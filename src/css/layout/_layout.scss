@@ -1,0 +1,28 @@
+.app {
+  display: grid;
+  grid-template:
+    "banner banner file_drawer_banner file_drawer_banner" $banner-height
+    "editor editor file_drawer file_drawer" $file-drawer-height
+    "editor editor cmd cmd" calc(60vh - #{$banner-height})
+    / 30vw 30vw 20vw 20vw;
+}
+
+.cmd-iframe {
+  grid-area: cmd;
+}
+
+.banner {
+  grid-area: banner;
+}
+
+.editor {
+  grid-area: editor;
+}
+
+.file-drawer__list {
+  grid-area: file_drawer;
+}
+
+.file-drawer__banner {
+  grid-area: file_drawer_banner;
+}

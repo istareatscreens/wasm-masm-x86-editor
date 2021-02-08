@@ -269,16 +269,16 @@ const FileDrawer = React.memo(function FileDrawer({
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
   //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
-    <div className="FileDrawer">
-      <div className="FileDrawer__menu">
+    <>
+      <div className="banner file-drawer__banner">
         <input
           type="checkbox"
-          className="btn FileDrawer__menu--btn FileDrawer__selectAll"
+          className="checkbox checkbox--filedrawer checkbox--selectAll"
           onClick={(event) => handleSelectAllCheckBox(event.target.checked)}
           ref={selectAllCheckbox}
         />
         <Button
-          className="btn windows--btn"
+          className="btn windows--btn btn"
           src={newFile}
           alt="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
@@ -308,23 +308,23 @@ const FileDrawer = React.memo(function FileDrawer({
           onClick={saveFiles}
         />
         <Button
-          className="btn windows--btn"
+          className="btn btn--last windows--btn"
           src={deleteFile}
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />
         <input
           type="checkbox"
-          className="switch"
+          className="switch switch--file-drawer"
           onClick={(event) => switchFileView(event)}
         />
       </div>
-      <ul className="FileDrawer__list tree-view">
+      <ul className="file-drawer__list tree-view">
         {filesSelected.length
           ? filesSelected
               //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
               .map((file) => (
-                <div key={file.id} className="FileDrawer__Item">
+                <div key={file.id} className="file-drawer__list__group">
                   <input
                     type="checkbox"
                     checked={file.isSelected}
@@ -343,7 +343,7 @@ const FileDrawer = React.memo(function FileDrawer({
               ))
           : ""}
       </ul>
-    </div>
+    </>
   );
 });
 

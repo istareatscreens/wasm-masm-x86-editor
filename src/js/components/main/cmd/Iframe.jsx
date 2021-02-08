@@ -30,10 +30,10 @@ function Iframe(props) {
 
   return (
     <iframe
-      className="boxedwine"
-      id="boxedwine"
+      className="boxedwine cmd-iframe"
       width="100%"
       height="100%"
+      id="boxedwine"
       src="boxedwine.html"
       sandbox="allow-scripts allow-same-origin"
       border="none"

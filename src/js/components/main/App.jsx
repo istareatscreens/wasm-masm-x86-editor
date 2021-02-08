@@ -81,8 +81,8 @@ function App() {
   );
 
   return (
-    <div onClick={handleClick} className="root">
-      <div className="code-area">
+    <>
+      <div onClick={handleClick} className="root app">
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
@@ -91,13 +91,11 @@ function App() {
           refreshFileList={refreshFileList}
           setEditorLock={setEditorLock}
         />
-        <div className="editor-container">
-          <Banner filename={filename} fileList={fileList} />
-          <Editor filename={filename} disabled={lockEditor} />
-        </div>
+        <Banner filename={filename} fileList={fileList} />
+        <Editor filename={filename} disabled={lockEditor} />
+        <CommandPrompt />
       </div>
-      <CommandPrompt />
-    </div>
+    </>
   );
 }
 

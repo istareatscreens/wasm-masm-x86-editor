@@ -44,7 +44,7 @@ const Banner = function Banner({ filename, fileList }) {
   };
 
   return (
-    <div className={"banner"}>
+    <div className={"banner banner--main"}>
       <Button
         onClick={build}
         id={"pushData"}

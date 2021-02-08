@@ -63,6 +63,10 @@ function jsTask() {
   );
 }
 
+function fontTask() {
+  return src("src/fonts/*").pipe(browserSync.stream()).pipe(dest(output));
+}
+
 function wasmTask() {
   return src(wasmPath).pipe(browserSync.stream()).pipe(dest(output));
 }
@@ -118,12 +122,14 @@ function watchTask() {
       assetsTask,
       copyHtml,
       jsBoxedTask,
+      fontTask,
       imgTask
     )
   );
   gulp.watch(htmlPath).on("change", browserSync.reload);
   gulp.watch(jsPath).on("change", browserSync.reload);
   gulp.watch(jsBoxedPath).on("change", browserSync.reload);
+  gulp.watch(imagePath).on("change", browserSync.reload);
 }
 
 exports.default = series(
@@ -134,6 +140,7 @@ exports.default = series(
     wasmTask,
     assetsTask,
     copyHtml,
+    fontTask,
     imgTask
   )
 );
@@ -146,7 +153,8 @@ exports.watch = series(
     wasmTask,
     assetsTask,
     copyHtml,
-    imgTask
+    imgTask,
+    fontTask
   ),
   watchTask
 );

@@ -43,7 +43,7 @@ function FilenameTextInput({
   return (
     <input
       type="text"
-      className="inputbox"
+      className="input-box"
       value={value}
       onKeyDown={(event) => {
         handleKeyDown(event);
