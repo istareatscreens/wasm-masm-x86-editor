@@ -2,4 +2,17 @@
   box-shadow: $border-window-outer, $border-window-inner;
   background: $surface;
   padding: 3px;
+
+  &__file-drawer {
+    background-color: transparent;
+    z-index: 1;
+  }
+
+  &__main {
+    background-color: transparent;
+    z-index: 1;
+    &__btn {
+      padding-left: 2px;
+    }
+  }
 }

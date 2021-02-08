@@ -1,5 +1,6 @@
 //colours
 $black-color: #222222;
+$selected-blue: #a3c7ee;
 
 //98.css colours
 $surface: #c0c0c0;
@@ -33,9 +34,19 @@ $border-window-inner: inset -2px -2px $button-shadow,
 $border-field: inset -1px -1px $button-highlight, inset 1px 1px $button-shadow,
   inset -2px -2px $button-face, inset 2px 2px $window-frame;
 
+//checkbox
+$radio-label-spacing: 6px;
+$checkbox-width: 13px;
+$checkbox-total-width-precalc: $checkbox-width + $radio-label-spacing;
+$checkbox-total-width: calc(#{$checkbox-total-width-precalc});
+$checkbox-left: calc(-1 * #{$checkbox-total-width-precalc});
+$checkmark-width: 7px;
+$checkmark-top: 3px;
+$checkmark-left: 3px;
+
 //LAYOUT
 //layout full width
-$banner-height: 2.5rem;
+$banner-height: 3rem;
 $file-drawer-height: 40vh;
 
 //layout-half-width

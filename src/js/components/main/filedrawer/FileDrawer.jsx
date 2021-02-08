@@ -6,6 +6,7 @@ import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
 import saveFile from "../../../../images/saveFile.png";
 import deleteFile from "../../../../images/deleteFile.png";
+import files from "../../../../images/files.png";
 
 import { postMessage } from "../../../utility/utilityFunctions.ts";
 import FileSystem from "../utility/FileSystem";
@@ -270,7 +271,7 @@ const FileDrawer = React.memo(function FileDrawer({
   //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <>
-      <div className="file-drawer__banner">
+      <div className="banner__file-drawer">
         <input
           type="checkbox"
           className="checkbox checkbox--filedrawer checkbox--selectAll"
@@ -279,11 +280,13 @@ const FileDrawer = React.memo(function FileDrawer({
         />
         <Button
           src={newFile}
+          className={"banner__file-drawer__btn"}
           alt="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
         />
         <Button
           src={uploadFile}
+          className={"banner__file-drawer__btn"}
           alt="upload file to boxedwine for use in testing"
           onClick={() => document.getElementById("uploadFilesInput").click()}
         />
@@ -301,19 +304,24 @@ const FileDrawer = React.memo(function FileDrawer({
         />
         <Button
           src={saveFile}
+          className={"banner__file-drawer__btn"}
           alt="save selected file(s)"
           onClick={saveFiles}
         />
         <Button
           src={deleteFile}
+          className={"banner__file-drawer__btn"}
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />
-        <input
-          type="checkbox"
-          className="switch switch--file-drawer"
-          onClick={(event) => switchFileView(event)}
-        />
+        <div className="switch switch__container">
+          <input
+            type="checkbox"
+            className="switch switch--file-drawer"
+            onClick={(event) => switchFileView(event)}
+          />
+          <img className="switch__image" src={files}></img>
+        </div>
       </div>
       <ul className="file-drawer__list tree-view">
         {filesSelected.length
@@ -322,12 +330,13 @@ const FileDrawer = React.memo(function FileDrawer({
               .map((file) => (
                 <div key={file.id} className="file-drawer__list__group">
                   <input
+                    label=""
                     type="checkbox"
                     checked={file.isSelected}
                     onChange={(event) => {
                       fileIsChecked(event.target.checked, file);
                     }}
-                    className="checkbox"
+                    className={"checkbox"}
                   />
                   <FilenameEditableListElement
                     filename={file.filename}

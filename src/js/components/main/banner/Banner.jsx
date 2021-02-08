@@ -50,6 +50,7 @@ const Banner = function Banner({ filename, fileList }) {
       <div className={"banner"} />
       <div className={"banner__main"}>
         <Button
+          className={"banner__main__btn"}
           onClick={build}
           alt={"compile and link .asm file"}
           id={"pushData"}
@@ -58,6 +59,7 @@ const Banner = function Banner({ filename, fileList }) {
         />
         <Button
           onClick={run}
+          className={"banner__main__btn"}
           alt={"run compiled binary"}
           id={"runEXE"}
           disabled={checkForFile()}
@@ -65,6 +67,7 @@ const Banner = function Banner({ filename, fileList }) {
         />
         <Button
           alt={"reset command prompt"}
+          className={"banner__main__btn"}
           onClick={reset}
           id={"resetCMD"}
           src={cmdReset}
