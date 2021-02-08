@@ -5,6 +5,14 @@
     "editor editor file_drawer file_drawer" $file-drawer-height
     "editor editor cmd cmd" calc(60vh - #{$banner-height})
     / 30vw 30vw 20vw 20vw;
+
+  @include respond(half-width) {
+    grid-template:
+      "banner banner file_drawer_banner file_drawer_banner" $banner-height
+      "editor editor file_drawer file_drawer" $file-drawer-height-half
+      "cmd cmd cmd cmd" calc(50vh - #{$banner-height})
+      / 35vw 35vw 15vw 15vw;
+  }
 }
 
 .cmd-iframe {
