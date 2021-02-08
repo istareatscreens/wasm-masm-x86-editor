@@ -7,7 +7,9 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
-import deleteFile from "../../../../images/deleteFile.png";
+import buildFile from "../../../../images/buildFile.png";
+import cmdReset from "../../../../images/cmdReset.png";
+import runBinary from "../../../../images/runBinary.png";
 
 const Banner = function Banner({ filename, fileList }) {
   const build = () => {
@@ -49,17 +51,24 @@ const Banner = function Banner({ filename, fileList }) {
       <div className={"banner__main"}>
         <Button
           onClick={build}
+          alt={"compile and link .asm file"}
           id={"pushData"}
           disabled={checkIfAsm()}
-          src={{ deleteFile }}
+          src={buildFile}
         />
         <Button
           onClick={run}
+          alt={"run compiled binary"}
           id={"runEXE"}
           disabled={checkForFile()}
-          src={{ deleteFile }}
+          src={runBinary}
         />
-        <Button onClick={reset} id={"resetCMD"} src={{ deleteFile }} />
+        <Button
+          alt={"reset command prompt"}
+          onClick={reset}
+          id={"resetCMD"}
+          src={cmdReset}
+        />
       </div>
     </>
   );
