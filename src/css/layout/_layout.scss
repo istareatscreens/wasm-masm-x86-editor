@@ -20,7 +20,14 @@
 }
 
 .banner {
+  grid-row: 1 / 2;
+  grid-column: 1 / 5;
+  z-index: 1;
+}
+
+.banner__main {
   grid-area: banner;
+  z-index: 2;
 }
 
 .editor {
@@ -33,4 +40,5 @@
 
 .file-drawer__banner {
   grid-area: file_drawer_banner;
+  z-index: 2;
 }

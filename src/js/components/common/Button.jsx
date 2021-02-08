@@ -2,8 +2,8 @@ import React from "react";
 
 function Button({ src, ...props }) {
   return (
-    <button {...props}>
-      <img src={src} />
+    <button className="btn" {...props}>
+      <img className="btn__img" src={src} />
     </button>
   );
 }

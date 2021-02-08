@@ -1,3 +1,4 @@
+//Media query mixin
 @mixin respond($breakpoint) {
   @if $breakpoint == half-width {
     @media (max-width: 800px) {

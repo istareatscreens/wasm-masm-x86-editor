@@ -44,28 +44,24 @@ const Banner = function Banner({ filename, fileList }) {
   };
 
   return (
-    <div className={"banner banner--main"}>
-      <Button
-        onClick={build}
-        id={"pushData"}
-        className={"btn btn__banner--build windows--btn"}
-        disabled={checkIfAsm()}
-        src={{ deleteFile }}
-      />
-      <Button
-        onClick={run}
-        id={"runEXE"}
-        className={"btn btn__banner--run windows--btn"}
-        disabled={checkForFile()}
-        src={{ deleteFile }}
-      />
-      <Button
-        onClick={reset}
-        id={"resetCMD"}
-        className={"btn btn__banner--reset windows--btn"}
-        src={{ deleteFile }}
-      />
-    </div>
+    <>
+      <div className={"banner"} />
+      <div className={"banner__main"}>
+        <Button
+          onClick={build}
+          id={"pushData"}
+          disabled={checkIfAsm()}
+          src={{ deleteFile }}
+        />
+        <Button
+          onClick={run}
+          id={"runEXE"}
+          disabled={checkForFile()}
+          src={{ deleteFile }}
+        />
+        <Button onClick={reset} id={"resetCMD"} src={{ deleteFile }} />
+      </div>
+    </>
   );
 };
 

@@ -270,7 +270,7 @@ const FileDrawer = React.memo(function FileDrawer({
   //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <>
-      <div className="banner file-drawer__banner">
+      <div className="file-drawer__banner">
         <input
           type="checkbox"
           className="checkbox checkbox--filedrawer checkbox--selectAll"
@@ -278,13 +278,11 @@ const FileDrawer = React.memo(function FileDrawer({
           ref={selectAllCheckbox}
         />
         <Button
-          className="btn windows--btn btn"
           src={newFile}
           alt="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
         />
         <Button
-          className="btn windows--btn"
           src={uploadFile}
           alt="upload file to boxedwine for use in testing"
           onClick={() => document.getElementById("uploadFilesInput").click()}
@@ -302,13 +300,11 @@ const FileDrawer = React.memo(function FileDrawer({
           }}
         />
         <Button
-          className="btn windows--btn"
           src={saveFile}
           alt="save selected file(s)"
           onClick={saveFiles}
         />
         <Button
-          className="btn btn--last windows--btn"
           src={deleteFile}
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
