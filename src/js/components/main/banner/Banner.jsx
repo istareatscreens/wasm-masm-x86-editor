@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Button from "../../common/Button.jsx";
 import {
   postMessage,
@@ -7,12 +7,16 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
+import About from "./about/About.jsx";
+
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
 
 const Banner = function Banner({ filename, fileList }) {
+  const { aboutPageOpened, setaboutPageOpened } = useState(false);
+
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
     if (/.asm$/.test(filename)) {
@@ -48,6 +52,11 @@ const Banner = function Banner({ filename, fileList }) {
 
   return (
     <>
+      {aboutPageOpened ? (
+        <About closeAbout={() => setaboutPageOpened(false)} />
+      ) : (
+        ""
+      )}
       <div className={"banner__patch"} />
       <div className={"banner"} />
       <div className={"banner__main"}>
@@ -81,7 +90,7 @@ const Banner = function Banner({ filename, fileList }) {
           <Button
             alt={"application info"}
             className={"banner__main__btn"}
-            //onClick={reset}
+            onClick={() => setaboutPageOpened(true)}
             src={about}
           />
         </div>
