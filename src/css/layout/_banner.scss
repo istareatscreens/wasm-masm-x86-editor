@@ -15,8 +15,20 @@
   &__main {
     display: flex;
     flex-direction: row;
-    justify-content: strat; /* center items vertically, in this case */
+    justify-content: space-between; /* center items vertically, in this case */
     align-items: center;
+    &__group {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      &--start {
+        margin-left: 0.2rem;
+      }
+      &--end {
+        margin-right: 0.2rem;
+      }
+    }
+
     &__btn {
       margin-left: 0.2rem;
     }

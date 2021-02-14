@@ -2,17 +2,28 @@
   box-shadow: $border-window-outer, $border-window-inner;
   background: $surface;
   padding: 3px;
+  z-index: -1;
+  //Coverup top and side shadow
+  &__patch {
+    background: $surface;
+    z-index: 0;
+    width: 100vw;
+    height: 93%;
+  }
 
   &__file-drawer {
     background-color: transparent;
     z-index: 1;
+    margin-bottom: 0.2rem;
   }
 
   &__main {
     background-color: transparent;
     z-index: 1;
-    &__btn {
-      padding-left: 2px;
-    }
+    margin-bottom: 0.2rem;
+  }
+
+  &__btn {
+    padding-left: 2px;
   }
 }

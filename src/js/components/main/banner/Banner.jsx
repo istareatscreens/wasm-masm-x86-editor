@@ -10,6 +10,7 @@ import {
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
+import about from "../../../../images/about.png";
 
 const Banner = function Banner({ filename, fileList }) {
   const build = () => {
@@ -47,31 +48,43 @@ const Banner = function Banner({ filename, fileList }) {
 
   return (
     <>
+      <div className={"banner__patch"} />
       <div className={"banner"} />
       <div className={"banner__main"}>
-        <Button
-          className={"banner__main__btn"}
-          onClick={build}
-          alt={"compile and link .asm file"}
-          id={"pushData"}
-          disabled={checkIfAsm()}
-          src={buildFile}
-        />
-        <Button
-          onClick={run}
-          className={"banner__main__btn"}
-          alt={"run compiled binary"}
-          id={"runEXE"}
-          disabled={checkForFile()}
-          src={runBinary}
-        />
-        <Button
-          alt={"reset command prompt"}
-          className={"banner__main__btn"}
-          onClick={reset}
-          id={"resetCMD"}
-          src={cmdReset}
-        />
+        <div className={"banner__main__group banner__main__group--start"}>
+          <Button
+            className={"banner__main__btn"}
+            onClick={build}
+            alt={"compile and link .asm file"}
+            id={"pushData"}
+            disabled={checkIfAsm()}
+            src={buildFile}
+          />
+          <Button
+            onClick={run}
+            className={"banner__main__btn"}
+            alt={"run compiled binary"}
+            id={"runEXE"}
+            disabled={checkForFile()}
+            src={runBinary}
+          />
+
+          <Button
+            alt={"reset command prompt"}
+            className={"banner__main__btn"}
+            onClick={reset}
+            id={"resetCMD"}
+            src={cmdReset}
+          />
+        </div>
+        <div className={"banner__main__group banner__main__group--end"}>
+          <Button
+            alt={"application info"}
+            className={"banner__main__btn"}
+            //onClick={reset}
+            src={about}
+          />
+        </div>
       </div>
     </>
   );

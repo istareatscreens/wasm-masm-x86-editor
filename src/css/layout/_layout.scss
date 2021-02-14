@@ -15,6 +15,11 @@
   }
 }
 
+.banner__patch {
+  grid-row: 1 / 2;
+  grid-column: 1 / 5;
+}
+
 .cmd-iframe {
   grid-area: cmd;
 }
