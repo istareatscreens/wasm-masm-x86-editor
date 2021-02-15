@@ -36,4 +36,20 @@
     height: 100%;
     padding-bottom: 0.05rem;
   }
+
+  &--text {
+    width: fit-content;
+    min-width: 10%;
+    height: 2.5rem;
+  }
+
+  &--about {
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 0;
+  }
+
+  &--window--first {
+    margin-right: 1rem;
+  }
 }

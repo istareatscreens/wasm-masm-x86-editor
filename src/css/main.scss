@@ -1,3 +1,4 @@
+//Themeing comes from https://github.com/jdan/98.css
 @import "abstracts/functions";
 @import "abstracts/mixins";
 @import "abstracts/variables";
@@ -17,7 +18,9 @@
 @import "components/switch";
 @import "components/scrollbar";
 @import "components/textinput";
+@import "components/window";
 
 @import "layout/layout";
 @import "layout/banner";
+@import "layout/button";
 @import "layout/window";

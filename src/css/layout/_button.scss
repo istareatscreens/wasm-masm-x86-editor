@@ -1,0 +1,15 @@
+.btn {
+  &--window {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    & > img {
+      margin-left: 0.5rem;
+      margin-right: 0.2rem;
+    }
+    & > span {
+      margin-right: 0.5rem;
+      margin-left: 0.2rem;
+    }
+  }
+}
