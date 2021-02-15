@@ -32,6 +32,13 @@ function AboutWindow({ closeAbout }) {
               "WASM MASM x86 Editor uses JWlink and JWasm to compile x86/x64 Microsoft assembly language (MASM) and provides a 32-bit wine terminal to execute x86 code using Boxedwine emscripten port."
             }
           </p>
+          <br />
+          <p>
+            {
+              "Irvine library created by Kip Irvine is also included. You can include it with the following line:"
+            }
+          </p>
+          <p>{"INCLUDE D:/irvine/Irvine32.inc"}</p>
           <br></br>
           <p>
             {
@@ -39,7 +46,11 @@ function AboutWindow({ closeAbout }) {
             }
           </p>
           <br></br>
-          <p>{"Note this app is a work in progress and not bug free."}</p>
+          <p>
+            {
+              "Note this app is a work in progress and not bug free. If you use this please consider staring the github repo"
+            }
+          </p>
           <br></br>
           <div className="external-buttons">
             <Button
