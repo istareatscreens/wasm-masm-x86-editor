@@ -1,6 +1,6 @@
 import React from "react";
 
-function Button({ src, className, ...props }) {
+function ImageButton({ src, className, ...props }) {
   return (
     <button className={`btn ${className}`} {...props}>
       <img className="btn__img" src={src} />
@@ -8,4 +8,4 @@ function Button({ src, className, ...props }) {
   );
 }
 
-export default Button;
+export default ImageButton;

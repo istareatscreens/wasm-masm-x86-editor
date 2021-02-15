@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
-import Button from "../../common/Button.jsx";
+import Button from "../../common/ImageButton.jsx";
 
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";

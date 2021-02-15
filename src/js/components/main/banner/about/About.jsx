@@ -5,7 +5,7 @@ import AboutWindow from "./AboutWindow.jsx";
 function About({ closeAbout }) {
   return (
     <>
-      <AboutBackground />
+      <AboutBackground closeAbout={closeAbout} />
       <AboutWindow />
     </>
   );

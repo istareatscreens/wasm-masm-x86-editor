@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Button from "../../common/Button.jsx";
+import Button from "../../common/ImageButton.jsx";
 import {
   postMessage,
   writeCommandToCMD,
@@ -15,7 +15,7 @@ import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
 
 const Banner = function Banner({ filename, fileList }) {
-  const { aboutPageOpened, setaboutPageOpened } = useState(false);
+  const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
@@ -53,7 +53,7 @@ const Banner = function Banner({ filename, fileList }) {
   return (
     <>
       {aboutPageOpened ? (
-        <About closeAbout={() => setaboutPageOpened(false)} />
+        <About closeAbout={() => setAboutPageOpened(false)} />
       ) : (
         ""
       )}
@@ -90,7 +90,7 @@ const Banner = function Banner({ filename, fileList }) {
           <Button
             alt={"application info"}
             className={"banner__main__btn"}
-            onClick={() => setaboutPageOpened(true)}
+            onClick={() => setAboutPageOpened(true)}
             src={about}
           />
         </div>
