@@ -12,6 +12,11 @@ function App() {
   const [filename, setFilename] = useState("test");
   const [fileList, setFileList] = useState([""]);
   const [lockEditor, setEditorLock] = useState(false);
+  const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
+
+  const refEditor = useRef(null);
+  const refCommandPrompt = useRef(null);
+  const refFileDrawer = useRef(null);
 
   const refreshFileList = useCallback(
     async (initialRun = false) => {
@@ -57,12 +62,9 @@ function App() {
   };
 
   //change current file
-  const switchFile = useCallback(
-    (filename) => {
-      setFilename(filename);
-    },
-    [filename]
-  );
+  const switchFile = (filename) => {
+    setFilename(filename);
+  };
 
   const createFile = useCallback(
     (filename) => {
@@ -82,7 +84,7 @@ function App() {
 
   return (
     <>
-      <div onClick={handleClick} className="root app">
+      <div onClick={handleClick} className="root app-layout">
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
@@ -90,9 +92,14 @@ function App() {
           createFile={createFile}
           refreshFileList={refreshFileList}
           setEditorLock={setEditorLock}
+          forceUpdate={{ refreshFile, setRefreshFile }}
         />
         <Banner filename={filename} fileList={fileList} />
-        <Editor filename={filename} disabled={lockEditor} />
+        <Editor
+          shouldRefreshFile={refreshFile}
+          filename={filename}
+          disabled={lockEditor}
+        />
         <CommandPrompt />
       </div>
     </>

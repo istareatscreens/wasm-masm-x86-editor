@@ -16,12 +16,15 @@ const FileDrawer = React.memo(function FileDrawer({
   createFile,
   refreshFileList,
   setEditorLock,
+  forceUpdate,
 }) {
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
   const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
   const [showAsm, setShowAsm] = useState(true);
+
   const selectAllCheckbox = useRef(null);
+  const fileUploadInput = useRef(null);
 
   useEffect(() => {
     setFilesSelected(
@@ -83,6 +86,7 @@ const FileDrawer = React.memo(function FileDrawer({
         isCurrentSelectedFile = true;
       }
     }
+    console.log("HERE PROCESSING FILE");
     FileSystem.createDataFile(
       await Promise.all(fileList.map((getFile) => getFile())),
       () => {
@@ -94,6 +98,7 @@ const FileDrawer = React.memo(function FileDrawer({
             value: fileUploadInput.current.value,
           });
           fileUploadInput.current.value = "";
+          forceUpdate.setRefreshFile(!forceUpdate.refreshFile); //refresh editor by flipping boolean
         }
       }
     );
@@ -263,6 +268,7 @@ const FileDrawer = React.memo(function FileDrawer({
   return (
     <>
       <FileDrawerMenu
+        fileUploadInput={fileUploadInput}
         selectAllCheckbox={selectAllCheckbox}
         handleSelectAllCheckBox={handleSelectAllCheckBox}
         selectAllCheckbox={selectAllCheckbox}

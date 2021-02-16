@@ -10,6 +10,7 @@ import deleteFile from "../../../../images/deleteFile.png";
 import files from "../../../../images/files.png";
 
 function FileDrawerMenu({
+  fileUploadInput,
   selectAllCheckbox,
   handleSelectAllCheckBox,
   handleNewFileButtonClick,
@@ -18,8 +19,6 @@ function FileDrawerMenu({
   handleDeleteFile,
   switchFileView,
 }) {
-  const fileUploadInput = useRef(null);
-
   return (
     <>
       <div className="banner__file-drawer">
@@ -39,10 +38,10 @@ function FileDrawerMenu({
           src={uploadFile}
           className={"banner__file-drawer__btn"}
           alt="upload file to boxedwine for use in testing"
-          onClick={() => document.getElementById("uploadFilesInput").click()}
+          onClick={() => fileUploadInput.current.click()}
         />
         <input
-          onClick={(event) => handleUploadFiles(event)}
+          onChange={(event) => handleUploadFiles(event)}
           id="uploadFilesInput"
           ref={fileUploadInput}
           className={"file-upload-input file-upload-input--hidden"}

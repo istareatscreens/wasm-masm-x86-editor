@@ -13,8 +13,9 @@ import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
+import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 
-const Banner = function Banner({ filename, fileList }) {
+const Banner = function Banner({ filename, fileList, componentRefs }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
   const build = () => {
@@ -28,6 +29,7 @@ const Banner = function Banner({ filename, fileList }) {
     }
   };
 
+  //TODO: FIX bug when selecting non asm files
   const getExecutableName = () => {
     return `${filename.substring(0, filename.length - 3)}exe`;
   };
@@ -86,6 +88,9 @@ const Banner = function Banner({ filename, fileList }) {
             src={cmdReset}
           />
         </div>
+        <ViewControlGroup
+          className={"banner__main__group banner__main__group--mid"}
+        />
         <div className={"banner__main__group banner__main__group--end"}>
           <Button
             alt={"application info"}
