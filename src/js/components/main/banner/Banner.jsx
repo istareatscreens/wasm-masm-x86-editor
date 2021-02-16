@@ -90,7 +90,7 @@ const Banner = function Banner({ filename, fileList }) {
           <Button
             alt={"application info"}
             className={"banner__main__btn"}
-            onClick={() => setAboutPageOpened(true)}
+            onClick={() => setAboutPageOpened(!aboutPageOpened)}
             src={about}
           />
         </div>
