@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+
 import Button from "../../common/ImageButton.jsx";
+import Switch from "../../common/ImageSwitch.jsx";
 
 import newFile from "../../../../images/newFile.png";
 import uploadFile from "../../../../images/uploadFile.png";
@@ -252,7 +254,6 @@ const FileDrawer = React.memo(function FileDrawer({
   //Handle file view change
   const switchFileView = (event) => {
     const switchStatus = !event.target.checked;
-    console.log(switchStatus);
     const result = fileList.find((file) => {
       const isAsm = checkFileExtension(".asm", file);
       switchStatus ? isAsm : !isAsm;
@@ -314,14 +315,11 @@ const FileDrawer = React.memo(function FileDrawer({
           alt="delete selected file(s)"
           onClick={handleDeleteFile}
         />
-        <div className="switch switch__container">
-          <input
-            type="checkbox"
-            className="switch switch--file-drawer"
-            onClick={(event) => switchFileView(event)}
-          />
-          <img className="switch__image" src={files}></img>
-        </div>
+        <Switch
+          className={"switch--file-drawer"}
+          onClick={(event) => switchFileView(event)}
+          src={files}
+        />
       </div>
       <ul className="file-drawer__list tree-view">
         {filesSelected.length
