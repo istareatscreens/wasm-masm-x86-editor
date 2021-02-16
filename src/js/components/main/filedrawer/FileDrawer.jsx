@@ -1,16 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
 
-import Button from "../../common/ImageButton.jsx";
-import Switch from "../../common/ImageSwitch.jsx";
+import FileDrawerMenu from "./FileDrawerMenu.jsx";
 
-import newFile from "../../../../images/newFile.png";
-import uploadFile from "../../../../images/uploadFile.png";
-import saveFile from "../../../../images/saveFile.png";
-import deleteFile from "../../../../images/deleteFile.png";
-import files from "../../../../images/files.png";
-
-import { postMessage } from "../../../utility/utilityFunctions.ts";
 import FileSystem from "../utility/FileSystem";
 import {
   writeCommandToCMD,
@@ -25,12 +17,11 @@ const FileDrawer = React.memo(function FileDrawer({
   refreshFileList,
   setEditorLock,
 }) {
-  const fileUploadInput = useRef(null);
-  const selectAllCheckbox = useRef(null);
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
   const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
   const [showAsm, setShowAsm] = useState(true);
+  const selectAllCheckbox = useRef(null);
 
   useEffect(() => {
     setFilesSelected(
@@ -269,58 +260,18 @@ const FileDrawer = React.memo(function FileDrawer({
   };
 
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
-  //console.log({ size: fileList.length, fileList, info: "FILEDRAWER" });
   return (
     <>
-      <div className="banner__file-drawer">
-        <input
-          type="checkbox"
-          className="checkbox checkbox--filedrawer checkbox--selectAll"
-          onClick={(event) => handleSelectAllCheckBox(event.target.checked)}
-          ref={selectAllCheckbox}
-        />
-        <Button
-          src={newFile}
-          className={"banner__file-drawer__btn"}
-          alt="create new assembly (.asm) text file"
-          onClick={handleNewFileButtonClick}
-        />
-        <Button
-          src={uploadFile}
-          className={"banner__file-drawer__btn"}
-          alt="upload file to boxedwine for use in testing"
-          onClick={() => document.getElementById("uploadFilesInput").click()}
-        />
-        <input
-          onClick={(event) => handleUploadFiles(event)}
-          id="uploadFilesInput"
-          ref={fileUploadInput}
-          type="file"
-          multiple
-          style={{
-            width: "0px",
-            height: "0px",
-            opacity: 0,
-          }}
-        />
-        <Button
-          src={saveFile}
-          className={"banner__file-drawer__btn"}
-          alt="save selected file(s)"
-          onClick={saveFiles}
-        />
-        <Button
-          src={deleteFile}
-          className={"banner__file-drawer__btn"}
-          alt="delete selected file(s)"
-          onClick={handleDeleteFile}
-        />
-        <Switch
-          className={"switch--file-drawer"}
-          onClick={(event) => switchFileView(event)}
-          src={files}
-        />
-      </div>
+      <FileDrawerMenu
+        selectAllCheckbox={selectAllCheckbox}
+        handleSelectAllCheckBox={handleSelectAllCheckBox}
+        selectAllCheckbox={selectAllCheckbox}
+        handleNewFileButtonClick={handleNewFileButtonClick}
+        handleUploadFiles={handleUploadFiles}
+        saveFiles={saveFiles}
+        handleDeleteFile={handleDeleteFile}
+        switchFileView={switchFileView}
+      />
       <ul className="file-drawer__list tree-view">
         {filesSelected.length
           ? filesSelected

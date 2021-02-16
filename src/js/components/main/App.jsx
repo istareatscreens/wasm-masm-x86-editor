@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 
 import FileDrawer from "./filedrawer/FileDrawer.jsx";
 import CommandPrompt from "./cmd/CommandPrompt.jsx";
