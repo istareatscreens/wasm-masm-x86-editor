@@ -7,6 +7,7 @@ import Button from "../../../common/ImageButton.jsx";
 import gitHubLogo from "../../../../../images/gitHubLogo.png";
 import bmcLogo from "../../../../../images/bmcLogo.svg";
 
+//TODO Bug in draggable causing window to be forced to the top and unclickable
 function AboutWindow({ closeAbout }) {
   const windowRef = useRef(null);
   return (
