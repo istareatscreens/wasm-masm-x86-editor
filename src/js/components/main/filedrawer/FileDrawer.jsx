@@ -98,10 +98,14 @@ const FileDrawer = React.memo(function FileDrawer({
             value: fileUploadInput.current.value,
           });
           fileUploadInput.current.value = "";
-          forceUpdate.setRefreshFile(!forceUpdate.refreshFile); //refresh editor by flipping boolean
+          rerenderEditor();
         }
       }
     );
+  };
+
+  const rerenderEditor = () => {
+    forceUpdate.setRefreshFile(!forceUpdate.refreshFile); //refresh editor by flipping boolean
   };
 
   //Filter function
@@ -225,7 +229,9 @@ const FileDrawer = React.memo(function FileDrawer({
       FileSystem.deleteFile(fileSelected);
       refreshFileList(true);
     }
-    setEditorLock(false);
+
+    setEditorLock(false); //TODO: this probably doesnt work either fix it or remove it
+    rerenderEditor();
   };
 
   //Handle rename
