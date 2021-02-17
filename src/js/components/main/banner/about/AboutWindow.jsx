@@ -48,7 +48,13 @@ function AboutWindow({ closeAbout }) {
           <br></br>
           <p>
             {
-              "Note this app is a work in progress and not bug free. If you use this please consider staring the github repo"
+              "Note this app should be considered a work in progress and is not bug free. If you find a bug please feel free to post an issue."
+            }
+          </p>
+          <br></br>
+          <p>
+            {
+              "This software was not published by, affiliated with or endorsed by Microsoft."
             }
           </p>
           <br></br>

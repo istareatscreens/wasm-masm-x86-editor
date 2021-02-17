@@ -9,6 +9,7 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions";
 
+//TODO: REFACTOR CODE move things to seperate components
 const FileDrawer = React.memo(function FileDrawer({
   fileList,
   fileSelected,

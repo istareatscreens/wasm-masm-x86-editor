@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 import Button from "../../common/ImageButton.jsx";
 import Switch from "../../common/ImageSwitch.jsx";

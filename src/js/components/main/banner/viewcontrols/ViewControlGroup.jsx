@@ -14,7 +14,17 @@ function ViewControlGroup({ className, ...props }) {
 
   const handleCMDView = (status) => {
     if (status) {
-      document.getElementsByClassName("app").setStyle.gridArea;
+      console.log(document.getElementsByClassName("app").classList);
+
+      /*
+Use element.classList.add to add a class:
+
+element.classList.add("my-class");
+
+And element.classList.remove to remove a class:
+
+element.classList.remove("my-class");
+  */
     }
   };
 
@@ -31,6 +41,7 @@ function ViewControlGroup({ className, ...props }) {
         imgClass={"switch--zen"}
         src={zen}
         alt={altPrint(showEditor, "turn zen mode on", "turn zen mode off")}
+        ref={null}
       />
 
       <Switch
@@ -40,6 +51,7 @@ function ViewControlGroup({ className, ...props }) {
         src={editor}
         imgClass={"switch--editor"}
         alt={altPrint(showEditor, "hide editor", "show editor")}
+        ref={null}
       />
 
       <Switch
@@ -49,6 +61,7 @@ function ViewControlGroup({ className, ...props }) {
         src={cmd}
         imgClass={"switch--cmd"}
         alt={altPrint(showCMD, "hide command prompt", "show command prompt")}
+        ref={null}
       />
 
       <Switch
@@ -57,6 +70,7 @@ function ViewControlGroup({ className, ...props }) {
         }}
         src={filedrawer}
         imgClass={"switch--file-drawer"}
+        ref={null}
         alt={altPrint(
           showFileDrawer,
           "hide file explorer",
