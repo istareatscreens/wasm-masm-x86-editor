@@ -1,4 +1,4 @@
-import React, { Component, useEffect, useRef } from "react";
+import React from "react";
 import Iframe from "./Iframe.jsx";
 
 import React from "react";

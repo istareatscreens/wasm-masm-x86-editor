@@ -10,6 +10,7 @@
   outline: none;
   font-size: 1rem;
   color: $black-color;
+  margin-right: 0.2rem;
 
   &:checked {
     box-shadow: $border-sunken-outer, $border-sunken-inner;
@@ -28,5 +29,22 @@
     top: -3.04rem;
     pointer-events: none;
     padding: 0.3rem;
+  }
+
+  &--zen {
+    margin-left: 0.2rem;
+    margin-top: -0.03rem;
+  }
+  &--editor {
+    margin-left: 0.2rem;
+    margin-top: 0.05rem;
+  }
+  &--cmd {
+    margin-left: 0.15rem;
+    margin-top: 0.01rem;
+  }
+  &--file-drawer {
+    margin-left: 0.2rem;
+    margin-top: 0.05rem;
   }
 }

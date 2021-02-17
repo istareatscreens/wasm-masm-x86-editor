@@ -3,7 +3,6 @@ import Button from "../../common/ImageButton.jsx";
 import {
   postMessage,
   writeCommandToCMD,
-  checkIfEqualArraysNoDuplicateElements,
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
