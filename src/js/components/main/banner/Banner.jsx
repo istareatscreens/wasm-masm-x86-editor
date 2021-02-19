@@ -14,7 +14,7 @@ import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 
-const Banner = function Banner({ filename, fileList, componentRefs }) {
+const Banner = function Banner({ filename, refApp, fileList }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
   const build = () => {
@@ -89,6 +89,7 @@ const Banner = function Banner({ filename, fileList, componentRefs }) {
         </div>
         <ViewControlGroup
           className={"banner__main__group banner__main__group--mid"}
+          refApp={refApp}
         />
         <div className={"banner__main__group banner__main__group--end"}>
           <Button

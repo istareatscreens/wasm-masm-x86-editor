@@ -14,9 +14,7 @@ function App() {
   const [lockEditor, setEditorLock] = useState(false);
   const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
 
-  const refEditor = useRef(null);
-  const refCommandPrompt = useRef(null);
-  const refFileDrawer = useRef(null);
+  const refApp = useRef(null);
 
   const refreshFileList = useCallback(
     async (initialRun = false) => {
@@ -84,7 +82,7 @@ function App() {
 
   return (
     <>
-      <div onClick={handleClick} className="root app-layout">
+      <div ref={refApp} onClick={handleClick} className="root app-layout">
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
@@ -94,7 +92,11 @@ function App() {
           setEditorLock={setEditorLock}
           forceUpdate={{ refreshFile, setRefreshFile }}
         />
-        <Banner filename={filename} fileList={fileList} />
+        <Banner
+          refApp={refApp.current}
+          filename={filename}
+          fileList={fileList}
+        />
         <Editor
           shouldRefreshFile={refreshFile}
           filename={filename}
