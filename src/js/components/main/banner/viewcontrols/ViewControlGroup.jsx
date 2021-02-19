@@ -71,6 +71,19 @@ element.classList.remove("my-class");
     }
   };
 
+  const changeViewState = (setState, switchValue) => (classModifier = "") => {
+    refApp.classList.remove(refApp.classList[2]);
+    if (classModifier) {
+      if (classModifier == "--only-editor") {
+        setZen(true);
+      }
+      refApp.classList.add(classPrefix + classModifier);
+    } else {
+      setZen(false);
+    }
+    setState(switchValue);
+  };
+
   /* 
 Switch table:
     editor | cmd | file drawer
@@ -95,121 +108,33 @@ class List
   //"--only-editor"
   //"--only-cmd"
 */
-  //TODO: Generify these by making a single function
-  //switch between two states 000 and 010
   const handleSwitchZen = (switchValue) => {
+    const changeView = changeViewState(setZen, switchValue);
     if (switchValue) {
-      changeViewState(switchValue);
+      changeView("--only-editor");
+      setShowCMD(false);
+      setShowEditor(true);
+      setShowFileDrawer(false);
     } else {
-      changeViewState("--only-editor");
+      changeView("");
+      setShowCMD(true);
+      setShowEditor(true);
+      setShowFileDrawer(true);
     }
   };
-  /*
-  const handleSwitchEditor = (switchValue) => {
-    if (!showEditor && !switchValue && !showFileDrawer) {
-      //invalid state do nothing
-      // 0 0 0
-      return;
-    }
-
-    if (!switchValue && showCMD && !showFileDrawer) {
-      //0 1 0
-      changeViewState(switchValue, "--only-cmd");
-    } else if ((setShowEditor, switchValue && showCMD && showFileDrawer)) {
-      //1 1 1
-      changeViewState(switchValue);
-    } else if ((setShowEditor, !switchValue && showCMD && showFileDrawer)) {
-      //0 1 1
-      changeViewState(setShowEditor, switchValue, "--no-editor");
-    }
-  };
-
-  const handleSwitchCMD = (switchValue) => {
-    if (!showEditor && !switchValue && !showFileDrawer) {
-      //invalid state do nothing
-      // 0 0 0
-      return;
-    }
-
-    //010 not a possible switch state from this function
-    if (showEditor && !switchValue && showFileDrawer) {
-      //1 0 1
-      changeViewState(setShowCMD, switchValue, "--no-cmd");
-    } else if (showEditor && switchValue && showFileDrawer) {
-      //1 1 1
-      changeViewState(setShowCMD, switchValue);
-    } else if (!switchValue && !showFileDrawer && showEditor) {
-      //1 0 0
-      changeViewState(setShowCMD, switchValue, "--only-editor");
-    }
-  };
-
-  const checkIfValidSwitchState = () => showCMD || showEditor; // checks state 0 0 0 && 0 0 1
-  */
-
-  const changeViewState = (setState, switchValue) => (classModifier = "") => {
-    refApp.classList.remove(refApp.classList[2]);
-    if (classModifier) {
-      if (classModifier == "--only-editor") {
-        setZen(true);
-      }
-      refApp.classList.add(classPrefix + classModifier);
-    } else {
-      setZen(false);
-    }
-    setState(switchValue);
-  };
-  /*
-
-  const changeViewState = (setState, switchValue, classModifier = "") => {
-    if (switchValue) {
-      setZen(false);
-      refApp.classList.remove(refApp.classList[2]);
-      setState(setShowFileDrawer, switchValue);
-    } else {
-      if (classModifier == "--only-editor") {
-        setZen(true);
-      }
-      refApp.classList.add(classPrefix + classModifier);
-      setState(setShowFileDrawer, switchValue);
-    }
-  };
-
-  const handleSwitchFileDrawer = (switchValue) => {
-    console.log(switchValue);
-    console.log(refApp.classList);
-    if (
-      (switchValue && !checkIfValidSwitchState) ||
-      (!switchValue && !checkIfValidSwitchState)
-    ) {
-      //invalid state do nothing
-      // 0 0 0 || 0 0 1
-      return;
-    }
-
-    if (showCMD && showEditor && switchValue) {
-      //set 1 1 1 default state
-      changeViewState(switchValue);
-    } else if (showCMD && showEditor && !switchValue) {
-      //set 1 1 0 state
-
-      changeViewState(switchValue, "--no-file-drawer");
-    }
-  };
-  */
 
   const altPrint = (test, show, hide) => (test ? hide : show);
 
   return (
     <div className={`${className} `}>
       <Switch
-        onClick={(event) => {
+        onChange={(event) => {
           handleSwitchZen(event.target.checked);
         }}
         checked={isZen}
         imgClass={"switch--zen"}
         src={zen}
-        alt={altPrint(isZen, "turn zen mode on", "turn zen mode off")}
+        title={altPrint(isZen, "turn zen mode on", "turn zen mode off")}
       />
 
       <Switch
@@ -224,7 +149,7 @@ class List
         checked={showEditor}
         src={editor}
         imgClass={"switch--editor"}
-        alt={altPrint(showEditor, "hide editor", "show editor")}
+        title={altPrint(showEditor, "hide editor", "show editor")}
       />
 
       <Switch
@@ -239,7 +164,7 @@ class List
         checked={showCMD}
         src={cmd}
         imgClass={"switch--cmd"}
-        alt={altPrint(showCMD, "hide command prompt", "show command prompt")}
+        title={altPrint(showCMD, "hide command prompt", "show command prompt")}
       />
 
       <Switch
@@ -254,7 +179,7 @@ class List
           )
         }
         imgClass={"switch--file-drawer"}
-        alt={altPrint(
+        title={altPrint(
           showFileDrawer,
           "hide file explorer",
           "show file explorer"
