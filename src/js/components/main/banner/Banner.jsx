@@ -65,7 +65,7 @@ const Banner = function Banner({ filename, refApp, fileList }) {
           <Button
             className={"banner__main__btn"}
             onClick={build}
-            alt={"compile and link .asm file"}
+            title={"compile, link and run .asm file"}
             id={"pushData"}
             disabled={checkIfAsm()}
             src={buildFile}
@@ -73,14 +73,14 @@ const Banner = function Banner({ filename, refApp, fileList }) {
           <Button
             onClick={run}
             className={"banner__main__btn"}
-            alt={"run compiled binary"}
+            title={"run compiled binary"}
             id={"runEXE"}
             disabled={checkForFile()}
             src={runBinary}
           />
 
           <Button
-            alt={"reset command prompt"}
+            title={"reset command prompt"}
             className={"banner__main__btn"}
             onClick={reset}
             id={"resetCMD"}
@@ -93,7 +93,7 @@ const Banner = function Banner({ filename, refApp, fileList }) {
         />
         <div className={"banner__main__group banner__main__group--end"}>
           <Button
-            alt={"application info"}
+            title={"application info"}
             className={"banner__main__btn"}
             onClick={() => setAboutPageOpened(!aboutPageOpened)}
             src={about}

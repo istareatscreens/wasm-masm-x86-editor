@@ -9,6 +9,7 @@ import saveFile from "../../../../images/saveFile.png";
 import deleteFile from "../../../../images/deleteFile.png";
 import files from "../../../../images/files.png";
 
+//TODO: Add more descriptive icon for file type switch
 function FileDrawerMenu({
   fileUploadInput,
   selectAllCheckbox,
@@ -24,6 +25,7 @@ function FileDrawerMenu({
       <div className="banner__file-drawer">
         <input
           type="checkbox"
+          title="Select all"
           className="checkbox checkbox--filedrawer checkbox--selectAll"
           onClick={(event) => handleSelectAllCheckBox(event.target.checked)}
           ref={selectAllCheckbox}
@@ -31,13 +33,13 @@ function FileDrawerMenu({
         <Button
           src={newFile}
           className={"banner__file-drawer__btn"}
-          alt="create new assembly (.asm) text file"
+          title="create new assembly (.asm) text file"
           onClick={handleNewFileButtonClick}
         />
         <Button
           src={uploadFile}
           className={"banner__file-drawer__btn"}
-          alt="upload file to boxedwine for use in testing"
+          title="add file(s) to project"
           onClick={() => fileUploadInput.current.click()}
         />
         <input
@@ -51,17 +53,18 @@ function FileDrawerMenu({
         <Button
           src={saveFile}
           className={"banner__file-drawer__btn"}
-          alt="save selected file(s)"
+          title="save selected file(s)"
           onClick={saveFiles}
         />
         <Button
           src={deleteFile}
           className={"banner__file-drawer__btn"}
-          alt="delete selected file(s)"
+          title="delete selected file(s)"
           onClick={handleDeleteFile}
         />
         <Switch
           className={"switch--file-drawer"}
+          title={"switch file type view"}
           onClick={(event) => switchFileView(event)}
           src={files}
         />
