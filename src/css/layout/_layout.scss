@@ -73,8 +73,8 @@
   &--only-cmd {
     grid-template:
       "banner banner banner banner" $banner-height
-      "editor editor editor editor" $file-drawer-height
-      "editor editor editor editor" calc(60vh - #{$banner-height})
+      "cmd cmd cmd cmd" $file-drawer-height
+      "cmd cmd cmd cmd" calc(60vh - #{$banner-height})
       / 30vw 30vw 20vw 20vw;
   }
 }
