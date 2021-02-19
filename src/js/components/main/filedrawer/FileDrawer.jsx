@@ -10,7 +10,7 @@ import {
 } from "../../../utility/utilityFunctions";
 
 //TODO: REFACTOR CODE move things to seperate components
-const FileDrawer = React.memo(function FileDrawer({
+const FileDrawer = function FileDrawer({
   fileList,
   fileSelected,
   switchFile,
@@ -231,6 +231,7 @@ const FileDrawer = React.memo(function FileDrawer({
       refreshFileList(true);
     }
 
+    turnOffAllCheckboxes();
     setEditorLock(false); //TODO: this probably doesnt work either fix it or remove it
     rerenderEditor();
   };
@@ -278,7 +279,6 @@ const FileDrawer = React.memo(function FileDrawer({
         fileUploadInput={fileUploadInput}
         selectAllCheckbox={selectAllCheckbox}
         handleSelectAllCheckBox={handleSelectAllCheckBox}
-        selectAllCheckbox={selectAllCheckbox}
         handleNewFileButtonClick={handleNewFileButtonClick}
         handleUploadFiles={handleUploadFiles}
         saveFiles={saveFiles}
@@ -312,6 +312,6 @@ const FileDrawer = React.memo(function FileDrawer({
       </ul>
     </>
   );
-});
+};
 
 export default FileDrawer;
