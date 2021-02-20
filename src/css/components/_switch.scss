@@ -30,21 +30,32 @@
     pointer-events: none;
     padding: 0.3rem;
   }
+  &__view {
+    &--zen {
+      margin-left: 0.2rem;
+      margin-top: -0.03rem;
+    }
+    &--editor {
+      margin-left: 0.2rem;
+      margin-top: 0.05rem;
+    }
+    &--cmd {
+      margin-left: 0.15rem;
+      margin-top: 0.01rem;
+    }
 
-  &--zen {
-    margin-left: 0.2rem;
-    margin-top: -0.03rem;
+    &--file-drawer {
+      left: 0.18rem;
+      margin-top: 0.05rem;
+    }
   }
-  &--editor {
-    margin-left: 0.2rem;
-    margin-top: 0.05rem;
+
+  &--file-switch {
+    top: -3.15rem;
+    left: 0.1rem;
   }
-  &--cmd {
-    margin-left: 0.15rem;
-    margin-top: 0.01rem;
-  }
+
   &--file-drawer {
-    margin-left: 0.2rem;
-    margin-top: 0.05rem;
+    margin-bottom: 0.1rem;
   }
 }

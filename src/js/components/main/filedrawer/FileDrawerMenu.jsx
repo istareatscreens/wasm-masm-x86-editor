@@ -64,6 +64,7 @@ function FileDrawerMenu({
         />
         <Switch
           className={"switch--file-drawer"}
+          imgClass={"switch--file-switch"}
           title={"switch file type view"}
           onClick={(event) => switchFileView(event)}
           src={files}

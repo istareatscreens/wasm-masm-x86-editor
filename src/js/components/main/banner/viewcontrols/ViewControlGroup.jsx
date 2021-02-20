@@ -132,7 +132,7 @@ class List
           handleSwitchZen(event.target.checked);
         }}
         checked={isZen}
-        imgClass={"switch--zen"}
+        imgClass={"switch__view--zen"}
         src={zen}
         title={altPrint(isZen, "turn zen mode on", "turn zen mode off")}
       />
@@ -148,7 +148,7 @@ class List
         }}
         checked={showEditor}
         src={editor}
-        imgClass={"switch--editor"}
+        imgClass={"switch__view--editor"}
         title={altPrint(showEditor, "hide editor", "show editor")}
       />
 
@@ -163,7 +163,7 @@ class List
         }}
         checked={showCMD}
         src={cmd}
-        imgClass={"switch--cmd"}
+        imgClass={"switch__view--cmd"}
         title={altPrint(showCMD, "hide command prompt", "show command prompt")}
       />
 
@@ -178,7 +178,7 @@ class List
             event.target.checked
           )
         }
-        imgClass={"switch--file-drawer"}
+        imgClass={"switch__view--file-drawer"}
         title={altPrint(
           showFileDrawer,
           "hide file explorer",
