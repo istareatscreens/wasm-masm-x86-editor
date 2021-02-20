@@ -54,7 +54,10 @@ function AboutWindow({ closeAbout }) {
           <br></br>
           <p>
             {
-              "This software was not published by, affiliated with or endorsed by Microsoft."
+              "This program is free software. It comes without any warranty, to the extent permitted by applicable law. I take no responsibility for any loss of work."
+            }
+            {
+              "Furthermore, this software was not published by, affiliated with or endorsed by Microsoft or anyone other than its creator."
             }
           </p>
           <br></br>
