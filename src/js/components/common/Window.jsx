@@ -16,7 +16,7 @@ const Window = ({
       nodeRef={windowRef}
     >
       <div ref={windowRef} className={`window ${windowClass} no-cursor`}>
-        <div className={`title-bar ${titlebarClass} `}>
+        <div className={`title-bar ${titlebarClass} cursor `}>
           <div className="title-bar-text">{titlebarText}</div>
           <div className="title-bar-controls no-drag">
             <button
