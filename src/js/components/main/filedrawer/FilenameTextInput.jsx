@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import onClickOutside from "react-onclickoutside";
 
+//TODO Generify this with CreateFile
 function FilenameTextInput({
   filename,
   setEditingMode,

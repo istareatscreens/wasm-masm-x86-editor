@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
 
+import CreateFileWindow from "./CreateFileWindow.jsx";
+
 import FileDrawerMenu from "./FileDrawerMenu.jsx";
 
 import FileSystem from "../utility/FileSystem";
@@ -23,6 +25,7 @@ const FileDrawer = function FileDrawer({
   //checkbox logic
   const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
   const [showAsm, setShowAsm] = useState(true);
+  const [showCreateFile, setShowCreateFile] = useState(false);
 
   const selectAllCheckbox = useRef(null);
   const fileUploadInput = useRef(null);
@@ -41,28 +44,6 @@ const FileDrawer = function FileDrawer({
         }))
     );
   }, [fileList, showAsm]);
-
-  //TODO REFACTOR TO CREATE DIFFERENT FILE TYPES
-  //New file creation function
-  const handleNewFileButtonClick = () => {
-    let filename = "";
-    let error = "";
-    do {
-      //TODO: replace prompt with page popup
-      filename = prompt("Please enter a filename: ", error);
-      if (!/.asm$/.test(filename)) {
-        filename += ".asm";
-      }
-      //TODO: possibly add prompt to use to allow overwritting
-      error = "file already exists, please try again";
-    } while (
-      fileList.includes(filename) ||
-      filename == error + ".asm" || //clicked ok on error message
-      filename == ".asm" || //wrote just a file extension
-      filename == "null.asm" //entered no input but clicked ok
-    );
-    createFile(filename);
-  };
 
   //File Upload functions
   const processFile = (file) => {
@@ -275,11 +256,21 @@ const FileDrawer = function FileDrawer({
   //TODO: Refactor FileDrawer Menu to its own component, change how filelists are handled to provide more efficent filtering
   return (
     <>
+      {showCreateFile ? (
+        <CreateFileWindow
+          closeFileWindow={() => setShowCreateFile(false)}
+          createFile={createFile}
+        />
+      ) : (
+        ""
+      )}
       <FileDrawerMenu
         fileUploadInput={fileUploadInput}
         selectAllCheckbox={selectAllCheckbox}
         handleSelectAllCheckBox={handleSelectAllCheckBox}
-        handleNewFileButtonClick={handleNewFileButtonClick}
+        handleNewFileButtonClick={() => {
+          setShowCreateFile(!showCreateFile);
+        }}
         handleUploadFiles={handleUploadFiles}
         saveFiles={saveFiles}
         handleDeleteFile={handleDeleteFile}
