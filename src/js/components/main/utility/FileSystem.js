@@ -3,6 +3,7 @@ import { Buffer } from "buffer";
 import {
   generateRandomID,
   renameObjectKey,
+  getFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 import * as hf from "./filesystem/FSHelperFunctions.js";
 import { saveAs } from "file-saver";
@@ -317,7 +318,7 @@ export default class FileSystem {
   as it uses postMessage
   */
   static saveFile(filename) {
-    const fileExtension = filename.match(/\.[0-9a-z]+$/i)[0];
+    const fileExtension = getFileExtension(filename);
     saveAs(
       dataURItoBlob(
         //convert to blob file for download

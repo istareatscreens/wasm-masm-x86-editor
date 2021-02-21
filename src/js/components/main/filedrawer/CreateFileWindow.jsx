@@ -1,13 +1,56 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
-import Button from "../../../common/ImageButton.jsx";
-import Window from "../../../common/Window.jsx";
+import Button from "../../common/ImageButton.jsx";
+import Window from "../../common/Window.jsx";
 
-import bmcLogo from "../../../../../images/bmcLogo.svg";
+import {
+  getFileExtension,
+  debounce,
+  checkFileExtension,
+} from "../../../utility/utilityFunctions.ts";
+
+import bmcLogo from "../../../../images/bmcLogo.svg";
 
 //TODO REFACTOR TO CREATE DIFFERENT FILE TYPES
-function CreateFileWindow({ createFile, closeFileWindow }) {
+function CreateFileWindow({ createFile, closeFileWindow, fileList }) {
   const [value, setValue] = useState("");
+  const inputbox = useRef(null);
+  const [canCreate, setCanCreate] = useState(true);
+
+  const handleChange = ({ target }) => {
+    setValue(target.value);
+    activateCreateButton.callback();
+  };
+
+  //debounce to check if file name is proper
+  const activateCreateButton = useDebouncedCallback(() => {
+    console.log("CHECK FILE");
+    setCanCreate(value != "" || !checkIfFilenameExists());
+  }, 500);
+
+  //If true then disable, if false dont disable
+  //TODO: FIX This
+  const checkIfFilenameExists = () => {
+    return fileList.find(
+      (file) =>
+        (getFileExtension(value)
+          ? file
+          : file.substring(0, file.length - getFileExtension(file).length)) ==
+        value
+    );
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      //Put button focus in here
+    }
+  };
+
+  const handleCreateFileButton = () => {
+    createFile(checkFileExtension(value, ".asm") ? value : value + ".asm");
+  };
+  /*
   const createNewFile = () => {
     let filename = "";
     let error = "";
@@ -27,13 +70,14 @@ function CreateFileWindow({ createFile, closeFileWindow }) {
     );
     createFile(filename);
   };
+  */
 
   return (
     <Window
       closeWindow={closeFileWindow}
       titlebarClass={"title-bar--create-file"}
       windowClass={"window--create-file"}
-      titlebarText={"Create new file"}
+      titlebarText={"Create file"}
     >
       <input
         type="text"
@@ -44,7 +88,24 @@ function CreateFileWindow({ createFile, closeFileWindow }) {
         }}
         onChange={(event) => handleChange(event)}
         ref={inputbox}
-      ></input>
+      />
+      <div className="external-buttons">
+        <Button
+          src={bmcLogo}
+          className={"banner__file-drawer__btn"}
+          title="create file(s)"
+          disabled={canCreate}
+          onClick={handleCreateFileButton}
+        >
+          OK
+        </Button>
+        <Button
+          src={bmcLogo}
+          className={"banner__file-drawer__btn"}
+          title="cancel"
+          onClick={closeFileWindow}
+        />
+      </div>
     </Window>
   );
 }

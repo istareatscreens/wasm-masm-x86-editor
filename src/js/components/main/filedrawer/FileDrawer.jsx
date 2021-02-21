@@ -260,6 +260,7 @@ const FileDrawer = function FileDrawer({
         <CreateFileWindow
           closeFileWindow={() => setShowCreateFile(false)}
           createFile={createFile}
+          fileList={fileList}
         />
       ) : (
         ""

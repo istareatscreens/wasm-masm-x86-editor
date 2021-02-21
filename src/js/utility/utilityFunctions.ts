@@ -50,17 +50,6 @@ export const postMessage = (eventName: string, data: any) => {
   );
 };
 
-//Generic debounce
-export const debounce = (fn: () => any, delay: number) => {
-  let timer;
-  return (function () {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      fn();
-    }, delay);
-  })();
-};
-
 //Generate UUID
 export const generateRandomID = (): string => {
   // From http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
@@ -177,4 +166,13 @@ export const renameObjectKey = (object: any, key: string, newKey: string) => {
 
 export const checkFileExtension = (fileExtension: string, filename: string) => {
   return new RegExp(`${fileExtension}$`).test(filename);
+};
+
+export const getFileExtension = (filename: string) => {
+  const extension = filename.match(/\.[0-9a-z]+$/i);
+  if (extension) {
+    return extension[0];
+  } else {
+    return "";
+  }
 };
