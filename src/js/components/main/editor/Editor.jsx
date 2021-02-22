@@ -7,9 +7,10 @@ const Editor = function Editor({ filename, shouldRefreshFile }) {
 
   useEffect(() => {
     if (FileSystem.fileListKey != "") {
-      setCode(FileSystem.getFileData(filename));
+      setCode(FileSystem.getFileData(filename)); //refresh code
     }
   }, [filename, shouldRefreshFile]);
+
   return (
     <>
       <TextEditor filename={filename} onChange={setCode} value={code} />

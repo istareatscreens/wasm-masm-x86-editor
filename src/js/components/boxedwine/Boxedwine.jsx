@@ -3,6 +3,8 @@ import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
 
 function Boxedwine() {
+  console.log = () => {}; //disable console.logs
+
   const canvas = useRef(null);
 
   useEffect(() => {

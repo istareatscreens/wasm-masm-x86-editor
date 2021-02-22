@@ -49,7 +49,17 @@
     padding-bottom: 0;
   }
 
-  &--window--first {
-    margin-right: 1rem;
+  &--window {
+    &--first {
+      margin-right: 1rem;
+    }
+
+    &--image {
+      margin-left: 0.17rem !important;
+    }
+  }
+
+  &--createFile {
+    margin-top: 1rem;
   }
 }

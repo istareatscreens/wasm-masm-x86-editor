@@ -43,7 +43,6 @@ function App() {
     const init = async () => {
       await FileSystem.init();
       window.addEventListener("storage", () => {
-        console.log("HERE SHOULD UPDATE!");
         refreshFileList();
       });
       refreshFileList(true);

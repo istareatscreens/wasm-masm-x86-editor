@@ -8,10 +8,10 @@
     text-align: center;
     height: fit-content;
   }
-}
 
-.window-body {
-  margin: $element-spacing;
+  &-body {
+    margin: $element-spacing;
+  }
 }
 
 .title-bar {
@@ -70,6 +70,9 @@
   height: 2rem;
   justify-content: center;
   align-items: center;
+  &--createFile {
+    height: 100%;
+  }
 }
 
 .title-bar-controls button {

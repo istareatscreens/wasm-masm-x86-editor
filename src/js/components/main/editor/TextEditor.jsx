@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import CodeMirror from "react-codemirror2";
 import "codemirror/mode/gas/gas.js";
@@ -16,9 +16,8 @@ function TextEditor({ onChange, value, filename }) {
   //debounce function to write code to local storage
   //use constant should be used once
   const writeToLocalStorage = useDebouncedCallback((filename, value) => {
-    console.log("Writing to file hooray");
     FileSystem.writeToFile(filename, value);
-  }, 300);
+  }, 400);
 
   return (
     <CodeMirror
