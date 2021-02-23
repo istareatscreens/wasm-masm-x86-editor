@@ -23,7 +23,7 @@ const FileDrawer = function FileDrawer({
 }) {
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
-  const [numberOfCheckboxsSelected, setNumberCheckboxsSelected] = useState(0);
+  const [numberOfCheckboxesSelected, setNumberCheckboxesSelected] = useState(0);
   const [showAsm, setShowAsm] = useState(true);
   const [showCreateFile, setShowCreateFile] = useState(false);
 
@@ -102,7 +102,7 @@ const FileDrawer = function FileDrawer({
       return file;
     });
 
-    setNumberCheckboxsSelected(() => (checked ? filesSelected.length : 0));
+    setNumberCheckboxesSelected(() => (checked ? filesSelected.length : 0));
     setFilesSelected(filesSelectedUpdate);
   };
 
@@ -127,7 +127,7 @@ const FileDrawer = function FileDrawer({
       selectAllCheckbox.current.checked = false;
     }
 
-    setNumberCheckboxsSelected(numberChecked);
+    setNumberCheckboxesSelected(numberChecked);
     setFilesSelected(updatedFilesSelected);
   };
 
@@ -139,16 +139,17 @@ const FileDrawer = function FileDrawer({
         return file;
       })
     );
+    setNumberCheckboxesSelected(0);
   };
 
   //Save file
   const saveFiles = () => {
     //handle case where Multiple files are checked
-    if (numberOfCheckboxsSelected != 1 && numberOfCheckboxsSelected) {
+    if (numberOfCheckboxesSelected != 1 && numberOfCheckboxesSelected) {
       FileSystem.saveFiles(filesSelected.map((file) => file.filename));
     } else {
       //handle case where single file is checked
-      if (numberOfCheckboxsSelected) {
+      if (numberOfCheckboxesSelected) {
         FileSystem.saveFile(
           filesSelected.filter((file) => file.isSelected)[0].filename
         );
@@ -181,7 +182,8 @@ const FileDrawer = function FileDrawer({
   const handleDeleteFile = () => {
     const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
 
-    if (numberOfCheckboxsSelected != 0) {
+    console.log(numberOfCheckboxesSelected);
+    if (numberOfCheckboxesSelected != 0) {
       if (!deleteFiles().length) {
         //delete checked files
         // if file selected to edit was not selected just refresh and finish
@@ -191,10 +193,11 @@ const FileDrawer = function FileDrawer({
     }
 
     setEditorLock(true);
+    console.log("HERE handle delete");
     //Handle general case
     if (
       filesSelected.length > 1 && //there is a file to switch to
-      numberOfCheckboxsSelected != filesSelected.length //all files were not selected
+      numberOfCheckboxesSelected != filesSelected.length //all files were not selected
     ) {
       const selectedFileID = findFileByName(fileSelected).id;
       if (selectedFileID == 0) {

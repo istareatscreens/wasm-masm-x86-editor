@@ -297,6 +297,7 @@ export default class FileSystem {
   }
 
   static deleteFile(filename) {
+    console.log("HERE: " + filename);
     let fileList = FileSystem._readFileList();
     if (`${filename}` in fileList) {
       const id = fileList[filename];
