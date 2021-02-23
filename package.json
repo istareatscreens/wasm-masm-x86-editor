@@ -1,5 +1,5 @@
 {
-  "name": "WASM MASM x86 Editor",
+  "name": "wasm-masm-x86-editor",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
