@@ -3,8 +3,6 @@ import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
 
 function Boxedwine() {
-  console.log = () => {}; //disable console.logs
-
   const canvas = useRef(null);
 
   useEffect(() => {
@@ -86,7 +84,7 @@ function Boxedwine() {
   //TODO: refactor this to remove repeated code
   const writeToConsole = (data) => {
     let press = "keydown";
-    console.log(data);
+    //console.log(data);
     data.forEach((key) => {
       //check to see if you need symbols could be improved by making symbol list
       if (key == "/shift") {
@@ -146,7 +144,7 @@ function Boxedwine() {
   //TODO Fix this in boxedwine as it is extremely buggy (causes memory out of bounds bug hard crash)
   const createCommandRunListener = () => {
     window.addEventListener("run-command", (event) => {
-      console.log(event);
+      //console.log(event);
       if (Module.ProcessRun == undefined) {
         const timeout = () =>
           setTimeout(() => {
@@ -159,7 +157,7 @@ function Boxedwine() {
           });
         timeout();
       } else {
-        console.log(event.detail);
+        //console.log(event.detail);
         Module.ProcessRun.runCommand(event.detail);
       }
     });
@@ -192,10 +190,10 @@ function Boxedwine() {
   //doesnt work
   // source https://stackoverflow.com/questions/433919/javascript-simulate-right-click-through-code?rq=1
   function contextMenuClick(element) {
-    console.log(element.ownerDocument);
+    //console.log(element.ownerDocument);
     var evt = element.ownerDocument.createEvent("MouseEvents");
 
-    console.log(evt);
+    //console.log(evt);
     var RIGHT_CLICK_BUTTON_CODE = 2; // the same for FF and IE
 
     evt.initMouseEvent(
@@ -236,10 +234,12 @@ function Boxedwine() {
     event.target.style.pointerEvents = "none";
   };
 
+  /*
   useEffect(() => {
     console.log(Module);
-    //console.log(window.FS.readFile("/etc/hosts", { encoding: "utf8" }));
+    console.log(window.FS.readFile("/etc/hosts", { encoding: "utf8" }));
   });
+  */
 
   return (
     <>

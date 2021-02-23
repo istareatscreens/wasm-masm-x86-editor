@@ -5,7 +5,7 @@ let STORAGE_DROPBOX = "DROPBOX";
 let STORAGE_LOCAL_STORAGE = "LOCAL_STORAGE";
 let STORAGE_MEMORY = "MEMORY";
 
-let ONDEMAND_DEFAULT = "notset";
+let ONDEMAND_DEFAULT = "unset";
 let ONDEMAND_ROOT = "root";
 
 let DROPBOX_APP_KEY = "put key in here";
@@ -1125,8 +1125,8 @@ var Module = {
   arguments: [],
   postRun: [],
   print: (function () {
-    //var element = document.getElementById('output');
-    // if (element) element.value = ''; // clear browser cache
+    var element = document.getElementById("output");
+    //  if (element) element.value = ""; // clear browser cache
     return function (text) {
       text = Array.prototype.slice.call(arguments).join(" ");
       // These replacements are necessary if you render to raw HTML
@@ -1134,20 +1134,18 @@ var Module = {
       //text = text.replace(/</g, "&lt;");
       //text = text.replace(/>/g, "&gt;");
       //text = text.replace('\n', '<br>', 'g');
-      /*
       if (test.includes("cmd.dat")) {
         console.trace(text);
       }
-      */
+      /*
       console.groupCollapsed(text);
       console.trace(text);
       console.groupEnd();
-      //remove in browser console
-      /*if (element) { 
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
-            */
+      if (element) {
+        element.value += text + "\n";
+        element.scrollTop = element.scrollHeight; // focus on bottom
+      }
+    */
     };
   })(),
   printErr: function (text) {

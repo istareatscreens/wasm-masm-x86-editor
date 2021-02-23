@@ -11,6 +11,8 @@ const imagemin = require("gulp-imagemin");
 const webpack = require("webpack-stream");
 const sass = require("gulp-sass");
 const livereload = require("gulp-livereload");
+const htmlmin = require("gulp-htmlmin");
+const del = require("del");
 
 const assetsPath = "src/assets/*";
 const output = "public/";
@@ -26,6 +28,23 @@ const jsEditorIndexPath = "src/js/components/editor/**/*.**";
 const jsCommonComponents = "src/js/components/common/**/*.*";
 const jsUtility = "src/js/utility/*.*";
 
+//Production
+function jsTaskProd() {
+  return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
+    .pipe(webpack(require("./webpack.prod.js")))
+    .pipe(browserSync.stream())
+    .pipe(dest(output));
+}
+
+//develop
+function jsTask() {
+  return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
+    .pipe(webpack(require("./webpack.dev.js")))
+    .pipe(browserSync.stream())
+    .pipe(dest(output));
+}
+
+//Common
 function jsBoxedTask() {
   return src(["!" + jsPath, jsBoxedPath])
     .pipe(sourcemaps.init())
@@ -36,51 +55,14 @@ function jsBoxedTask() {
     .pipe(dest(output));
 }
 
-function jsTask() {
-  return (
-    src([jsPath, "!" + jsBoxedPath, "!node_modules"])
-      //.pipe(sourcemaps.init(),
-      //)
-      .pipe(webpack(require("./webpack.config.js")))
-      //.pipe(concat(outputName))
-      /*
-        .pipe(rollup({ plugins: [babel({
-            presets: ["react", 'env',
-  {
-    "useBuiltIns": "entry"
-  }],
-            "plugins": ["@babel/plugin-transform-runtime"],
-        }), resolve(), commonjs(), nodePolyfills({preferBuiltins: false})] }, 'umd'))
-        */
-      /*.pipe(babel({
-            presets: ['@babel/env'],
-            "plugins": ["@babel/plugin-transform-runtime"],
-        }))*/
-      //.pipe(terser())
-      //.pipe(sourcemaps.write('.'))
-      .pipe(browserSync.stream())
-      .pipe(dest(output))
-  );
-}
-
-function fontTask() {
-  return src("src/fonts/*").pipe(browserSync.stream()).pipe(dest(output));
-}
-
 function wasmTask() {
   return src(wasmPath).pipe(browserSync.stream()).pipe(dest(output));
 }
 
-function wasmJSTask() {
-  return src(wasmJSPath)
-    .pipe(terser())
-    .pipe(sourcemaps.write("."))
-    .pipe(browserSync.stream())
-    .pipe(dest(output));
-}
-
 function copyHtml() {
-  return src(htmlPath).pipe(gulp.dest("public"));
+  return src(htmlPath)
+    .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
+    .pipe(gulp.dest("public"));
 }
 
 function assetsTask() {
@@ -122,7 +104,6 @@ function watchTask() {
       assetsTask,
       copyHtml,
       jsBoxedTask,
-      fontTask,
       imgTask
     )
   );
@@ -134,13 +115,12 @@ function watchTask() {
 
 exports.default = series(
   parallel(
-    jsTask,
+    jsTaskProd,
     jsBoxedTask,
     cssTask,
     wasmTask,
     assetsTask,
     copyHtml,
-    fontTask,
     imgTask
   )
 );
@@ -153,8 +133,7 @@ exports.watch = series(
     wasmTask,
     assetsTask,
     copyHtml,
-    imgTask,
-    fontTask
+    imgTask
   ),
   watchTask
 );

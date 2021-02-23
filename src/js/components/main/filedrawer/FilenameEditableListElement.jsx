@@ -13,14 +13,12 @@ const FilenameEditableListElement = React.memo(
 
     const handleDoubleClick = () => {
       if (!isInEditingMode) {
-        console.log("doubleclick");
         toggleEdit();
       }
     };
 
     const handleSingleClick = (event) => {
       if (!isInEditingMode) {
-        console.log("singleclick");
         switchFile(filename);
       }
     };
