@@ -36,6 +36,10 @@ function jsTaskProd() {
     .pipe(dest(output));
 }
 
+function cleanTask() {
+  return del(["public/**/*"]);
+}
+
 //develop
 function jsTask() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
@@ -115,6 +119,7 @@ function watchTask() {
 
 exports.default = series(
   parallel(
+    cleanTask,
     jsTaskProd,
     jsBoxedTask,
     cssTask,
