@@ -5,11 +5,12 @@
   "main": "./build/electron-main.js",
   "scripts": {
     "build": "gulp",
-    "build-installer": "electron-builder"
+    "build-installer": "electron-builder",
+    "deploy": "electron-builder build -mwl --publish always"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/istareatscreens/GeneticMazeSolver.git"
+    "url": "https://github.com/istareatscreens/wasm-masm-x86-editor"
   },
   "keywords": [
     "genetic",
@@ -56,6 +57,7 @@
   },
   "dependencies": {
     "codemirror": "^5.59.1",
+    "electron-updater": "^4.3.5",
     "eol": "^0.9.1",
     "file-saver": "^2.0.5",
     "gulp-htmlmin": "^5.0.1",
@@ -71,16 +73,18 @@
     "productName": "WASM MASM x86 Editor",
     "extends": null,
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "files": [
       "./build/*",
       "package.json"
     ],
     "nsis": {
-    "uninstallDisplayName": "WASM MASM x86 Editor",
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+      "uninstallDisplayName": "WASM MASM x86 Editor",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "mac": {
       "artifactName": "${productName}-${version}-osx.${ext}",

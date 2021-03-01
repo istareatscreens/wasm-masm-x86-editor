@@ -23,3 +23,6 @@ coverage
 nyc
 *.lcov
 
+#Access token
+electron-builder.yml
+

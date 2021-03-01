@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, MenuItem } = require("electron");
 const path = require("path");
 const url = require("url");
+const { autoUpdater } = require("electron-updater");
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -12,6 +13,11 @@ function createWindow() {
   });
 
   win.loadURL("file://" + __dirname + "/index.html");
+
+  //add update listener
+  mainWindow.once("ready-to-show", () => {
+    autoUpdater.checkForUpdatesAndNotify();
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -22,6 +28,7 @@ app.on("window-all-closed", () => {
   }
 });
 
+//Setup menus
 const template = [
   {
     label: "Edit",
@@ -98,4 +105,17 @@ Menu.setApplicationMenu(menu);
 
 app.on("activate", async () => {
   createWindow();
+});
+
+//Check for update
+autoUpdater.on("update-available", () => {
+  mainWindow.webContents.send("update_available");
+});
+autoUpdater.on("update-downloaded", () => {
+  mainWindow.webContents.send("update_downloaded");
+});
+
+//Restart app
+ipcMain.on("restart_app", () => {
+  autoUpdater.quitAndInstall();
 });

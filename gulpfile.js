@@ -19,7 +19,7 @@ const output = "public/";
 const jsPath = "src/js/**/*.*";
 const cssPath = "src/css/**/*";
 const wasmPath = "src/wasm/*.wasm";
-const htmlPath = "src/html/*.html";
+const htmlPath = "src/html/";
 const imagePath = "src/images/*";
 const jsBoxedPath = "src/js/boxedwine/**/*.js";
 
@@ -53,7 +53,7 @@ function wasmTaskElectron() {
 }
 
 function copyHtmlElectron() {
-  return src(htmlPath)
+  return src([htmlPath + "boxedwine.html", htmlPath + "electron/index.html"])
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(gulp.dest(electronOutput));
 }
@@ -117,7 +117,7 @@ function wasmTask() {
 }
 
 function copyHtml() {
-  return src(htmlPath)
+  return src([htmlPath + "boxedwine.html", htmlPath + "web/index.html"])
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(gulp.dest("public"));
 }
