@@ -53,7 +53,11 @@ function AboutWindow({ closeAbout }) {
           src={gitHubLogo}
           className={"btn--text btn--window btn--window--first"}
           alt={"go to github repository"}
-          onClick={() => window.open("https://github.com/istareatscreens")}
+          onClick={() =>
+            window.open(
+              "https://github.com/istareatscreens/wasm-masm-x86-editor"
+            )
+          }
         >
           <span>{"Repo"}</span>
         </Button>
