@@ -5,6 +5,7 @@ lib
 public
 build
 dist
+out
 *.tgz
 #Ignore Ide files
 .vscode

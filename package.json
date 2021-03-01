@@ -1,15 +1,11 @@
 {
   "name": "wasm-masm-x86-editor",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Portable Microsoft Assembly Language Editor with compilation, linking and x86 executable execution",
+  "main": "./build/electron-main.js",
   "scripts": {
-    "transpile": "babel src/js -d public/lib",
-    "wasm": "cd ./src/cpp/ ; emmake make",
-    "clean": "rm build/* public/lib/* 2>/dev/null",
-    "oldbuild": "npm run clean --silent && npm run transpile && npm run wasm",
     "build": "gulp",
-    "dev": "emrun ./public/index.html --no_emrun_detect --serve_after_close"
+    "build-installer": "electron-builder"
   },
   "repository": {
     "type": "git",
@@ -27,12 +23,6 @@
   },
   "homepage": "https://github.com/istareatscreens/GeneticMazeSolver#readme",
   "devDependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
-    "@babel/plugin-transform-runtime": "^7.12.10",
-    "@babel/preset-env": "^7.12.11",
-    "@babel/preset-react": "^7.12.10",
-    "@babel/runtime": "^7.12.5",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "autoprefixer": "^9.0.0",
@@ -42,6 +32,8 @@
     "css-loader": "^5.0.1",
     "cssnano": "^4.1.10",
     "del": "^6.0.0",
+    "electron": "^11.3.0",
+    "electron-builder": "^22.9.1",
     "file-loader": "^6.2.0",
     "gulp": "^4.0.2",
     "gulp-babel": "^8.0.0",
@@ -73,5 +65,40 @@
     "react-draggable": "^4.4.3",
     "react-onclickoutside": "^6.10.0",
     "use-debounce": "^5.2.1"
+  },
+  "build": {
+    "appId": "com.isas.wasm-masm-x86-editor",
+    "productName": "WASM MASM x86 Editor",
+    "extends": null,
+    "win": {
+      "target": ["nsis"]
+    },
+    "files": [
+      "./build/*",
+      "package.json"
+    ],
+    "nsis": {
+    "uninstallDisplayName": "WASM MASM x86 Editor",
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "artifactName": "${productName}-${version}-osx.${ext}",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "artifactName": "${productName}-${version}-${arch}-linux.${ext}",
+      "maintainer": "istareatscreens",
+      "target": [
+        "tar.gz",
+        "deb",
+        "rpm",
+        "pacman"
+      ]
+    }
   }
 }

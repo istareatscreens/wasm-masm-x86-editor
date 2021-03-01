@@ -14,7 +14,7 @@ const livereload = require("gulp-livereload");
 const htmlmin = require("gulp-htmlmin");
 const del = require("del");
 
-const assetsPath = "src/assets/*";
+const assetsPath = "src/assets/";
 const output = "public/";
 const jsPath = "src/js/**/*.*";
 const cssPath = "src/css/**/*";
@@ -23,11 +23,64 @@ const htmlPath = "src/html/*.html";
 const imagePath = "src/images/*";
 const jsBoxedPath = "src/js/boxedwine/**/*.js";
 
-const jsBoxedwineIndexPath = "src/js/components/boxedwine/**/*.*";
-const jsEditorIndexPath = "src/js/components/editor/**/*.**";
-const jsCommonComponents = "src/js/components/common/**/*.*";
-const jsUtility = "src/js/utility/*.*";
+const electronOutput = "build/";
+const electronJS = "src/electron/*.js";
 
+//Electron
+function jsTaskMainElectron() {
+  return src([electronJS]).pipe(dest(electronOutput));
+}
+
+function jsTaskElectron() {
+  return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
+    .pipe(webpack(require("./webpack.prod.js")))
+    .pipe(dest(electronOutput));
+}
+
+function cleanTaskElectron() {
+  return del(electronOutput + "**/*");
+}
+
+function jsBoxedTaskElectron() {
+  return src(["!" + jsPath, jsBoxedPath])
+    .pipe(concat("boxedwine.js"))
+    .pipe(terser())
+    .pipe(dest(electronOutput));
+}
+
+function wasmTaskElectron() {
+  return src(wasmPath).pipe(browserSync.stream()).pipe(dest(electronOutput));
+}
+
+function copyHtmlElectron() {
+  return src(htmlPath)
+    .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
+    .pipe(gulp.dest(electronOutput));
+}
+
+function assetsTaskElectron() {
+  return src([
+    assetsPath + "assembler.zip",
+    assetsPath + "electron/boxedwine.zip",
+  ]).pipe(gulp.dest(electronOutput));
+}
+
+function imgTaskElectron() {
+  //only using for favicon
+  return src([imagePath + ".ico", "src/css/images/*"])
+    .pipe(imagemin())
+    .pipe(gulp.dest(electronOutput));
+}
+
+function cssTaskElectron() {
+  return src([cssPath + ".scss", cssPath + ".css"])
+    .pipe(sass({ includePaths: ["./node_modules"] }).on("error", sass.logError))
+    .pipe(concat("style.css"))
+    .pipe(postcss([autoprefixer(), cssnano()])) //not all plugins work with postcss only the ones mentioned in their documentation
+    .pipe(dest(electronOutput));
+}
+
+//WEB
 //Production
 function jsTaskProd() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
@@ -70,7 +123,10 @@ function copyHtml() {
 }
 
 function assetsTask() {
-  return src(assetsPath).pipe(gulp.dest("public"));
+  return src([
+    assetsPath + "assembler.zip",
+    assetsPath + "web/boxedwine.zip",
+  ]).pipe(gulp.dest("public"));
 }
 
 function imgTask() {
@@ -117,6 +173,21 @@ function watchTask() {
   gulp.watch(imagePath).on("change", browserSync.reload);
 }
 
+//BUILD Electron
+exports.electron = series(
+  parallel(
+    cleanTaskElectron,
+    jsTaskMainElectron,
+    jsTaskElectron,
+    jsBoxedTaskElectron,
+    cssTaskElectron,
+    wasmTaskElectron,
+    assetsTaskElectron,
+    copyHtmlElectron,
+    imgTaskElectron
+  )
+);
+//BUILD Web Production
 exports.default = series(
   parallel(
     cleanTask,
@@ -130,6 +201,7 @@ exports.default = series(
   )
 );
 
+//Develop Web
 exports.watch = series(
   parallel(
     jsTask,
