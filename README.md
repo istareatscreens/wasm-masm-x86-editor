@@ -14,12 +14,12 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 ## TODO
 
 - shrink boxedwine.zip for web version
-- Implement add vim and font size adjustment in editor
+- Implement vim (probably impossible) and font size adjustment in editor
 - Add resizable components
 - Implement workers to improve performance
-- Implement nicer theme for editor (have a dark and light option) possible theme switching
+- Implement theme switching (dark/light)
 - Add proper syntax highlighting
-- Add automatic Irvine library on upload
+- Add automatic Irvine library correct import statement conversion on upload
 - Add Project save and load (save local storage states)
 - Add multiple file addition in createfile window
 - Fix spacing of main banner items

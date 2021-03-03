@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import CodeMirror from "react-codemirror2";
 import "codemirror/mode/gas/gas.js";
+import "./library/simple";
+import "./library/MASM.js";
 
 import { useDebouncedCallback } from "use-debounce";
 
@@ -27,8 +29,8 @@ function TextEditor({ onChange, value, filename }) {
       options={{
         lineWrapping: true,
         lineNumbers: true,
-        mode: "gas",
-        theme: "material",
+        mode: "MASM",
+        theme: "default",
       }}
     ></CodeMirror>
   );
