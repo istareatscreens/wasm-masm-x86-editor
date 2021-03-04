@@ -27,6 +27,7 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 - Refactor code
 - Implement state management to prevent unneeded rerenders
 - Save settings to local storage
+- Setup lazy font loading
 
 ## Bugs
 

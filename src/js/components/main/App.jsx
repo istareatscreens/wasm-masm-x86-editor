@@ -13,7 +13,22 @@ function App() {
   const [fileList, setFileList] = useState([""]);
   const [lockEditor, setEditorLock] = useState(false);
   const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
+  //editor settings
   const [fontSize, setFontSize] = useState(16);
+  const [fontList, setFontList] = useState([
+    { id: 0, text: "Liberation Mono", path: "Liberation Mono" },
+    { id: 1, text: "FiraCode", path: "./FiraCode-Retina.ttf" },
+    { id: 2, text: "Consolas", path: "./Consolas.ttf" },
+    { id: 3, text: "Monoid-Retina", path: "./Monoid-Retina.ttf" },
+    { id: 4, text: "MS Sans Serif", path: "./MS Sans Serif.ttf" },
+    { id: 5, text: "Press Start 2P", path: "./PressStart2P-Regular.ttf" },
+    { id: 6, text: "Roboto Mono", path: "./RobotoMono-Regular.ttf" },
+    { id: 7, text: "Source Code Pro", path: "./SourceCodePro-Medium.ttf" },
+    { id: 8, text: "Sudo", path: "./Sudo-Regular.ttf" },
+    { id: 9, text: "Ubuntu Mono", path: "./UbuntuMono-R.ttf" },
+    { id: 10, text: "Arial", path: "Arial" },
+  ]);
+  const [selectedFont, setSelectedFont] = useState(fontList[0]);
 
   const refApp = useRef(null);
 
@@ -93,6 +108,9 @@ function App() {
           forceUpdate={{ refreshFile, setRefreshFile }}
         />
         <Banner
+          fontList={fontList}
+          setSelectedFont={setSelectedFont}
+          selectedFont={selectedFont}
           fontSize={fontSize}
           refApp={refApp.current}
           filename={filename}
@@ -104,6 +122,7 @@ function App() {
           shouldRefreshFile={refreshFile}
           filename={filename}
           disabled={lockEditor}
+          selectedFont={selectedFont}
         />
         <CommandPrompt />
       </div>

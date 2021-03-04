@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 
 import Switch from "../../../common/ImageSwitch.jsx";
 
@@ -6,6 +6,7 @@ import filedrawer from "../../../../../images/filedrawer.png";
 import zen from "../../../../../images/zen.png";
 import cmd from "../../../../../images/cmd.png";
 import editor from "../../../../../images/editor.png";
+import { useEffect } from "react";
 
 //TODO: Move zen button to main button group on right
 //TODO: MODIFY break point size for each view
@@ -76,6 +77,8 @@ element.classList.remove("my-class");
     if (classModifier) {
       if (classModifier == "--only-editor") {
         setZen(true);
+      } else {
+        setZen(false); //handle change when zen is active
       }
       refApp.classList.add(classPrefix + classModifier);
     } else {

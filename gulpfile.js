@@ -80,6 +80,12 @@ function cssTaskElectron() {
     .pipe(dest(electronOutput));
 }
 
+function fontTaskElectron() {
+  return src("src/fonts/*")
+    .pipe(browserSync.stream())
+    .pipe(dest(electronOutput));
+}
+
 //WEB
 //Production
 function jsTaskProd() {
@@ -102,6 +108,10 @@ function jsTask() {
 }
 
 //Common
+function fontTask() {
+  return src("src/fonts/*").pipe(browserSync.stream()).pipe(dest(output));
+}
+
 function jsBoxedTask() {
   return src(["!" + jsPath, jsBoxedPath])
     .pipe(sourcemaps.init())
@@ -184,7 +194,8 @@ exports.electron = series(
     wasmTaskElectron,
     assetsTaskElectron,
     copyHtmlElectron,
-    imgTaskElectron
+    imgTaskElectron,
+    fontTaskElectron
   )
 );
 //BUILD Web Production
@@ -197,7 +208,8 @@ exports.default = series(
     wasmTask,
     assetsTask,
     copyHtml,
-    imgTask
+    imgTask,
+    fontTask
   )
 );
 
@@ -210,7 +222,8 @@ exports.watch = series(
     wasmTask,
     assetsTask,
     copyHtml,
-    imgTask
+    imgTask,
+    fontTask
   ),
   watchTask
 );
