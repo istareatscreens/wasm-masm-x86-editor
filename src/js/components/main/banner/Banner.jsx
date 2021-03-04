@@ -6,15 +6,21 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
-import About from "./about/About.jsx";
-
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
+
+import About from "./about/About.jsx";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 
-const Banner = function Banner({ filename, refApp, fileList }) {
+const Banner = function Banner({
+  filename,
+  refApp,
+  fileList,
+  fontSize,
+  setFontSize,
+}) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
   const build = () => {
@@ -53,10 +59,8 @@ const Banner = function Banner({ filename, refApp, fileList }) {
 
   return (
     <>
-      {aboutPageOpened ? (
+      {aboutPageOpened && (
         <About closeAbout={() => setAboutPageOpened(false)} />
-      ) : (
-        ""
       )}
       <div className={"banner__patch"} />
       <div className={"banner"} />
@@ -86,11 +90,21 @@ const Banner = function Banner({ filename, refApp, fileList }) {
             id={"resetCMD"}
             src={cmdReset}
           />
+          <input
+            type="number"
+            value={fontSize}
+            onChange={(event) => {
+              if (event.target.value > 1) {
+                setFontSize(event.target.value);
+              }
+            }}
+            className="input-box input-box--font"
+          />
+          <ViewControlGroup
+            className={"banner__main__group banner__main__group--mid"}
+            refApp={refApp}
+          />
         </div>
-        <ViewControlGroup
-          className={"banner__main__group banner__main__group--mid"}
-          refApp={refApp}
-        />
         <div className={"banner__main__group banner__main__group--end"}>
           <Button
             title={"application info"}

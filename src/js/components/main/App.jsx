@@ -13,6 +13,7 @@ function App() {
   const [fileList, setFileList] = useState([""]);
   const [lockEditor, setEditorLock] = useState(false);
   const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
+  const [fontSize, setFontSize] = useState(16);
 
   const refApp = useRef(null);
 
@@ -92,11 +93,14 @@ function App() {
           forceUpdate={{ refreshFile, setRefreshFile }}
         />
         <Banner
+          fontSize={fontSize}
           refApp={refApp.current}
           filename={filename}
           fileList={fileList}
+          setFontSize={setFontSize}
         />
         <Editor
+          fontSize={fontSize}
           shouldRefreshFile={refreshFile}
           filename={filename}
           disabled={lockEditor}

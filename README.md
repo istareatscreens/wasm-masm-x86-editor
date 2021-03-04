@@ -25,6 +25,8 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 - Fix spacing of main banner items
 - Improve syntax highlighting
 - Refactor code
+- Implement state management to prevent unneeded rerenders
+- Save settings to local storage
 
 ## Bugs
 
