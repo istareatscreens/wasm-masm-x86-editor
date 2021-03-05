@@ -18,7 +18,9 @@ function TextEditor({ onChange, value, filename, fontSize, selectedFont }) {
 
   //Change font family
   useEffect(() => {
-    refCodeMirror.current.style.fontFamily = selectedFont.text;
+    refCodeMirror.current.style.fontFamily = selectedFont.fontFamily
+      ? selectedFont.fontFamily
+      : selectedFont.text;
   }, [selectedFont]);
 
   //Change font size

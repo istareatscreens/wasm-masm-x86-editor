@@ -16,16 +16,16 @@ function App() {
   //editor settings
   const [fontSize, setFontSize] = useState(16);
   const [fontList, setFontList] = useState([
-    { id: 0, text: "Liberation Mono" },
+    { id: 0, text: "Lucida Console" },
     { id: 1, text: "FiraCode" },
     { id: 2, text: "Consolas" },
     { id: 3, text: "Monoid" },
-    { id: 4, text: "MS Sans Serif" },
+    { id: 4, text: "Press Start 2P", fontFamily: "Press Start" },
     { id: 5, text: "Roboto Mono" },
     { id: 6, text: "Source Code Pro" },
     { id: 7, text: "Sudo" },
     { id: 8, text: "Ubuntu Mono" },
-    { id: 9, text: "Arial" },
+    { id: 9, text: "Courier" },
   ]);
   const [selectedFont, setSelectedFont] = useState(fontList[0]);
 
