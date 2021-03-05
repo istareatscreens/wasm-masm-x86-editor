@@ -13,21 +13,19 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 
 ## TODO
 
-- shrink boxedwine.zip for web version
-- Implement vim (probably impossible (issue in dependency) and font size adjustment in editor
-- Add resizable components
-- Implement workers to improve performance
 - Implement theme switching (dark/light) for codemirror/main page
 - Implement user settings local storage save (along side theme switching/font change)
 - Add automatic Irvine library correct import statement conversion on upload
+- Add unhide terminal on run/build button press
 - Add Project save and load (save local storage states)
 - Add multiple file addition in createfile window
-- Fix spacing of main banner items
 - Improve syntax highlighting
 - Refactor code
-- Implement state management to prevent unneeded rerenders
-- Save settings to local storage
-- Setup lazy font loading
+- Implement workers to improve performance
+- Add resizable components
+- Implement vim (probably impossible (issue in dependency) and font size adjustment in editor
+- shrink boxedwine.zip for web version
+- Setup google font imports for web version
 
 ## Bugs
 

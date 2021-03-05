@@ -1,5 +1,15 @@
+//fonts
+@include font("FiraCode", "./FiraCode-Retina");
+@include font("Consolas", "./Consolas");
+@include font("Monoid", "./Monoid-Retina");
+@include font("MS Sans Serif", "./MS Sans Serif");
+@include font("Roboto Mono", "./RobotoMono-Regular");
+@include font("Source Code Pro", "./SourceCodePro-Medium");
+@include font("Sudo", "./Sudo-Regular");
+@include font("Ubuntu Mono", "./UbuntuMono-R");
+
 body {
-  font-family: "Liberation Mono", Arial;
+  font-family: "Liberation Mono", "Arial";
   font-weight: 400;
   line-height: 1.7;
   color: $black-color;

@@ -16,17 +16,16 @@ function App() {
   //editor settings
   const [fontSize, setFontSize] = useState(16);
   const [fontList, setFontList] = useState([
-    { id: 0, text: "Liberation Mono", path: "Liberation Mono" },
-    { id: 1, text: "FiraCode", path: "./FiraCode-Retina.ttf" },
-    { id: 2, text: "Consolas", path: "./Consolas.ttf" },
-    { id: 3, text: "Monoid-Retina", path: "./Monoid-Retina.ttf" },
-    { id: 4, text: "MS Sans Serif", path: "./MS Sans Serif.ttf" },
-    { id: 5, text: "Press Start 2P", path: "./PressStart2P-Regular.ttf" },
-    { id: 6, text: "Roboto Mono", path: "./RobotoMono-Regular.ttf" },
-    { id: 7, text: "Source Code Pro", path: "./SourceCodePro-Medium.ttf" },
-    { id: 8, text: "Sudo", path: "./Sudo-Regular.ttf" },
-    { id: 9, text: "Ubuntu Mono", path: "./UbuntuMono-R.ttf" },
-    { id: 10, text: "Arial", path: "Arial" },
+    { id: 0, text: "Liberation Mono" },
+    { id: 1, text: "FiraCode" },
+    { id: 2, text: "Consolas" },
+    { id: 3, text: "Monoid" },
+    { id: 4, text: "MS Sans Serif" },
+    { id: 5, text: "Roboto Mono" },
+    { id: 6, text: "Source Code Pro" },
+    { id: 7, text: "Sudo" },
+    { id: 8, text: "Ubuntu Mono" },
+    { id: 9, text: "Arial" },
   ]);
   const [selectedFont, setSelectedFont] = useState(fontList[0]);
 
@@ -107,6 +106,7 @@ function App() {
           setEditorLock={setEditorLock}
           forceUpdate={{ refreshFile, setRefreshFile }}
         />
+        <CommandPrompt />
         <Banner
           fontList={fontList}
           setSelectedFont={setSelectedFont}
@@ -124,7 +124,6 @@ function App() {
           disabled={lockEditor}
           selectedFont={selectedFont}
         />
-        <CommandPrompt />
       </div>
     </>
   );

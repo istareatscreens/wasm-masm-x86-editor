@@ -13,6 +13,7 @@ import about from "../../../../images/about.png";
 
 import About from "./about/About.jsx";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
+import Dropdown from "./../../common/Dropdown.jsx";
 
 const Banner = function Banner({
   filename,
@@ -20,6 +21,9 @@ const Banner = function Banner({
   fileList,
   fontSize,
   setFontSize,
+  selectedFont,
+  setSelectedFont,
+  fontList,
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
@@ -56,6 +60,9 @@ const Banner = function Banner({
   const checkIfAsm = () => {
     return !checkFileExtension(".asm", filename);
   };
+  const handleFontChange = (event) => {
+    setSelectedFont(fontList[event.target.selectedIndex]);
+  };
 
   return (
     <>
@@ -82,7 +89,6 @@ const Banner = function Banner({
             disabled={checkForFile()}
             src={runBinary}
           />
-
           <Button
             title={"reset command prompt"}
             className={"banner__main__btn"}
@@ -94,11 +100,19 @@ const Banner = function Banner({
             type="number"
             value={fontSize}
             onChange={(event) => {
-              if (event.target.value > 1) {
+              if (event.target.value >= 1) {
                 setFontSize(event.target.value);
               }
             }}
             className="input-box input-box--font"
+          />
+          <Dropdown
+            handleChange={(event) => {
+              handleFontChange(event);
+            }}
+            classNameDropDown={""}
+            options={fontList}
+            selected={selectedFont}
           />
           <ViewControlGroup
             className={"banner__main__group banner__main__group--mid"}

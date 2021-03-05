@@ -1,18 +1,14 @@
 import React from "react";
 
-function ThemeSelect({ options, selectedId }) {
+function ThemeSelect({ options, selected, classNameDropDown, handleChange }) {
   return (
-    <select class="select-box">
+    <select
+      onChange={handleChange}
+      className={`select-box ${classNameDropDown}`}
+      defaultValue={selected.text}
+    >
       {options &&
-        options.map((option) =>
-          selectedId == option.id ? (
-            <option selected id={option.id}>
-              {option.value}
-            </option>
-          ) : (
-            <option id={option.id}>{option.text}</option>
-          )
-        )}
+        options.map((option) => <option key={option.id}>{option.text}</option>)}
     </select>
   );
 }

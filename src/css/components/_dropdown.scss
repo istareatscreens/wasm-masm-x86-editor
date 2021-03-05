@@ -1,9 +1,9 @@
 .select-box {
   //custom
-  max-height: $banner-height;
-  width: 10rem;
-  height: calc(#{$banner-height} - 0.5rem);
-  margin-left: 0.4rem;
+  width: min-content;
+  height: calc(#{$banner-height} - 0.5rem); //2.5rem
+  margin-left: 0.2rem;
+  color: #000;
 
   //theme
   padding: 0.3rem 0.4rem;
@@ -15,13 +15,13 @@
   -moz-appearance: none;
   appearance: none;
   border-radius: 0;
-  height: 2.1rem;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
   position: relative;
   padding-right: 3.2rem;
   background-image: url("./button-down.svg");
+  background-size: 2rem;
   -webkit-font-smoothing: none;
   background-position: top 0.2rem right 0.2rem;
   background-repeat: no-repeat;

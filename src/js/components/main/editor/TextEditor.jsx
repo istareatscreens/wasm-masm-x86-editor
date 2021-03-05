@@ -9,13 +9,19 @@ import { useDebouncedCallback } from "use-debounce";
 
 import FileSystem from "../utility/FileSystem.js";
 
-function TextEditor({ onChange, value, filename, fontSize }) {
+function TextEditor({ onChange, value, filename, fontSize, selectedFont }) {
   const refCodeMirror = useRef(null);
   const handleChange = (editor, data, value) => {
     onChange(value);
     writeToLocalStorage.callback(filename, value);
   };
 
+  //Change font family
+  useEffect(() => {
+    refCodeMirror.current.style.fontFamily = selectedFont.text;
+  }, [selectedFont]);
+
+  //Change font size
   useEffect(() => {
     refCodeMirror.current.style.fontSize = fontSize + "px";
   }, [fontSize]);
