@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import Switch from "../../../common/ImageSwitch.jsx";
 
@@ -6,7 +6,6 @@ import filedrawer from "../../../../../images/filedrawer.png";
 import zen from "../../../../../images/zen.png";
 import cmd from "../../../../../images/cmd.png";
 import editor from "../../../../../images/editor.png";
-import { useEffect } from "react";
 
 //TODO: Move zen button to main button group on right
 //TODO: MODIFY break point size for each view
@@ -18,14 +17,20 @@ function ViewControlGroup({ className, refApp, ...props }) {
 
   const classPrefix = "app-layout";
 
-  /*
-Use element.classList.add to add a class:
-element.classList.add("my-class");
-And element.classList.remove to remove a class:
-element.classList.remove("my-class");
-*/
+  const refCMDBtn = useRef(null);
 
-  const getChangedBoolean = (editor, cmd, filedrawer) => {
+  useEffect(() => {
+    window.addEventListener("show-cmd", () => {
+      console.log("HERE");
+      console.log(refCMDBtn);
+      refCMDBtn.current.click();
+    });
+    return () => {
+      window.removeEventListener("show-cmd");
+    };
+  }, []);
+
+  const getChangedBoolean = (editor, cmd, filedrawer, refCMDBtn) => {
     if (editor != showEditor) {
       return editor;
     } else if (cmd != showCMD) {
@@ -164,6 +169,7 @@ class List
             showFileDrawer
           );
         }}
+        ref={refCMDBtn}
         checked={showCMD}
         src={cmd}
         imgClass={"switch__view--cmd"}

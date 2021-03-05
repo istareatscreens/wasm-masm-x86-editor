@@ -27,12 +27,23 @@ const Banner = function Banner({
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
 
+  const unhideTerminal = () => {
+    if (
+      refApp.classList[2] == "app-layout--no-cmd" ||
+      refApp.classList[2] == "app-layout--only-editor"
+    ) {
+      console.log("firing event");
+      window.dispatchEvent(new CustomEvent("show-cmd"));
+    }
+  };
+
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
     if (/.asm$/.test(filename)) {
       writeCommandToCMD(
         `assemble ${filename.substring(0, filename.length - 4)}`
       );
+      unhideTerminal();
     } else {
       console.log("not an assembly file: " + filename);
     }
@@ -54,6 +65,7 @@ const Banner = function Banner({
   const run = () => {
     if (/.asm$/.test(filename)) {
       writeCommandToCMD(getExecutableName());
+      unhideTerminal();
     }
   };
 
