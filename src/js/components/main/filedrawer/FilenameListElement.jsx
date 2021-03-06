@@ -13,7 +13,7 @@ function FilenameListElement({
   );
 
   return (
-    <li
+    <div
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       className={
@@ -23,7 +23,7 @@ function FilenameListElement({
       }
     >
       {children}
-    </li>
+    </div>
   );
 }
 

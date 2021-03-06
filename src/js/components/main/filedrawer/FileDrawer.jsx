@@ -285,7 +285,7 @@ const FileDrawer = function FileDrawer({
           ? filesSelected
               //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
               .map((file) => (
-                <div key={file.id} className="file-drawer__list__group">
+                <li key={file.id} className="file-drawer__list__group">
                   <input
                     label=""
                     type="checkbox"
@@ -301,7 +301,7 @@ const FileDrawer = function FileDrawer({
                     switchFile={switchFile}
                     isFileSelected={fileSelected == file.filename}
                   />
-                </div>
+                </li>
               ))
           : ""}
       </ul>

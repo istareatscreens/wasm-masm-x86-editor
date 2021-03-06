@@ -8,29 +8,29 @@ This app is made possible through the use of [JWlink and JWasm](https://github.c
 
 ![preview gif](https://i.imgur.com/qw5RLa1.gif)
 
-**WARNING the web version is 45mb in size**.  
+**WARNING the web version is ~50mb in size**.  
 The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 
 ## TODO
 
 - Implement theme switching (dark/light) for codemirror/main page
 - Implement user settings local storage save (along side theme switching/font change)
+- Add alt text to elements
 - Add automatic Irvine library correct import statement conversion on upload
-- Add unhide terminal on run/build button press
 - Add Project save and load (save local storage states)
 - Add multiple file addition in createfile window
+- Implement workers to improve performance
 - Improve syntax highlighting
 - Refactor code
-- Implement workers to improve performance
 - Add resizable components
-- Implement vim (probably impossible (issue in dependency) and font size adjustment in editor
+- Implement vim (issue in dependency) and font size adjustment in editor
 - shrink boxedwine.zip for web version
 - Setup google font imports for web version
 
 ## Bugs
 
 - Add escape key to exit modals (about)
-- create/delete/rename file all buggy (easy to break, and get file not present bug)
+- create/delete/rename file all buggy (easy to crash boxedwine, and get file not present bug)
 - error handling on boxedwine
 - Check asm files for correct irivine import before compile/link to prevent hard crash
 - Add throttling to buttons

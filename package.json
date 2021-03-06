@@ -5,6 +5,8 @@
   "main": "./build/electron-main.js",
   "scripts": {
     "build": "gulp",
+    "dev": "gulp watch",
+    "build-electron": "gulp electron",
     "build-installer": "electron-builder",
     "deploy": "electron-builder build -mwl --publish always"
   },
