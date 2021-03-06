@@ -1,7 +1,9 @@
-const { app, BrowserWindow, Menu, MenuItem } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, MenuItem } = require("electron");
 const path = require("path");
 const url = require("url");
 const { autoUpdater } = require("electron-updater");
+
+app.commandLine.appendSwitch("enable-features", "isolate-extensions");
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -9,6 +11,7 @@ function createWindow() {
     height: 600,
     webPreferences: {
       webSecurity: false,
+      nodeIntegration: true,
     },
   });
 
@@ -105,6 +108,10 @@ Menu.setApplicationMenu(menu);
 
 app.on("activate", async () => {
   createWindow();
+});
+
+ipcMain.on("app_version", (event) => {
+  event.sender.send("app_version", { version: app.getVersion() });
 });
 
 //Check for update
