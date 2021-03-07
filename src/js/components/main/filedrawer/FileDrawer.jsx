@@ -20,6 +20,8 @@ const FileDrawer = function FileDrawer({
   refreshFileList,
   setEditorLock,
   forceUpdate,
+  //theme
+  lightMode,
 }) {
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
@@ -27,6 +29,7 @@ const FileDrawer = function FileDrawer({
   const [showAsm, setShowAsm] = useState(true);
   const [showCreateFile, setShowCreateFile] = useState(false);
 
+  //TODO: rename these to have ref prefix for consistancy
   const selectAllCheckbox = useRef(null);
   const fileUploadInput = useRef(null);
 
@@ -280,12 +283,21 @@ const FileDrawer = function FileDrawer({
         handleDeleteFile={handleDeleteFile}
         switchFileView={switchFileView}
       />
-      <ul className="file-drawer__list tree-view">
+      <ul
+        className={`file-drawer__list tree-view ${
+          lightMode ? "" : "file-drawer__list--dark"
+        }`}
+      >
         {filesSelected.length
           ? filesSelected
               //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
               .map((file) => (
-                <li key={file.id} className="file-drawer__list__group">
+                <li
+                  key={file.id}
+                  className={`file-drawer__list__group ${
+                    lightMode ? "" : "file-drawer__list__group--dark"
+                  } `}
+                >
                   <input
                     label=""
                     type="checkbox"
@@ -300,6 +312,7 @@ const FileDrawer = function FileDrawer({
                     handleRename={handleRenameFile}
                     switchFile={switchFile}
                     isFileSelected={fileSelected == file.filename}
+                    lightMode={lightMode}
                   />
                 </li>
               ))

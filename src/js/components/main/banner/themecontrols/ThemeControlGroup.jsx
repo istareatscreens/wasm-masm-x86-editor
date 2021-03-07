@@ -28,7 +28,7 @@ function ThemeControlGroup({
         title="Adjust theming"
         onClick={() => setThemeSettingsOpened(!themeSettingsOpened)}
         className={"banner__main__btn"}
-        title={"dark-mode"}
+        title={"Theme settings"}
         src={themeMenu}
       />
     </div>

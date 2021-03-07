@@ -13,8 +13,6 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 
 ## TODO
 
-- Implement theme switching (dark/light) for codemirror/main page
-- Implement user settings local storage save (along side theme switching/font change)
 - Add alt text to elements
 - Add automatic Irvine library correct import statement conversion on upload
 - Add Project save and load (save local storage states)

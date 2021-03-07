@@ -219,6 +219,7 @@ function App() {
           refreshFileList={refreshFileList}
           setEditorLock={setEditorLock}
           forceUpdate={{ refreshFile, setRefreshFile }}
+          lightMode={!settings.lightMode} //flip boolean so light is true, dark is false
         />
         <Banner
           //theme variables

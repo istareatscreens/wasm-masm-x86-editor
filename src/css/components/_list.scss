@@ -1,6 +1,10 @@
 .file-drawer__list {
   font-size: 1.4rem;
   overflow: auto;
+  background: $button-highlight;
+  &--dark {
+    background: black;
+  }
   &__group {
     display: flex;
     justify-content: flex-start;
@@ -8,19 +12,26 @@
 
     &--name {
       padding-left: 0.4rem;
+      margin-left: 0.5rem;
+      margin-right: 0.25rem;
     }
 
     &--selected {
       width: 100%;
       height: 100%;
       background-color: $selected-blue;
+      &--dark {
+        color: black;
+      }
+    }
+    &--dark {
+      color: silver;
     }
   }
 }
 
 ul.tree-view {
   display: block;
-  background: $button-highlight;
   box-shadow: $border-field;
   padding: 0.5rem;
   margin: 0.2rem;
