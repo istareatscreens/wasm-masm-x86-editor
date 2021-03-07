@@ -97,47 +97,50 @@ function App() {
     { id: 9, text: "Courier" },
   ]);
 
-  //editor settings, to do save and initialize them from local storage
-  const [fontSize, setFontSize] = useState(16);
-  const [selectedFont, setSelectedFont] = useState(fontList[0]);
-  const [selectedDayTheme, setSelectedDayTheme] = useState(themeList[0]);
-  const [selectedNightTheme, setSelectedNightTheme] = useState(themeList[21]);
+  //editor settings
+  const [settings, setSettings] = useState(
+    (() => {
+      //load user settings
+      const userSettings = localStorage.getItem("settings");
+      return userSettings != null
+        ? JSON.parse(userSettings)
+        : {
+            fontSize: 16,
+            selectedFont: fontList[0],
+            selectedDayTheme: themeList[0],
+            selectedNightTheme: themeList[21],
+            lightMode: false,
+          };
+    })()
+  );
 
-  //Theme Mode
-  //TODO: Implement full page theme switch
-  const [lightMode, setLightMode] = useState(false);
+  //state set functions
+  const setFontSize = (fontSize) => {
+    setSettings({ ...settings, fontSize: fontSize });
+  };
 
-  //load user settings
-  useEffect(() => {
-    const userSettings = localStorage.getItem("settings");
-    if (userSettings != null) {
-      const {
-        fontSize,
-        selectedFont,
-        selectedDayTheme,
-        selectedNightTheme,
-        lightMode,
-      } = JSON.parse(userSettings);
-      setFontSize(fontSize);
-      setSelectedFont(selectedFont);
-      setSelectedDayTheme(selectedDayTheme);
-      setSelectedNightTheme(selectedNightTheme);
-      setLightMode(lightMode);
-    }
-  }, []);
+  const setSelectedFont = (selectedFont) => {
+    setSettings({ ...settings, selectedFont: selectedFont });
+  };
+
+  const setSelectedDayTheme = (selectedDayTheme) => {
+    setSettings({ ...settings, selectedDayTheme });
+  };
+
+  const setSelectedNightTheme = (selectedNightTheme) => {
+    setSettings({ ...settings, selectedNightTheme });
+  };
+
+  const setLightMode = (lightMode) => {
+    setSettings({ ...settings, lightMode: lightMode });
+  };
 
   //TODO: add debounce
   //save user settings to local storage
   useEffect(() => {
-    const data = JSON.stringify({
-      fontSize: fontSize,
-      selectedFont: selectedFont,
-      selectedNightTheme: selectedNightTheme,
-      selectedDayTheme: selectedDayTheme,
-      lightMode: lightMode,
-    });
+    const data = JSON.stringify(settings);
     setInLocalStorage("settings", data, (data) => data);
-  }, [fontSize, selectedFont, selectedDayTheme, selectedNightTheme, lightMode]);
+  }, [settings]);
 
   const refApp = useRef(null);
 
@@ -220,17 +223,17 @@ function App() {
         <Banner
           //theme variables
           themeList={themeList}
-          selectedDayTheme={selectedDayTheme}
-          selectedNightTheme={selectedNightTheme}
+          selectedDayTheme={settings.selectedDayTheme}
+          selectedNightTheme={settings.selectedNightTheme}
           setSelectedDayTheme={setSelectedDayTheme}
           setSelectedNightTheme={setSelectedNightTheme}
-          lightMode={lightMode}
+          lightMode={settings.lightMode}
           setLightMode={setLightMode}
           //font
           fontList={fontList}
           setSelectedFont={setSelectedFont}
-          selectedFont={selectedFont}
-          fontSize={fontSize}
+          selectedFont={settings.selectedFont}
+          fontSize={settings.fontSize}
           setFontSize={setFontSize}
           //file management
           refApp={refApp.current}
@@ -240,13 +243,15 @@ function App() {
         <Editor
           //set theme
           selectedTheme={
-            lightMode ? selectedNightTheme.text : selectedDayTheme.text
+            settings.lightMode
+              ? settings.selectedNightTheme.text
+              : settings.selectedDayTheme.text
           }
-          fontSize={fontSize}
+          fontSize={settings.fontSize}
           shouldRefreshFile={refreshFile}
           filename={filename}
           disabled={lockEditor}
-          selectedFont={selectedFont}
+          selectedFont={settings.selectedFont}
         />
         <CommandPrompt />
       </div>
