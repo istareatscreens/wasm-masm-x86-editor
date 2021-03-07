@@ -14,7 +14,7 @@ import about from "../../../../images/about.png";
 import About from "./about/About.jsx";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 import Dropdown from "./../../common/Dropdown.jsx";
-import ThemeSwitchGroup from "./themecontrols/ThemeSwitchGroup.jsx";
+import ThemeControlGroup from "./themecontrols/ThemeControlGroup.jsx";
 import ThemeControlWindow from "./themecontrols/ThemeControlWindow.jsx";
 
 const Banner = function Banner({
@@ -151,7 +151,7 @@ const Banner = function Banner({
             selected={selectedFont}
             value={selectedFont}
           />
-          <ThemeSwitchGroup
+          <ThemeControlGroup
             setThemeSettingsOpened={setThemeSettingsOpened}
             themeSettingsOpened={themeSettingsOpened}
             lightMode={lightMode}

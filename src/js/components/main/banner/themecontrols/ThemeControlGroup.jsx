@@ -9,17 +9,18 @@ import sun from "../../../../../images/sun.png";
 //source: http://pixelartmaker.com/art/4bc9a3f2fb39a94
 import moon from "../../../../../images/moon.png";
 
-function ThemeSwitchGroup({
+function ThemeControlGroup({
   setLightMode,
   lightMode,
   themeSettingsOpened,
   setThemeSettingsOpened,
 }) {
   return (
-    <>
+    <div className={"banner__theme-mode"}>
       <Switch
         checked={lightMode}
         title={`switch to ${lightMode ? "light mode" : "dark mode"}`}
+        imgClass={"switch__image--theme-mode"}
         onChange={(event) => setLightMode(event.target.checked)}
         src={lightMode ? moon : sun}
       />
@@ -30,8 +31,8 @@ function ThemeSwitchGroup({
         title={"dark-mode"}
         src={themeMenu}
       />
-    </>
+    </div>
   );
 }
 
-export default ThemeSwitchGroup;
+export default ThemeControlGroup;

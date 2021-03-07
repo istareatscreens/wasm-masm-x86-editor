@@ -23,9 +23,6 @@ function ThemeControlWindow({
       titlebarText={"Theme Options"}
     >
       <div className="window-body--list">
-        <p>
-          <b>Editor theme settings</b>
-        </p>
         <div className="window-body--element">
           <img className="image--dropdown-icon" src={sun} />
           <Dropdown

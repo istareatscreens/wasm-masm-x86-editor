@@ -16,6 +16,10 @@
     box-shadow: $border-sunken-outer, $border-sunken-inner;
   }
 
+  &--theme-mode {
+    margin-left: 0.2rem;
+  }
+
   &__container {
     box-shadow: none;
     margin-left: 0;
@@ -29,6 +33,9 @@
     top: -3.04rem;
     pointer-events: none;
     padding: 0.3rem;
+    &--theme-mode {
+      margin-left: 0.2rem;
+    }
   }
   &__view {
     &--zen {
