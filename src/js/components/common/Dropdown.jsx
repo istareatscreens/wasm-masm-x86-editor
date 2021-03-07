@@ -1,10 +1,10 @@
 import React from "react";
 
-function ThemeSelect({ options, selected, classNameDropDown, handleChange }) {
+function Dropdown({ options, selected, classNameDropdown, handleChange }) {
   return (
     <select
       onChange={handleChange}
-      className={`select-box ${classNameDropDown}`}
+      className={`select-box ${classNameDropdown}`}
       defaultValue={selected.text}
     >
       {options &&
@@ -13,4 +13,4 @@ function ThemeSelect({ options, selected, classNameDropDown, handleChange }) {
   );
 }
 
-export default ThemeSelect;
+export default Dropdown;

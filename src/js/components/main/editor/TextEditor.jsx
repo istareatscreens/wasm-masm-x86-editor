@@ -9,7 +9,14 @@ import { useDebouncedCallback } from "use-debounce";
 
 import FileSystem from "../utility/FileSystem.js";
 
-function TextEditor({ onChange, value, filename, fontSize, selectedFont }) {
+function TextEditor({
+  onChange,
+  selectedTheme,
+  value,
+  filename,
+  fontSize,
+  selectedFont,
+}) {
   const refCodeMirror = useRef(null);
   const handleChange = (editor, data, value) => {
     onChange(value);
@@ -44,7 +51,7 @@ function TextEditor({ onChange, value, filename, fontSize, selectedFont }) {
           lineWrapping: true,
           lineNumbers: true,
           mode: "MASM",
-          theme: "default",
+          theme: selectedTheme,
         }}
       ></CodeMirror>
     </div>

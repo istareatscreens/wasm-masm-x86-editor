@@ -7,6 +7,7 @@ const Editor = function Editor({
   shouldRefreshFile,
   fontSize,
   selectedFont,
+  selectedTheme,
 }) {
   const [code, setCode] = useState("");
 
@@ -19,6 +20,7 @@ const Editor = function Editor({
   return (
     <>
       <TextEditor
+        selectedTheme={selectedTheme}
         filename={filename}
         onChange={setCode}
         fontSize={fontSize}

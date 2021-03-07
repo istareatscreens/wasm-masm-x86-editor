@@ -14,18 +14,30 @@ import about from "../../../../images/about.png";
 import About from "./about/About.jsx";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 import Dropdown from "./../../common/Dropdown.jsx";
+import ThemeSwitchGroup from "./themecontrols/ThemeSwitchGroup.jsx";
+import ThemeControlWindow from "./themecontrols/ThemeControlWindow.jsx";
 
 const Banner = function Banner({
   filename,
   refApp,
   fileList,
+  //fonts
   fontSize,
   setFontSize,
   selectedFont,
   setSelectedFont,
   fontList,
+  //theme
+  themeList,
+  setLightMode,
+  lightMode,
+  setSelectedDayTheme,
+  setSelectedNightTheme,
+  selectedDayTheme,
+  selectedNightTheme,
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
+  const [themeSettingsOpened, setThemeSettingsOpened] = useState(false);
 
   const unhideTerminal = () => {
     if (
@@ -76,10 +88,22 @@ const Banner = function Banner({
     setSelectedFont(fontList[event.target.selectedIndex]);
   };
 
+  //TODO: Move props to common element
   return (
     <>
       {aboutPageOpened && (
         <About closeAbout={() => setAboutPageOpened(false)} />
+      )}
+      {themeSettingsOpened && (
+        <ThemeControlWindow
+          setThemeSettingsOpened={setThemeSettingsOpened}
+          themeSettingsOpened={setThemeSettingsOpened}
+          themeList={themeList}
+          setSelectedDayTheme={setSelectedDayTheme}
+          setSelectedNightTheme={setSelectedNightTheme}
+          selectedDayTheme={selectedDayTheme}
+          selectedNightTheme={selectedNightTheme}
+        />
       )}
       <div className={"banner__patch"} />
       <div className={"banner"} />
@@ -122,9 +146,15 @@ const Banner = function Banner({
             handleChange={(event) => {
               handleFontChange(event);
             }}
-            classNameDropDown={""}
+            classNameDropdown={""}
             options={fontList}
             selected={selectedFont}
+          />
+          <ThemeSwitchGroup
+            setThemeSettingsOpened={setThemeSettingsOpened}
+            themeSettingsOpened={themeSettingsOpened}
+            lightMode={lightMode}
+            setLightMode={setLightMode}
           />
           <ViewControlGroup
             className={"banner__main__group banner__main__group--mid"}

@@ -10,6 +10,7 @@ out
 #Ignore Ide files
 .vscode
 debug.log
+.vs
 #Ignore text files (used for notes)
 *.txt
 *.txt.swp

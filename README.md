@@ -36,3 +36,4 @@ The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
 - Add throttling to buttons
 - deal with hard and soft crashes in a more graceful way (refresh iframe)
 - remove javascript exception printout executed by boxedwine on iframe
+- Bring windows to the front on click

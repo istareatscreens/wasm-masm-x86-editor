@@ -175,7 +175,6 @@ class List
         imgClass={"switch__view--cmd"}
         title={altPrint(showCMD, "hide command prompt", "show command prompt")}
       />
-
       <Switch
         src={filedrawer}
         checked={showFileDrawer}
