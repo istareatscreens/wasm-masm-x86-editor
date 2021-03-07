@@ -5,7 +5,7 @@ function Dropdown({ options, selected, classNameDropdown, handleChange }) {
     <select
       onChange={handleChange}
       className={`select-box ${classNameDropdown}`}
-      defaultValue={selected.text}
+      value={selected.text}
     >
       {options &&
         options.map((option) => <option key={option.id}>{option.text}</option>)}

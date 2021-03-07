@@ -88,7 +88,7 @@ const Banner = function Banner({
     setSelectedFont(fontList[event.target.selectedIndex]);
   };
 
-  //TODO: Move props to common element
+  //TODO: Move props to objects
   return (
     <>
       {aboutPageOpened && (
@@ -149,6 +149,7 @@ const Banner = function Banner({
             classNameDropdown={""}
             options={fontList}
             selected={selectedFont}
+            value={selectedFont}
           />
           <ThemeSwitchGroup
             setThemeSettingsOpened={setThemeSettingsOpened}
