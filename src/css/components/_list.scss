@@ -2,6 +2,7 @@
   font-size: 1.4rem;
   overflow: auto;
   background: $button-highlight;
+  cursor: pointer;
   &--dark {
     background: black;
   }

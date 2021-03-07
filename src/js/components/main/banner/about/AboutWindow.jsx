@@ -29,7 +29,7 @@ function AboutWindow({ closeAbout }) {
       <br></br>
       <p>
         {
-          "All user data is stored in local storage (which should persist between sessions) and can be freely downloaded using menu buttons. Any bugs experienced can be resolved by clearing browser data or deleting local file data (make sure to download any saved files first)."
+          "All user data is stored in local storage. All files can be freely downloaded using the menu buttons."
         }
       </p>
       <br></br>
