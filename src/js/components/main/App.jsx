@@ -17,10 +17,6 @@ function App() {
   //TODO: Change how this is done
   const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
 
-  //Theme Mode
-  //TODO: Implement full page theme switch
-  const [lightMode, setLightMode] = useState(false);
-
   const [themeList, setThemeList] = useState([
     { id: 0, text: "default" },
     { id: 1, text: "3024-day" },
@@ -107,14 +103,41 @@ function App() {
   const [selectedDayTheme, setSelectedDayTheme] = useState(themeList[0]);
   const [selectedNightTheme, setSelectedNightTheme] = useState(themeList[21]);
 
-  //TODO add debounce
+  //Theme Mode
+  //TODO: Implement full page theme switch
+  const [lightMode, setLightMode] = useState(false);
+
+  //load user settings
+  useEffect(() => {
+    const userSettings = localStorage.getItem("settings");
+    if (userSettings != null) {
+      const {
+        fontSize,
+        selectedFont,
+        selectedDayTheme,
+        selectedNightTheme,
+        lightMode,
+      } = JSON.parse(userSettings);
+      setFontSize(fontSize);
+      setSelectedFont(selectedFont);
+      setSelectedDayTheme(selectedDayTheme);
+      setSelectedNightTheme(selectedNightTheme);
+      setLightMode(lightMode);
+    }
+  }, []);
+
+  //TODO: add debounce
   //save user settings to local storage
-  useEffect(() => {}, [
-    fontSize,
-    selectedFont,
-    selectedDayTheme,
-    selectedNightTheme,
-  ]);
+  useEffect(() => {
+    const data = JSON.stringify({
+      fontSize: fontSize,
+      selectedFont: selectedFont,
+      selectedNightTheme: selectedNightTheme,
+      selectedDayTheme: selectedDayTheme,
+      lightMode: lightMode,
+    });
+    setInLocalStorage("settings", data, (data) => data);
+  }, [fontSize, selectedFont, selectedDayTheme, selectedNightTheme, lightMode]);
 
   const refApp = useRef(null);
 
