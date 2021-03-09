@@ -31,6 +31,12 @@ function jsTaskMainElectron() {
   return src([electronJS]).pipe(dest(electronOutput));
 }
 
+function iconTaskElectron() {
+  return src(["src/electron/*.ico", "src/electron/*.icns"]).pipe(
+    gulp.dest(electronOutput)
+  );
+}
+
 function jsTaskElectron() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
     .pipe(webpack(require("./webpack.prod.js")))
@@ -186,6 +192,7 @@ function watchTask() {
 //BUILD Electron
 exports.electron = series(
   parallel(
+    iconTaskElectron,
     cleanTaskElectron,
     jsTaskMainElectron,
     jsTaskElectron,
