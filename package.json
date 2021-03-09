@@ -7,8 +7,8 @@
     "build": "gulp",
     "dev": "gulp watch",
     "build-electron": "gulp electron",
-    "build-installer": "electron-builder",
-    "deploy": "electron-builder build -mwl --publish always"
+    "build-installer": "electron-builder --out=build",
+    "deploy": "electron-builder build -mwl --publish -out=build always"
   },
   "repository": {
     "type": "git",
