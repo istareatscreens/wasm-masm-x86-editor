@@ -32,9 +32,10 @@ function jsTaskMainElectron() {
 }
 
 function iconTaskElectron() {
-  return src(["src/electron/*.ico", "src/electron/*.icns"]).pipe(
-    gulp.dest(electronOutput)
-  );
+  return src(
+    ["src/electron/*.ico", "src/electron/*.icns"],
+    "src/electron/*.png"
+  ).pipe(gulp.dest(electronOutput));
 }
 
 function jsTaskElectron() {
