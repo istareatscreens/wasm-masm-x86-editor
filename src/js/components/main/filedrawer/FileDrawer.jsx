@@ -228,6 +228,7 @@ const FileDrawer = function FileDrawer({
   const handleRenameFile = (filename, newFilename) => {
     //check if filename exists
     if (!findFileByName(newFilename)) {
+      const renamingSelected = filename == fileSelected; //check if file being renamed is one selected
       FileSystem.renameFile(filename, newFilename);
       writeCommandToCMD(`echo.>${newFilename}`); //using run command rather than writing to console for greater reliability
       /*
@@ -236,7 +237,11 @@ const FileDrawer = function FileDrawer({
       }, 4000);
       //
       */
+      if (renamingSelected) {
+        switchFile(newFilename);
+      }
       refreshFileList();
+
       return true;
     }
     return false;
