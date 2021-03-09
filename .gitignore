@@ -26,4 +26,5 @@ nyc
 
 #Access token
 electron-builder.yml
+electron-builder.yaml
 
