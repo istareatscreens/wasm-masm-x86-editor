@@ -6,10 +6,14 @@ WASM MASM x86 Editor is a portable x86 Microsoft Assembly Language (MASM) code c
 
 This app is made possible through the use of [JWlink and JWasm](https://github.com/JWasm) to compile x86/x64 MASM and a 32-bit wine terminal to execute x86 executable binaries using [Boxedwine](http://www.boxedwine.org/) emscripten port. The text editor functionality is provided by [CodeMirror](https://codemirror.net/)
 
-![preview gif](https://i.imgur.com/qw5RLa1.gif)
+![preview gif](https://i.imgur.com/Ct41UUK.gif)
 
 **WARNING the web version is ~50mb in size**.  
 The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
+
+## Download
+
+You can download a client version for Mac, Windows and Linux [HERE](https://github.com/istareatscreens/wasm-masm-x86-editor/releases)
 
 ## TODO
 
