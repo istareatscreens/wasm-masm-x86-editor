@@ -18,24 +18,23 @@ You can download a client version for Mac, Windows and Linux [HERE](https://gith
 ## TODO
 
 - Add alt text to elements
-- Add automatic Irvine library correct import statement conversion on upload
+- Implement INCLUDE Irvine32.inc as a replacement to current INCLUDE statement
 - Add Project save and load (save local storage states)
 - Add multiple file addition in createfile window
 - Implement workers to improve performance
 - Improve syntax highlighting
 - Refactor code
 - Add resizable components
-- Implement vim (issue in dependency) and font size adjustment in editor
+- Implement vim (issue in dependency)
 - shrink boxedwine.zip for web version
 - Setup google font imports for web version
 
 ## Bugs
 
 - Add escape key to exit modals (about)
-- create/delete/rename file all buggy (easy to crash boxedwine, and get file not present bug)
-- error handling on boxedwine
+- create/delete/rename file can crash and dysnc boxedwines file system
 - Check asm files for correct irivine import before compile/link to prevent hard crash
 - Add throttling to buttons
 - deal with hard and soft crashes in a more graceful way (refresh iframe)
 - remove javascript exception printout executed by boxedwine on iframe
-- Bring windows to the front on click
+- windows dont move to the front on click
