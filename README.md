@@ -27,7 +27,6 @@ You can download a client version for Mac, Windows and Linux [HERE](https://gith
 - Add resizable components
 - Implement vim (issue in dependency)
 - shrink boxedwine.zip for web version
-- Setup google font imports for web version
 
 ## Bugs
 
