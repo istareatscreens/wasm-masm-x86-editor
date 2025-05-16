@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
+import FileSystem from "../main/utility/FileSystem.js"
 
 function Boxedwine() {
   const canvas = useRef(null);
@@ -53,6 +54,10 @@ function Boxedwine() {
       window.callMain([
         "-root",
         "/root/base",
+        "-uid",
+        "0",
+        "-euid",
+        "0",
         "-mount_drive",
         "/root/files/",
         "d",
@@ -157,7 +162,6 @@ function Boxedwine() {
           });
         timeout();
       } else {
-        //console.log(event.detail);
         Module.ProcessRun.runCommand(event.detail);
       }
     });

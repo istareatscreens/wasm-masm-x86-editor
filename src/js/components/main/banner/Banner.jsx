@@ -6,6 +6,8 @@ import {
   checkFileExtension,
 } from "../../../utility/utilityFunctions.ts";
 
+import FileSystem from "../utility/FileSystem.js";
+
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
@@ -52,6 +54,7 @@ const Banner = function Banner({
   const build = () => {
     //TODO rework assemble.bat to simplify this logic
     if (/.asm$/.test(filename)) {
+      fileList = FileSystem.getFileList();
       writeCommandToCMD(
         `assemble ${filename.substring(0, filename.length - 4)}`
       );

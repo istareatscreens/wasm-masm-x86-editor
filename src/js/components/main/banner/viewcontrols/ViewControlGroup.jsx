@@ -21,8 +21,6 @@ function ViewControlGroup({ className, refApp, ...props }) {
 
   useEffect(() => {
     window.addEventListener("show-cmd", () => {
-      console.log("HERE");
-      console.log(refCMDBtn);
       refCMDBtn.current.click();
     });
     return () => {

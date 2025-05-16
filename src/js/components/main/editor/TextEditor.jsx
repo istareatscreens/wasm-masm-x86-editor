@@ -24,8 +24,8 @@ function TextEditor({
 
   //Change font family
   useEffect(() => {
-    refCodeMirror.current.style.fontFamily = selectedFont.fontFamily
-      ? selectedFont.fontFamily
+    refCodeMirror.current.children[0].children[0].style.fontFamily = selectedFont.fontFamily ?
+      selectedFont.fontFamily
       : selectedFont.text;
   }, [selectedFont]);
 
