@@ -1,3 +1,5 @@
+@use "../abstracts/variables";
+
 ::-webkit-scrollbar {
   width: 16px;
 }
@@ -6,7 +8,7 @@
 }
 
 ::-webkit-scrollbar-corner {
-  background: $button-face;
+  background: variables.$button-face;
 }
 
 ::-webkit-scrollbar-track {
@@ -14,8 +16,8 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: $button-face;
-  box-shadow: $border-raised-outer, $border-raised-inner;
+  background-color: variables.$button-face;
+  box-shadow: variables.$border-raised-outer, variables.$border-raised-inner;
 }
 
 ::-webkit-scrollbar-button:horizontal:start:decrement,

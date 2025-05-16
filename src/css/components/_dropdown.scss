@@ -1,7 +1,9 @@
+@use "../abstracts/variables";
+
 .select-box {
   //custom
   width: min-content;
-  height: calc(#{$banner-height} - 0.5rem); //2.5rem
+  height: calc(#{variables.$banner-height} - 0.5rem); //2.5rem
   margin-left: 0.2rem;
   color: #000;
   scrollbar-color: black grey;
@@ -9,8 +11,8 @@
   //theme
   padding: 0.3rem 0.4rem;
   border: none;
-  box-shadow: $border-field;
-  background-color: $button-highlight;
+  box-shadow: variables.$border-field;
+  background-color: variables.$button-highlight;
   box-sizing: border-box;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -29,8 +31,8 @@
   border-radius: 0;
   &:focus {
     outline: none;
-    color: $button-highlight;
-    background-color: $dialog-blue;
+    color: variables.$button-highlight;
+    background-color: variables.$dialog-blue;
     & option {
       color: #000;
       background-color: #fff;

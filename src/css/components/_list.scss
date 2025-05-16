@@ -1,7 +1,9 @@
+@use "../abstracts/variables";
+
 .file-drawer__list {
   font-size: 1.4rem;
   overflow: auto;
-  background: $button-highlight;
+  background: variables.$button-highlight;
   cursor: pointer;
   &--dark {
     background: black;
@@ -20,7 +22,7 @@
     &--selected {
       width: 100%;
       height: 100%;
-      background-color: $selected-blue;
+      background-color: variables.$selected-blue;
       &--dark {
         color: black;
       }
@@ -33,7 +35,7 @@
 
 ul.tree-view {
   display: block;
-  box-shadow: $border-field;
+  box-shadow: variables.$border-field;
   padding: 0.5rem;
   margin: 0.2rem;
 }
@@ -86,7 +88,7 @@ ul.tree-view ul > li:last-child::after {
   top: 7px;
   bottom: 0px;
   width: 8px;
-  background: $button-highlight;
+  background: variables.$button-highlight;
 }
 
 ul.tree-view details {

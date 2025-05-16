@@ -1,8 +1,11 @@
+@use "../abstracts/variables";
+
 .window {
-  box-shadow: $border-window-outer, $border-window-inner;
-  background: $surface;
+  box-shadow: variables.$border-window-outer, variables.$border-window-inner;
+  background: variables.$surface;
   padding: 3px;
   z-index: 100;
+
   &--about {
     width: 30%;
     text-align: center;
@@ -10,13 +13,15 @@
   }
 
   &-body {
-    margin: $element-spacing;
+    margin: variables.$element-spacing;
+
     &--list {
       display: flex;
       justify-content: center;
       flex-direction: column;
       align-items: center;
     }
+
     &--element {
       display: flex;
       align-items: center;
@@ -27,22 +32,23 @@
 }
 
 .title-bar {
-  background: linear-gradient(90deg, $dialog-blue, $dialog-blue-light);
+  background: linear-gradient(90deg, variables.$dialog-blue, variables.$dialog-blue-light);
   padding: 0.3rem 0.2rem 0.3rem 0.3rem;
   text-align: center;
   height: 1.7rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  z-index: 102;
+
   &__btn {
     width: fit-content;
     height: fit-content;
   }
-  z-index: 102;
 }
 
 .title-bar.inactive {
-  background: linear-gradient(90deg, $dialog-gray, $dialog-gray-light);
+  background: linear-gradient(90deg, variables.$dialog-gray, variables.$dialog-gray-light);
 }
 
 .title-bar-text {
@@ -82,6 +88,7 @@
   height: 2rem;
   justify-content: center;
   align-items: center;
+
   &--createFile {
     height: 100%;
   }
