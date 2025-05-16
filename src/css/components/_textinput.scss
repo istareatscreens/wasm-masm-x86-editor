@@ -1,10 +1,12 @@
+@use "../abstracts/variables";
+
 .input-box {
   font-size: 1.4rem;
   border: none;
   box-sizing: border-box;
   background: transparent;
-  box-shadow: $border-field;
-  background-color: $button-highlight;
+  box-shadow: variables.$border-field;
+  background-color: variables.$button-highlight;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -16,11 +18,11 @@
   width: 100%;
 
   &--font {
-    max-height: $banner-height;
-    width: calc(#{$banner-height} - 0.5rem);
-    height: calc(#{$banner-height} - 0.5rem);
+    max-height: variables.$banner-height;
+    width: calc(#{variables.$banner-height} - 0.5rem);
+    height: calc(#{variables.$banner-height} - 0.5rem);
     text-align: center;
-    line-height: calc(#{$banner-height} - 0.5rem);
+    line-height: calc(#{variables.$banner-height} - 0.5rem);
     margin-left: 0.4rem;
 
     //Remove arrows

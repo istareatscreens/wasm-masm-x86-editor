@@ -1,11 +1,9 @@
 import React from "react";
 import Iframe from "./Iframe.jsx";
 
-import React from "react";
-
 const CommandPrompt = () => (
   <Iframe
-    onInferredClick={(e) => {}}
+    onInferredClick={(e) => { }}
     className="boxedwine"
     id="boxedwine"
     width="100%"

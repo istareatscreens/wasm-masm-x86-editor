@@ -25,10 +25,9 @@ function ThemeControlGroup({
         src={lightMode ? moon : sun}
       />
       <Button
-        title="Adjust theming"
+        title={"Theme settings"}
         onClick={() => setThemeSettingsOpened(!themeSettingsOpened)}
         className={"banner__main__btn"}
-        title={"Theme settings"}
         src={themeMenu}
       />
     </div>

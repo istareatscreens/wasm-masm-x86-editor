@@ -9,7 +9,8 @@ const { src, series, parallel, dest, watch } = require("gulp");
 const browserSync = require("browser-sync").create();
 const imagemin = require("gulp-imagemin");
 const webpack = require("webpack-stream");
-const sass = require("gulp-sass");
+const sassCompiler = require("sass");
+const sass = require("gulp-sass")(sassCompiler);
 const livereload = require("gulp-livereload");
 const htmlmin = require("gulp-htmlmin");
 const del = require("del");
@@ -156,9 +157,9 @@ function imgTask() {
 function cssTask() {
   return src([cssPath + ".scss", cssPath + ".css"])
     .pipe(sourcemaps.init())
-    .pipe(sass({ includePaths: ["./node_modules"] }).on("error", sass.logError))
+    .pipe(sass({ includePaths: ["node_modules", "src/css"] }).on("error", sass.logError))
     .pipe(concat("style.css"))
-    .pipe(postcss([autoprefixer(), cssnano()])) //not all plugins work with postcss only the ones mentioned in their documentation
+    .pipe(postcss([autoprefixer(), cssnano()]))
     .pipe(sourcemaps.write("."))
     .pipe(browserSync.stream())
     .pipe(dest(output));

@@ -1,24 +1,26 @@
+@use "../abstracts/variables";
+
 .btn {
-  background: $surface;
-  box-shadow: $border-raised-outer, $border-raised-inner;
+  background: variables.$surface;
+  box-shadow: variables.$border-raised-outer, variables.$border-raised-inner;
   box-sizing: border-box;
   border: none;
   border-radius: 0;
   // min-width: 75px;
   // min-height: 23px;
   padding: 0.3rem;
-  max-height: $banner-height;
-  width: calc(#{$banner-height} - 0.5rem);
-  height: calc(#{$banner-height} - 0.5rem);
+  max-height: variables.$banner-height;
+  width: calc(#{variables.$banner-height} - 0.5rem);
+  height: calc(#{variables.$banner-height} - 0.5rem);
 
   &:not(:disabled):active {
-    box-shadow: $border-sunken-outer, $border-sunken-inner;
+    box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
     //padding: 2px 11px 0 13px;
   }
 
-  @media (not(hover)) {
+  @media (hover: none) {
     &:not(:disabled):hover {
-      box-shadow: $border-sunken-outer, $border-sunken-inner;
+      box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
     }
   }
 
