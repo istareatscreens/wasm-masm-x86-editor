@@ -4,7 +4,7 @@
   "description": "Portable Microsoft Assembly Language Editor with compilation, linking and x86 executable execution",
   "main": "./build/electron-main.js",
   "scripts": {
-    "build": "NODE_OPTIONS=--openssl-legacy-provider gulp",
+    "build": "gulp",
     "dev": "NODE_OPTIONS=--openssl-legacy-provider gulp watch",
     "build-electron": "gulp electron",
     "build-installer": "electron-builder",
