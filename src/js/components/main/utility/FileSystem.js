@@ -72,7 +72,7 @@ function getFormatedDate() {
 const callBackIsTrue = async (
   callback,
   delay,
-  resolutionFunction = () => {}
+  resolutionFunction = () => { }
 ) => {
   return new Promise((resolve) => {
     if (callback()) resolve(resolutionFunction());
@@ -91,6 +91,8 @@ FileSystem for mananging changes to Boxedwine files
 export default class FileSystem {
   static locked = false;
   static fileListKey = "";
+  static _eventAttached = false;
+  static deleteFileQueue = [];
 
   static async init() {
     //check to see if local storage was loaded
@@ -152,10 +154,7 @@ export default class FileSystem {
     let fileList = FileSystem._readFileList();
     //rename file in list
 
-    console.log({ filename, newFileName });
-    console.log(fileList);
     fileList = renameObjectKey(fileList, filename, newFileName);
-    console.log(fileList);
     hf.setInLocalStorage(
       FileSystem.fileListKey,
       JSON.stringify(fileList),
@@ -165,9 +164,6 @@ export default class FileSystem {
 
   //TODO change INCLUDE Irvine import to correct one
   static createDataFile(files, callback) {
-    console.log("in create DATA FILE");
-    console.log(files);
-
     const command = files
       .map((file) => {
         const { fileMetaData, data } = file;
@@ -296,12 +292,47 @@ export default class FileSystem {
     }
   }
 
+  static queueFilesToDelete(...filenames) {
+    let fileList = FileSystem._readFileList();
+    filenames.forEach(filename => {
+      if (`${filename}` in fileList) {
+        FileSystem.deleteFileQueue.push(filename);
+      }
+    });
+  }
+
+  static deleteFiles() {
+    if (0 === FileSystem.deleteFileQueue.length) {
+      return;
+    }
+    writeCommandToCMD('del ' + FileSystem.deleteFileQueue.join(" "))
+    if (FileSystem.deleteFileQueue.find(filename => 'test.asm' === filename)) {
+      FileSystem.createAssemblyFile('test.asm');
+    }
+    FileSystem.deleteFileQueue = [];
+  }
+
+  static handleConsoleWriteEvent(event) {
+    FileSystem.deleteLocalStorageFilesAndClearDeleteQueue(event);
+  }
+
+  static transformStringDelString(input) {
+    if (input.startsWith('del')) {
+      input = input.slice(3);
+    }
+    if (input.endsWith('enter')) {
+      input = input.slice(0, -5);
+    }
+
+    input = input.replace(/spacebar/g, ' ').replace(/period/g, '.');
+
+    return input;
+  }
+
   static deleteFile(filename) {
-    console.log("HERE: " + filename);
     let fileList = FileSystem._readFileList();
     if (`${filename}` in fileList) {
       const id = fileList[filename];
-      console.log(hf.getFileMetaData(id));
       localStorage.removeItem(hf.getFileMetaData(id).id); //delete file contents
       localStorage.removeItem(id); //delete file metaData
       delete fileList[`${filename}`];
@@ -324,13 +355,13 @@ export default class FileSystem {
       dataURItoBlob(
         //convert to blob file for download
         mimeType(fileExtension) + //get file extension
-          window.localStorage.getItem(
-            hf.getFileMetaData(FileSystem._readFileList()[filename]).id
-          )
+        window.localStorage.getItem(
+          hf.getFileMetaData(FileSystem._readFileList()[filename]).id
+        )
       ),
       filename.substring(0, filename.length - fileExtension.length) +
-        getFormatedDate() +
-        fileExtension
+      getFormatedDate() +
+      fileExtension
     );
   }
 

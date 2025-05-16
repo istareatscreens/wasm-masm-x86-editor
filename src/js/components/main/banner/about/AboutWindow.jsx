@@ -29,7 +29,7 @@ function AboutWindow({ closeAbout }) {
       <br></br>
       <p>
         {
-          "All user data is stored in local storage. All files can be freely downloaded using the menu buttons."
+          "All user data is stored in local storage. If you have any errors you can reset local storage but make sure to back up your work or it will be wiped. All files can be freely downloaded using the menu buttons."
         }
       </p>
       <br></br>

@@ -808,21 +808,21 @@ function createFileIfNecessary(fs, fullPath, prefix) {
         } catch (ef) {
           console.log(
             "file replace error:" +
-              ef.message +
-              " for: " +
-              parent +
-              "/" +
-              filename
-          );
-        }
-      } else {
-        console.log(
-          "file creation error:" +
             ef.message +
             " for: " +
             parent +
             "/" +
             filename
+          );
+        }
+      } else {
+        console.log(
+          "file creation error:" +
+          ef.message +
+          " for: " +
+          parent +
+          "/" +
+          filename
         );
       }
     }
@@ -848,21 +848,21 @@ function createFolderIfNecessary(fullPath, prefix) {
         } catch (cef) {
           console.log(
             "Directory creation error:" +
-              cef.message +
-              " for: " +
-              parent +
-              "/" +
-              dir
+            cef.message +
+            " for: " +
+            parent +
+            "/" +
+            dir
           );
         }
       } else if (ef.message != "File exists") {
         console.log(
           "Directory creation error:" +
-            ef.message +
-            " for: " +
-            parent +
-            "/" +
-            dir
+          ef.message +
+          " for: " +
+          parent +
+          "/" +
+          dir
         );
       }
     }
@@ -1061,6 +1061,13 @@ function isInSubDirectory(fullPath, programDir) {
 }
 function getEmulatorParams() {
   var params = ["-root", "/root/base"];
+
+  // Add admin/root privileges
+  params.push("-uid");
+  params.push("0");
+  params.push("-euid");
+  params.push("0");
+
   params.push("-mount_drive");
   params.push(Config.appDirPrefix);
   params.push("d");
@@ -1203,10 +1210,10 @@ var Module = {
     Module.setStatus(
       left
         ? "Preparing... (" +
-            (this.totalDependencies - left) +
-            "/" +
-            this.totalDependencies +
-            ")"
+        (this.totalDependencies - left) +
+        "/" +
+        this.totalDependencies +
+        ")"
         : ""
     );
   },

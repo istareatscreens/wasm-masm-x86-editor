@@ -36,7 +36,7 @@ const handleMessage = (event: MessageEvent) => {
         JSON.parse(event.data)
       );
       window.dispatchEvent(new CustomEvent(eventName, { detail: data.data }));
-    } catch {}
+    } catch { }
   }
 };
 
@@ -66,8 +66,8 @@ export const generateRandomID = (): string => {
 export const sleepUntil = async () => (
   callback: () => any,
   timeoutMs: number,
-  resolutionCallback: () => any = () => {},
-  rejectionCallback: () => any = () => {},
+  resolutionCallback: () => any = () => { },
+  rejectionCallback: () => any = () => { },
   delayBetweenChecks: number = 20
 ): Promise<unknown> => {
   return new Promise((resolve, reject) => {

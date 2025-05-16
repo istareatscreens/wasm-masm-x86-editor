@@ -19,6 +19,7 @@ const assetsPath = "src/assets/";
 const output = "public/";
 const jsPath = "src/js/**/*.*";
 const cssPath = "src/css/**/*";
+const codeMirrorPath = "node_modules/codemirror/**/**/**";
 const wasmPath = "src/wasm/*.wasm";
 const htmlPath = "src/html/";
 const imagePath = "src/images/*";
@@ -155,7 +156,7 @@ function imgTask() {
 }
 
 function cssTask() {
-  return src([cssPath + ".scss", cssPath + ".css"])
+  return src([cssPath + ".scss", cssPath + ".css", codeMirrorPath + ".css"])
     .pipe(sourcemaps.init())
     .pipe(sass({ includePaths: ["node_modules", "src/css"] }).on("error", sass.logError))
     .pipe(concat("style.css"))

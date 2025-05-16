@@ -71,7 +71,6 @@ const FileDrawer = function FileDrawer({
         isCurrentSelectedFile = true;
       }
     }
-    console.log("HERE PROCESSING FILE");
     FileSystem.createDataFile(
       await Promise.all(fileList.map((getFile) => getFile())),
       () => {
@@ -135,13 +134,13 @@ const FileDrawer = function FileDrawer({
   };
 
   const turnOffAllCheckboxes = () => {
-    selectAllCheckbox.current.checked = false;
     setFilesSelected(
       filesSelected.map((file) => {
         file.isSelected = false;
         return file;
       })
     );
+    selectAllCheckbox.current.checked = false;
     setNumberCheckboxesSelected(0);
   };
 
@@ -167,12 +166,11 @@ const FileDrawer = function FileDrawer({
   //Handle multiselection deletion
   const deleteFiles = () => {
     return filesSelected.filter(({ filename, isSelected }) => {
-      console.log(filename, isSelected);
       if (isSelected) {
         if (fileSelected == filename) {
           return true;
         } else {
-          FileSystem.deleteFile(filename);
+          FileSystem.queueFilesToDelete(filename);
         }
       }
       return false;
@@ -184,19 +182,17 @@ const FileDrawer = function FileDrawer({
 
   const handleDeleteFile = () => {
     const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
-
-    console.log(numberOfCheckboxesSelected);
-    if (numberOfCheckboxesSelected != 0) {
+    if (numberOfCheckboxesSelected != 0 && !deleteFiles().length) {
       if (!deleteFiles().length) {
         //delete checked files
         // if file selected to edit was not selected just refresh and finish
+        FileSystem.deleteFiles();
         refreshFileList();
         return;
       }
     }
 
     setEditorLock(true);
-    console.log("HERE handle delete");
     //Handle general case
     if (
       filesSelected.length > 1 && //there is a file to switch to
@@ -206,15 +202,16 @@ const FileDrawer = function FileDrawer({
       if (selectedFileID == 0) {
         switchFile(findFileByID(selectedFileID + 1).filename);
       } else {
-        console.log(findFileByID(selectedFileID - 1).filename);
         switchFile(findFileByID(selectedFileID - 1).filename);
       }
 
-      FileSystem.deleteFile(fileSelected);
-      refreshFileList();
+      FileSystem.queueFilesToDelete(fileSelected);
+      FileSystem.deleteFiles();
+      refreshFileList(true);
     } else {
       //Handle deleting one file
-      FileSystem.deleteFile(fileSelected);
+      FileSystem.queueFilesToDelete(fileSelected);
+      FileSystem.deleteFiles();
       refreshFileList(true);
     }
 
@@ -289,38 +286,36 @@ const FileDrawer = function FileDrawer({
         switchFileView={switchFileView}
       />
       <ul
-        className={`file-drawer__list tree-view ${
-          lightMode ? "" : "file-drawer__list--dark"
-        }`}
+        className={`file-drawer__list tree-view ${lightMode ? "" : "file-drawer__list--dark"
+          }`}
       >
         {filesSelected.length
           ? filesSelected
-              //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
-              .map((file) => (
-                <li
-                  key={file.id}
-                  className={`file-drawer__list__group ${
-                    lightMode ? "" : "file-drawer__list__group--dark"
+            //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
+            .map((file) => (
+              <li
+                key={file.id}
+                className={`file-drawer__list__group ${lightMode ? "" : "file-drawer__list__group--dark"
                   } `}
-                >
-                  <input
-                    label=""
-                    type="checkbox"
-                    checked={file.isSelected}
-                    onChange={(event) => {
-                      fileIsChecked(event.target.checked, file);
-                    }}
-                    className={"checkbox"}
-                  />
-                  <FilenameEditableListElement
-                    filename={file.filename}
-                    handleRename={handleRenameFile}
-                    switchFile={switchFile}
-                    isFileSelected={fileSelected == file.filename}
-                    lightMode={lightMode}
-                  />
-                </li>
-              ))
+              >
+                <input
+                  label=""
+                  type="checkbox"
+                  checked={file.isSelected}
+                  onChange={(event) => {
+                    fileIsChecked(event.target.checked, file);
+                  }}
+                  className={"checkbox"}
+                />
+                <FilenameEditableListElement
+                  filename={file.filename}
+                  handleRename={handleRenameFile}
+                  switchFile={switchFile}
+                  isFileSelected={fileSelected == file.filename}
+                  lightMode={lightMode}
+                />
+              </li>
+            ))
           : ""}
       </ul>
     </>

@@ -9,31 +9,8 @@ This app is made possible through the use of [JWlink and JWasm](https://github.c
 ![preview gif](https://i.imgur.com/Ct41UUK.gif)
 
 **WARNING the web version is ~50mb in size**.  
-The web version can be viewed [HERE](https://wasm-masm-x86-editor.netlify.app/).
+The web version can be viewed [masm.isas.dev](masm.isas.dev).
 
 ## Download
 
 You can download a client version for Mac, Windows and Linux [HERE](https://github.com/istareatscreens/wasm-masm-x86-editor/releases)
-
-## TODO
-
-- Add alt text to elements
-- Implement INCLUDE Irvine32.inc as a replacement to current INCLUDE statement
-- Add Project save and load (save local storage states)
-- Add multiple file addition in createfile window
-- Implement workers to improve performance
-- Improve syntax highlighting
-- Refactor code
-- Add resizable components
-- Implement vim (issue in dependency)
-- shrink boxedwine.zip for web version
-
-## Bugs
-
-- Add escape key to exit modals (about)
-- create/delete/rename file can crash and dysnc boxedwines file system
-- Check asm files for correct irivine import before compile/link to prevent hard crash
-- Add throttling to buttons
-- deal with hard and soft crashes in a more graceful way (refresh iframe)
-- remove javascript exception printout executed by boxedwine on iframe
-- windows dont move to the front on click

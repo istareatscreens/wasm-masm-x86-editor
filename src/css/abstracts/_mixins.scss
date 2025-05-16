@@ -1,6 +1,6 @@
 //Media query mixin
 @mixin respond($breakpoint) {
-  @if $breakpoint == half-width {
+  @if $breakpoint ==half-width {
     @media (max-width: 900px) {
       @content;
     }
@@ -17,11 +17,7 @@
 @mixin font($font-family, $font-file) {
   @font-face {
     font-family: $font-family;
-    //src: url($font-file + ".eot");
-    //src: url($font-file + ".eot?#iefix") format("embedded-opentype"),
-    //url($font-file + ".woff") format("woff"),
-    src: url($font-file + ".ttf") format("truetype");
-    //url($font-file + ".svg#" + $font-family) format("svg");
+    src: url("#{$font-file}.ttf") format("truetype");
     font-weight: normal;
     font-style: normal;
   }
