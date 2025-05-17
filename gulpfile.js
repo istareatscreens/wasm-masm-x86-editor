@@ -14,6 +14,10 @@ const sass = require("gulp-sass")(sassCompiler);
 const livereload = require("gulp-livereload");
 const htmlmin = require("gulp-htmlmin");
 const del = require("del");
+const sitemap = require('gulp-sitemap');
+const file = require('gulp-file');
+
+const siteUrl = 'https://masm.isas.dev';
 
 const assetsPath = "src/assets/";
 const output = "public/";
@@ -108,6 +112,26 @@ function cleanTask() {
   return del(["public/**/*"]);
 }
 
+function generateSitemapTask() {
+  return src(['public/**/*.html', '!public/boxedwine.html'], { read: false })
+    .pipe(sitemap({
+      siteUrl: siteUrl
+    }))
+    .pipe(gulp.dest(output));
+}
+
+function generateRobotsTask() {
+  const robotsContent = `
+User-agent: *
+Allow: /
+Sitemap: ${siteUrl}/sitemap.xml
+Disallow: /boxedwine.html
+`;
+  return file('robots.txt', robotsContent.trim(), { src: true })
+    .pipe(gulp.dest(output));
+}
+
+
 //develop
 function jsTask() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
@@ -183,7 +207,7 @@ function watchTask() {
       assetsTask,
       copyHtml,
       jsBoxedTask,
-      imgTask
+      imgTask,
     )
   );
   gulp.watch(htmlPath).on("change", browserSync.reload);
@@ -219,7 +243,9 @@ exports.default = series(
     assetsTask,
     copyHtml,
     imgTask,
-    fontTask
+    fontTask,
+    generateSitemapTask,
+    generateRobotsTask
   )
 );
 
@@ -233,7 +259,9 @@ exports.watch = series(
     assetsTask,
     copyHtml,
     imgTask,
-    fontTask
+    fontTask,
+    generateSitemapTask,
+    generateRobotsTask,
   ),
   watchTask
 );
