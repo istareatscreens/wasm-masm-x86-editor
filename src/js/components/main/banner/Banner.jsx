@@ -20,6 +20,7 @@ import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 import Dropdown from "./../../common/Dropdown.jsx";
 import ThemeControlGroup from "./themecontrols/ThemeControlGroup.jsx";
 import ThemeControlWindow from "./themecontrols/ThemeControlWindow.jsx";
+import FullscreenSwitch from "./viewcontrols/FullScreenSwitch.jsx";
 
 const Banner = function Banner({
   filename,
@@ -177,6 +178,7 @@ const Banner = function Banner({
             className={"banner__main__group banner__main__group--mid"}
             refApp={refApp}
           />
+          <FullscreenSwitch />
         </div>
         <div className={"banner__main__group banner__main__group--end"}>
           <Button
