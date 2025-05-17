@@ -5,11 +5,44 @@
   background: variables.$surface;
   padding: 3px;
   z-index: 100;
+  font-size: 1.4rem;
 
   &--about {
     width: 30%;
     text-align: center;
     height: fit-content;
+  }
+
+  &__reset-cache {
+    width: 30%;
+    text-align: center;
+    height: fit-content;
+
+    &--btn {
+      margin-left: 0rem;
+    }
+
+    &__content {
+      display: flex;
+      flex-direction: row;
+
+      &__image {
+        width: 6rem;
+        height: 6rem;
+        margin-left: -1rem;
+        margin-right: 0.5rem;
+      }
+
+      &__text {
+        text-align: left;
+        margin-left: 2rem;
+
+        &--warning {
+          color: red;
+        }
+      }
+    }
+
   }
 
   &-body {
