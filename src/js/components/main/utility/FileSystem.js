@@ -307,7 +307,12 @@ export default class FileSystem {
     }
     writeCommandToCMD('del ' + FileSystem.deleteFileQueue.join(" "))
     if (FileSystem.deleteFileQueue.find(filename => 'test.asm' === filename)) {
-      FileSystem.createAssemblyFile('test.asm');
+      setTimeout(
+        () => {
+          FileSystem.createAssemblyFile('test.asm');
+        },
+        3000
+      );
     }
     FileSystem.deleteFileQueue = [];
   }
