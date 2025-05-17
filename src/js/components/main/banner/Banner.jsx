@@ -12,8 +12,10 @@ import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
+import resetCache from "../../../../images/cacheReset.png";
 
 import About from "./about/About.jsx";
+import ResetCache from "./about/ResetCache.jsx";
 import ViewControlGroup from "./viewcontrols/ViewControlGroup.jsx";
 import Dropdown from "./../../common/Dropdown.jsx";
 import ThemeControlGroup from "./themecontrols/ThemeControlGroup.jsx";
@@ -39,6 +41,7 @@ const Banner = function Banner({
   selectedNightTheme,
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
+  const [resetCachePageOpened, setResetCacheOpened] = useState(false);
   const [themeSettingsOpened, setThemeSettingsOpened] = useState(false);
 
   const unhideTerminal = () => {
@@ -95,8 +98,12 @@ const Banner = function Banner({
   return (
     <>
       {aboutPageOpened && (
-        <About closeAbout={() => setAboutPageOpened(false)} />
+        <About close={() => setAboutPageOpened(false)} />
       )}
+      {resetCachePageOpened && (
+        <ResetCache close={() => setResetCacheOpened(false)}></ResetCache>
+      )
+      }
       {themeSettingsOpened && (
         <ThemeControlWindow
           setThemeSettingsOpened={setThemeSettingsOpened}
@@ -134,6 +141,12 @@ const Banner = function Banner({
             onClick={reset}
             id={"resetCMD"}
             src={cmdReset}
+          />
+          <Button
+            title={"hard reset"}
+            className={"banner__main__btn"}
+            onClick={() => setResetCacheOpened(!resetCachePageOpened)}
+            src={resetCache}
           />
           <input
             type="number"

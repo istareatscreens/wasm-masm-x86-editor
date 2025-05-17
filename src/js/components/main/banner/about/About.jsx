@@ -1,12 +1,12 @@
 import React from "react";
-import AboutBackground from "./AboutBackground.jsx";
 import AboutWindow from "./AboutWindow.jsx";
+import WindowBackground from "./WindowBackground.jsx";
 
-function About({ closeAbout }) {
+function About({ close }) {
   return (
     <>
-      <AboutBackground />
-      <AboutWindow closeAbout={closeAbout} />
+      <WindowBackground />
+      <AboutWindow close={close} />
     </>
   );
 }
