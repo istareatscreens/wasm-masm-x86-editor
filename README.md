@@ -9,8 +9,8 @@ This app is made possible through the use of [JWlink and JWasm](https://github.c
 ![preview gif](https://i.imgur.com/Ct41UUK.gif)
 
 **WARNING the web version is ~50mb in size**.  
-The web version can be viewed [masm.isas.dev](masm.isas.dev).
+The web version can be viewed [masm.isas.dev](https://masm.isas.dev).
 
 ## Download
 
-You can download a client version for Mac, Windows and Linux [HERE](masm.isas.dev)
+You can download a client version for Mac, Windows and Linux [HERE](https://github.com/istareatscreens/wasm-masm-x86-editor/releases)
