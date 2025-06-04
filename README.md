@@ -13,4 +13,4 @@ The web version can be viewed [masm.isas.dev](masm.isas.dev).
 
 ## Download
 
-You can download a client version for Mac, Windows and Linux [HERE](https://github.com/istareatscreens/wasm-masm-x86-editor/releases)
+You can download a client version for Mac, Windows and Linux [HERE](masm.isas.dev)
