@@ -3,47 +3,29 @@ line 679 is modified for electron to be able to load WASM, source:
 https://www.bountysource.com/issues/92083895-unable-to-load-wasm-in-electron
 */
 var Module = typeof Module !== "undefined" ? Module : {};
-
 var moduleOverrides = {};
-
-var key;
-
-for (key in Module) {
+for (var key in Module) {
   if (Module.hasOwnProperty(key)) {
     moduleOverrides[key] = Module[key];
   }
 }
 
+// -- standard Emscripten module stub --
 var arguments_ = [];
-
 var thisProgram = "./this.program";
+var quit_ = function (status, toThrow) { throw toThrow; };
 
-var quit_ = function (status, toThrow) {
-  throw toThrow;
-};
-
-var ENVIRONMENT_IS_WEB = false;
-
-var ENVIRONMENT_IS_WORKER = false;
-
-var ENVIRONMENT_IS_NODE = false;
-
-var ENVIRONMENT_IS_SHELL = false;
-
-ENVIRONMENT_IS_WEB = typeof window === "object";
-
-ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
-
-ENVIRONMENT_IS_NODE =
-  typeof process === "object" &&
+// Environment detection
+var ENVIRONMENT_IS_WEB = typeof window === "object";
+var ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
+var ENVIRONMENT_IS_NODE = typeof process === "object" &&
   typeof process.versions === "object" &&
   typeof process.versions.node === "string";
-
-ENVIRONMENT_IS_SHELL =
-  !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
 var scriptDirectory = "";
 
+// locateFile helper (honors any Module.locateFile override)
 function locateFile(path) {
   if (Module["locateFile"]) {
     return Module["locateFile"](path, scriptDirectory);
@@ -51,131 +33,98 @@ function locateFile(path) {
   return scriptDirectory + path;
 }
 
-var read_, readAsync, readBinary, setWindowTitle;
-
-var nodeFS;
-
-var nodePath;
-
+// If Node, set up readBinary sync fallback & module.exports
 if (ENVIRONMENT_IS_NODE) {
-  if (ENVIRONMENT_IS_WORKER) {
-    scriptDirectory = require("path").dirname(scriptDirectory) + "/";
-  } else {
-    scriptDirectory = __dirname + "/";
-  }
-  read_ = function shell_read(filename, binary) {
-    if (!nodeFS) nodeFS = require("fs");
-    if (!nodePath) nodePath = require("path");
-    filename = nodePath["normalize"](filename);
-    return nodeFS["readFileSync"](filename, binary ? null : "utf8");
+  var nodeFS = require("fs");
+  var nodePath = require("path");
+
+  scriptDirectory = __dirname + "/";
+
+  // Emscripten’s sync read for node
+  var readBinary = function (filename) {
+    var buf = nodeFS.readFileSync(nodePath.normalize(filename));
+    return new Uint8Array(buf);
   };
-  readBinary = function readBinary(filename) {
-    var ret = read_(filename, true);
-    if (!ret.buffer) {
-      ret = new Uint8Array(ret);
-    }
-    assert(ret.buffer);
-    return ret;
-  };
-  if (process["argv"].length > 1) {
-    thisProgram = process["argv"][1].replace(/\\/g, "/");
+
+  if (process.argv.length > 1) {
+    thisProgram = process.argv[1].replace(/\\/g, "/");
   }
-  arguments_ = process["argv"].slice(2);
-  if (typeof module !== "undefined") {
-    module["exports"] = Module;
-  }
-  process["on"]("uncaughtException", function (ex) {
-    if (!(ex instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-  process["on"]("unhandledRejection", abort);
-  quit_ = function (status) {
-    process["exit"](status);
-  };
-  Module["inspect"] = function () {
-    return "[Emscripten Module object]";
-  };
-} else if (ENVIRONMENT_IS_SHELL) {
-  if (typeof read != "undefined") {
-    read_ = function shell_read(f) {
-      return read(f);
-    };
-  }
-  readBinary = function readBinary(f) {
-    var data;
-    if (typeof readbuffer === "function") {
-      return new Uint8Array(readbuffer(f));
-    }
-    data = read(f, "binary");
-    assert(typeof data === "object");
+  arguments_ = process.argv.slice(2);
+
+  module.exports = Module;
+  quit_ = function (status) { process.exit(status); };
+}
+
+// If Shell (d8/other), you can keep your old sync readBinary()
+else if (ENVIRONMENT_IS_SHELL) {
+  scriptDirectory = "";
+  var readBinary = function (f) {
+    var data = typeof readbuffer === "function"
+      ? new Uint8Array(readbuffer(f))
+      : new Uint8Array(read(f, "binary"));
     return data;
   };
-  if (typeof scriptArgs != "undefined") {
-    arguments_ = scriptArgs;
-  } else if (typeof arguments != "undefined") {
-    arguments_ = arguments;
-  }
-  if (typeof quit === "function") {
-    quit_ = function (status) {
-      quit(status);
-    };
-  }
-  if (typeof print !== "undefined") {
-    if (typeof console === "undefined") console = {};
-    console.log = print;
-    console.warn = console.error =
-      typeof printErr !== "undefined" ? printErr : print;
-  }
-} else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+}
+
+// If Web or Worker, we ditch sync XHR entirely
+else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  // figure out base URL
   if (ENVIRONMENT_IS_WORKER) {
-    scriptDirectory = self.location.href;
-  } else if (typeof document !== "undefined" && document.currentScript) {
-    scriptDirectory = document.currentScript.src;
-  }
-  if (scriptDirectory.indexOf("blob:") !== 0) {
-    scriptDirectory = scriptDirectory.substr(
-      0,
-      scriptDirectory.lastIndexOf("/") + 1
-    );
+    scriptDirectory = self.location.href.substr(0, self.location.href.lastIndexOf("/") + 1);
   } else {
-    scriptDirectory = "";
+    scriptDirectory = document.currentScript
+      ? document.currentScript.src.substr(0, document.currentScript.src.lastIndexOf("/") + 1)
+      : "";
   }
-  {
-    read_ = function shell_read(url) {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", url, false);
-      xhr.send(null);
-      return xhr.responseText;
-    };
-    if (ENVIRONMENT_IS_WORKER) {
-      readBinary = function readBinary(url) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", url, false);
-        xhr.responseType = "arraybuffer";
-        xhr.send(null);
-        return new Uint8Array(xhr.response);
-      };
-    }
-    readAsync = function readAsync(url, onload, onerror) {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", url, true);
-      xhr.responseType = "arraybuffer";
-      xhr.onload = function xhr_onload() {
-        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) {
-          onload(xhr.response);
-          return;
-        }
-        onerror();
-      };
-      xhr.onerror = onerror;
-      xhr.send(null);
-    };
-  }
-  setWindowTitle = function (title) {
-    document.title = title;
+
+  // readAsync for non-blocking FS overlays, etc (you can still use this for preloading data files)
+  var readAsync = function (url, onload, onerror) {
+    fetch(url, { credentials: "same-origin" })
+      .then(function (response) {
+        if (!response.ok) throw new Error(response.statusText);
+        return response.arrayBuffer();
+      })
+      .then(function (buffer) { onload(new Uint8Array(buffer)); })
+      .catch(function (err) {
+        if (onerror) onerror(err);
+        else throw err;
+      });
   };
-} else {
+
+  // ----- NEW: WebAssembly.instantiateStreaming loader -----
+  (async function () {
+    // 1) Reconstruct any Module.* overrides
+    for (var k in moduleOverrides) {
+      Module[k] = moduleOverrides[k];
+    }
+
+    // 2) Build your importObject (merge in any you had before)
+    var importObject = Module["importObject"] || {};
+    importObject.env = importObject.env || {};
+    // if your original build needs a memory/table defined, do that here:
+    // importObject.env.memory = new WebAssembly.Memory({ initial: 256 });
+    // importObject.env.table  = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
+
+    // 3) Locate & fetch+compile the .wasm
+    var wasmUrl = locateFile("boxedwine.wasm");
+    const resp = await fetch(wasmUrl, { credentials: "same-origin" });
+    if (!resp.ok) {
+      throw new Error("Failed to load wasm at " + wasmUrl + ": " + resp.statusText);
+    }
+    const { instance } = await WebAssembly.instantiateStreaming(resp, importObject);
+
+    // 4) Hook up exports onto Module
+    Object.assign(Module, instance.exports);
+
+    // 5) Kick off your program
+    if (Module._main) {
+      Module._main();      // if your C/C++ has a main()
+    } else if (Module.start) {
+      Module.start();      // or a custom entry point
+    } else {
+      console.error("No entrypoint found (neither _main nor start).");
+    }
+  })();
 }
 
 var out = Module["print"] || console.log.bind(console);
@@ -253,15 +202,15 @@ function setValue(ptr, value, type, noSafe) {
       (tempI64 = [
         value >>> 0,
         ((tempDouble = value),
-        +Math.abs(tempDouble) >= 1
-          ? tempDouble > 0
-            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
+          +Math.abs(tempDouble) >= 1
+            ? tempDouble > 0
+              ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
                 0) >>>
               0
-            : ~~+Math.ceil(
+              : ~~+Math.ceil(
                 (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
               ) >>> 0
-          : 0),
+            : 0),
       ]),
         (HEAP32[ptr >> 2] = tempI64[0]),
         (HEAP32[(ptr + 4) >> 2] = tempI64[1]);
@@ -795,7 +744,7 @@ var ASM_CONSTS = {
   5650: function ($0) {
     document.title = "BoxedWine " + $0 + " MIPS";
   },
-  5919: function () {},
+  5919: function () { },
   75482: function ($0) {
     var str =
       UTF8ToString($0) + "\n\n" + "Abort/Retry/Ignore/AlwaysIgnore? [ariA] :";
@@ -1025,7 +974,7 @@ var ASM_CONSTS = {
       SDL2.capture.scriptProcessorNode.connect(SDL2.audioContext.destination);
       SDL2.capture.stream = stream;
     };
-    var no_microphone = function (error) {};
+    var no_microphone = function (error) { };
     SDL2.capture.silenceBuffer = SDL2.audioContext.createBuffer(
       $0,
       $1,
@@ -1138,7 +1087,7 @@ var ASM_CONSTS = {
       if (SDL2.capture.scriptProcessorNode !== undefined) {
         SDL2.capture.scriptProcessorNode.onaudioprocess = function (
           audioProcessingEvent
-        ) {};
+        ) { };
         SDL2.capture.scriptProcessorNode.disconnect();
         SDL2.capture.scriptProcessorNode = undefined;
       }
@@ -1422,7 +1371,7 @@ function getRandomDevice() {
       return function () {
         return crypto_module["randomBytes"](1)[0];
       };
-    } catch (e) {}
+    } catch (e) { }
   }
   return function () {
     abort("randomDevice");
@@ -1487,8 +1436,8 @@ var PATH_FS = {
 
 var TTY = {
   ttys: [],
-  init: function () {},
-  shutdown: function () {},
+  init: function () { },
+  shutdown: function () { },
   register: function (dev, ops) {
     TTY.ttys[dev] = {
       input: [],
@@ -1820,7 +1769,7 @@ var MEMFS = {
         var new_node;
         try {
           new_node = FS.lookupNode(new_dir, new_name);
-        } catch (e) {}
+        } catch (e) { }
         if (new_node) {
           for (var i in new_node.contents) {
             throw new FS.ErrnoError(55);
@@ -2198,7 +2147,7 @@ var FS = {
     try {
       var node = FS.lookupNode(dir, name);
       return 20;
-    } catch (e) {}
+    } catch (e) { }
     return FS.nodePermissions(dir, "wx");
   },
   mayDelete: function (dir, name, isdir) {
@@ -2255,7 +2204,7 @@ var FS = {
   },
   createStream: function (stream, fd_start, fd_end) {
     if (!FS.FSStream) {
-      FS.FSStream = function () {};
+      FS.FSStream = function () { };
       FS.FSStream.prototype = {
         object: {
           get: function () {
@@ -2343,8 +2292,8 @@ var FS = {
     if (FS.syncFSRequests > 1) {
       err(
         "warning: " +
-          FS.syncFSRequests +
-          " FS.syncfs operations in flight at once, probably just doing extra work"
+        FS.syncFSRequests +
+        " FS.syncfs operations in flight at once, probably just doing extra work"
       );
     }
     var mounts = FS.getMounts(FS.root.mount);
@@ -2539,7 +2488,7 @@ var FS = {
     var new_node;
     try {
       new_node = FS.lookupNode(new_dir, new_name);
-    } catch (e) {}
+    } catch (e) { }
     if (old_node === new_node) {
       return;
     }
@@ -2573,11 +2522,11 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['willMovePath']('" +
-          old_path +
-          "', '" +
-          new_path +
-          "') threw an exception: " +
-          e.message
+        old_path +
+        "', '" +
+        new_path +
+        "') threw an exception: " +
+        e.message
       );
     }
     FS.hashRemoveNode(old_node);
@@ -2594,11 +2543,11 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['onMovePath']('" +
-          old_path +
-          "', '" +
-          new_path +
-          "') threw an exception: " +
-          e.message
+        old_path +
+        "', '" +
+        new_path +
+        "') threw an exception: " +
+        e.message
       );
     }
   },
@@ -2626,9 +2575,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['willDeletePath']('" +
-          path +
-          "') threw an exception: " +
-          e.message
+        path +
+        "') threw an exception: " +
+        e.message
       );
     }
     parent.node_ops.rmdir(parent, name);
@@ -2639,9 +2588,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['onDeletePath']('" +
-          path +
-          "') threw an exception: " +
-          e.message
+        path +
+        "') threw an exception: " +
+        e.message
       );
     }
   },
@@ -2679,9 +2628,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['willDeletePath']('" +
-          path +
-          "') threw an exception: " +
-          e.message
+        path +
+        "') threw an exception: " +
+        e.message
       );
     }
     parent.node_ops.unlink(parent, name);
@@ -2692,9 +2641,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['onDeletePath']('" +
-          path +
-          "') threw an exception: " +
-          e.message
+        path +
+        "') threw an exception: " +
+        e.message
       );
     }
   },
@@ -2854,7 +2803,7 @@ var FS = {
           follow: !(flags & 131072),
         });
         node = lookup.node;
-      } catch (e) {}
+      } catch (e) { }
     }
     var created = false;
     if (flags & 64) {
@@ -2924,9 +2873,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['onOpenFile']('" +
-          path +
-          "', flags) threw an exception: " +
-          e.message
+        path +
+        "', flags) threw an exception: " +
+        e.message
       );
     }
     return stream;
@@ -3036,9 +2985,9 @@ var FS = {
     } catch (e) {
       err(
         "FS.trackingDelegate['onWriteToFile']('" +
-          stream.path +
-          "') threw an exception: " +
-          e.message
+        stream.path +
+        "') threw an exception: " +
+        e.message
       );
     }
     return bytesWritten;
@@ -3303,7 +3252,7 @@ var FS = {
         follow: !dontResolveLastLink,
       });
       path = lookup.path;
-    } catch (e) {}
+    } catch (e) { }
     var ret = {
       isRoot: false,
       exists: false,
@@ -3345,7 +3294,7 @@ var FS = {
       var current = PATH.join2(parent, part);
       try {
         FS.mkdir(current);
-      } catch (e) {}
+      } catch (e) { }
       parent = current;
     }
     return current;
@@ -3361,9 +3310,9 @@ var FS = {
   createDataFile: function (parent, name, data, canRead, canWrite, canOwn) {
     var path = name
       ? PATH.join2(
-          typeof parent === "string" ? parent : FS.getPath(parent),
-          name
-        )
+        typeof parent === "string" ? parent : FS.getPath(parent),
+        name
+      )
       : parent;
     var mode = FS.getMode(canRead, canWrite);
     var node = FS.create(path, mode);
@@ -3680,8 +3629,8 @@ var FS = {
   DB_VERSION: 20,
   DB_STORE_NAME: "FILE_DATA",
   saveFilesToDB: function (paths, onload, onerror) {
-    onload = onload || function () {};
-    onerror = onerror || function () {};
+    onload = onload || function () { };
+    onerror = onerror || function () { };
     var indexedDB = FS.indexedDB();
     try {
       var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -3720,8 +3669,8 @@ var FS = {
     openRequest.onerror = onerror;
   },
   loadFilesFromDB: function (paths, onload, onerror) {
-    onload = onload || function () {};
-    onerror = onerror || function () {};
+    onload = onload || function () { };
+    onerror = onerror || function () { };
     var indexedDB = FS.indexedDB();
     try {
       var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -3816,13 +3765,13 @@ var SYSCALLS = {
     (tempI64 = [
       stat.size >>> 0,
       ((tempDouble = stat.size),
-      +Math.abs(tempDouble) >= 1
-        ? tempDouble > 0
-          ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
+        +Math.abs(tempDouble) >= 1
+          ? tempDouble > 0
+            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
             0
-          : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
+            : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
             0
-        : 0),
+          : 0),
     ]),
       (HEAP32[(buf + 40) >> 2] = tempI64[0]),
       (HEAP32[(buf + 44) >> 2] = tempI64[1]);
@@ -3837,13 +3786,13 @@ var SYSCALLS = {
     (tempI64 = [
       stat.ino >>> 0,
       ((tempDouble = stat.ino),
-      +Math.abs(tempDouble) >= 1
-        ? tempDouble > 0
-          ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
+        +Math.abs(tempDouble) >= 1
+          ? tempDouble > 0
+            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
             0
-          : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
+            : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
             0
-        : 0),
+          : 0),
     ]),
       (HEAP32[(buf + 80) >> 2] = tempI64[0]),
       (HEAP32[(buf + 84) >> 2] = tempI64[1]);
@@ -4147,38 +4096,38 @@ function ___sys_getdents64(fd, dirp, count) {
         type = FS.isChrdev(child.mode)
           ? 2
           : FS.isDir(child.mode)
-          ? 4
-          : FS.isLink(child.mode)
-          ? 10
-          : 8;
+            ? 4
+            : FS.isLink(child.mode)
+              ? 10
+              : 8;
       }
       (tempI64 = [
         id >>> 0,
         ((tempDouble = id),
-        +Math.abs(tempDouble) >= 1
-          ? tempDouble > 0
-            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
+          +Math.abs(tempDouble) >= 1
+            ? tempDouble > 0
+              ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
                 0) >>>
               0
-            : ~~+Math.ceil(
+              : ~~+Math.ceil(
                 (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
               ) >>> 0
-          : 0),
+            : 0),
       ]),
         (HEAP32[(dirp + pos) >> 2] = tempI64[0]),
         (HEAP32[(dirp + pos + 4) >> 2] = tempI64[1]);
       (tempI64 = [
         ((idx + 1) * struct_size) >>> 0,
         ((tempDouble = (idx + 1) * struct_size),
-        +Math.abs(tempDouble) >= 1
-          ? tempDouble > 0
-            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
+          +Math.abs(tempDouble) >= 1
+            ? tempDouble > 0
+              ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) |
                 0) >>>
               0
-            : ~~+Math.ceil(
+              : ~~+Math.ceil(
                 (tempDouble - +(~~tempDouble >>> 0)) / 4294967296
               ) >>> 0
-          : 0),
+            : 0),
       ]),
         (HEAP32[(dirp + pos + 8) >> 2] = tempI64[0]),
         (HEAP32[(dirp + pos + 12) >> 2] = tempI64[1]);
@@ -4560,8 +4509,8 @@ var SOCKFS = {
             subProtocols = subProtocols.replace(/^ +| +$/g, "").split(/ *, */);
             opts = ENVIRONMENT_IS_NODE
               ? {
-                  protocol: subProtocols.toString(),
-                }
+                protocol: subProtocols.toString(),
+              }
               : subProtocols;
           }
           if (runtimeConfig && null === Module["websocket"]["subprotocol"]) {
@@ -4751,7 +4700,7 @@ var SOCKFS = {
       if (sock.server) {
         try {
           sock.server.close();
-        } catch (e) {}
+        } catch (e) { }
         sock.server = null;
       }
       var peers = Object.keys(sock.peers);
@@ -4759,7 +4708,7 @@ var SOCKFS = {
         var peer = sock.peers[peers[i]];
         try {
           peer.socket.close();
-        } catch (e) {}
+        } catch (e) { }
         SOCKFS.websocket_sock_ops.removePeer(sock, peer);
       }
       return 0;
@@ -5562,11 +5511,11 @@ function createNamedFunction(name, body) {
   return new Function(
     "body",
     "return function " +
-      name +
-      "() {\n" +
-      '    "use strict";' +
-      "    return body.apply(this, arguments);\n" +
-      "};\n"
+    name +
+    "() {\n" +
+    '    "use strict";' +
+    "    return body.apply(this, arguments);\n" +
+    "};\n"
   )(body);
 }
 
@@ -5749,7 +5698,7 @@ function throwInstanceAlreadyDeleted(obj) {
 
 var finalizationGroup = false;
 
-function detachFinalizer(handle) {}
+function detachFinalizer(handle) { }
 
 function runDestructor($$) {
   if ($$.smartPtr) {
@@ -5869,7 +5818,7 @@ function init_ClassHandle() {
   ClassHandle.prototype["deleteLater"] = ClassHandle_deleteLater;
 }
 
-function ClassHandle() {}
+function ClassHandle() { }
 
 var registeredPointers = {};
 
@@ -5880,12 +5829,12 @@ function ensureOverloadTable(proto, methodName, humanName) {
       if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
         throwBindingError(
           "Function '" +
-            humanName +
-            "' called with an invalid number of arguments (" +
-            arguments.length +
-            ") - expects one of (" +
-            proto[methodName].overloadTable +
-            ")!"
+          humanName +
+          "' called with an invalid number of arguments (" +
+          arguments.length +
+          ") - expects one of (" +
+          proto[methodName].overloadTable +
+          ")!"
         );
       }
       return proto[methodName].overloadTable[arguments.length].apply(
@@ -5911,8 +5860,8 @@ function exposePublicSymbol(name, value, numArguments) {
     if (Module.hasOwnProperty(numArguments)) {
       throwBindingError(
         "Cannot register multiple overloads of a function with the same number of arguments (" +
-          numArguments +
-          ")!"
+        numArguments +
+        ")!"
       );
     }
     Module[name].overloadTable[numArguments] = value;
@@ -5950,9 +5899,9 @@ function upcastPointer(ptr, ptrClass, desiredClass) {
     if (!ptrClass.upcast) {
       throwBindingError(
         "Expected null or instance of " +
-          desiredClass.name +
-          ", got an instance of " +
-          ptrClass.name
+        desiredClass.name +
+        ", got an instance of " +
+        ptrClass.name
       );
     }
     ptr = ptrClass.upcast(ptr);
@@ -6012,11 +5961,11 @@ function genericPointerToWireType(destructors, handle) {
   if (!this.isConst && handle.$$.ptrType.isConst) {
     throwBindingError(
       "Cannot convert argument of type " +
-        (handle.$$.smartPtrType
-          ? handle.$$.smartPtrType.name
-          : handle.$$.ptrType.name) +
-        " to parameter type " +
-        this.name
+      (handle.$$.smartPtrType
+        ? handle.$$.smartPtrType.name
+        : handle.$$.ptrType.name) +
+      " to parameter type " +
+      this.name
     );
   }
   var handleClass = handle.$$.ptrType.registeredClass;
@@ -6032,11 +5981,11 @@ function genericPointerToWireType(destructors, handle) {
         } else {
           throwBindingError(
             "Cannot convert argument of type " +
-              (handle.$$.smartPtrType
-                ? handle.$$.smartPtrType.name
-                : handle.$$.ptrType.name) +
-              " to parameter type " +
-              this.name
+            (handle.$$.smartPtrType
+              ? handle.$$.smartPtrType.name
+              : handle.$$.ptrType.name) +
+            " to parameter type " +
+            this.name
           );
         }
         break;
@@ -6089,9 +6038,9 @@ function nonConstNoSmartPtrRawPointerToWireType(destructors, handle) {
   if (handle.$$.ptrType.isConst) {
     throwBindingError(
       "Cannot convert argument of type " +
-        handle.$$.ptrType.name +
-        " to parameter type " +
-        this.name
+      handle.$$.ptrType.name +
+      " to parameter type " +
+      this.name
     );
   }
   var handleClass = handle.$$.ptrType.registeredClass;
@@ -6360,9 +6309,9 @@ function embind__requireFunction(signature, rawFunction) {
   if (typeof fp !== "function") {
     throwBindingError(
       "unknown function pointer with signature " +
-        signature +
-        ": " +
-        rawFunction
+      signature +
+      ": " +
+      rawFunction
     );
   }
   return fp;
@@ -6458,12 +6407,12 @@ function __embind_register_class(
         if (undefined === body) {
           throw new BindingError(
             "Tried to invoke ctor of " +
-              name +
-              " with invalid number of parameters (" +
-              arguments.length +
-              ") - expected (" +
-              Object.keys(registeredClass.constructor_body).toString() +
-              ") parameters instead!"
+            name +
+            " with invalid number of parameters (" +
+            arguments.length +
+            ") - expected (" +
+            Object.keys(registeredClass.constructor_body).toString() +
+            ") parameters instead!"
           );
         }
         return body.apply(this, arguments);
@@ -6519,13 +6468,13 @@ function new_(constructor, argumentList) {
   if (!(constructor instanceof Function)) {
     throw new TypeError(
       "new_ called with constructor type " +
-        typeof constructor +
-        " which is not a function"
+      typeof constructor +
+      " which is not a function"
     );
   }
   var dummy = createNamedFunction(
     constructor.name || "unknownFunctionName",
-    function () {}
+    function () { }
   );
   dummy.prototype = constructor.prototype;
   var obj = new dummy();
@@ -6739,10 +6688,10 @@ function __embind_register_class_constructor(
     ) {
       throw new BindingError(
         "Cannot register multiple constructors with identical number of parameters (" +
-          (argCount - 1) +
-          ") for class '" +
-          classType.name +
-          "'! Overload resolution is currently only performed using the parameter count, not actual type info!"
+        (argCount - 1) +
+        ") for class '" +
+        classType.name +
+        "'! Overload resolution is currently only performed using the parameter count, not actual type info!"
       );
     }
     classType.registeredClass.constructor_body[
@@ -6760,10 +6709,10 @@ function __embind_register_class_constructor(
         if (arguments.length !== argCount - 1) {
           throwBindingError(
             humanName +
-              " called with " +
-              arguments.length +
-              " arguments, expected " +
-              (argCount - 1)
+            " called with " +
+            arguments.length +
+            " arguments, expected " +
+            (argCount - 1)
           );
         }
         destructors.length = 0;
@@ -6967,29 +6916,29 @@ function integerReadValueFromPointer(name, shift, signed) {
     case 0:
       return signed
         ? function readS8FromPointer(pointer) {
-            return HEAP8[pointer];
-          }
+          return HEAP8[pointer];
+        }
         : function readU8FromPointer(pointer) {
-            return HEAPU8[pointer];
-          };
+          return HEAPU8[pointer];
+        };
 
     case 1:
       return signed
         ? function readS16FromPointer(pointer) {
-            return HEAP16[pointer >> 1];
-          }
+          return HEAP16[pointer >> 1];
+        }
         : function readU16FromPointer(pointer) {
-            return HEAPU16[pointer >> 1];
-          };
+          return HEAPU16[pointer >> 1];
+        };
 
     case 2:
       return signed
         ? function readS32FromPointer(pointer) {
-            return HEAP32[pointer >> 2];
-          }
+          return HEAP32[pointer >> 2];
+        }
         : function readU32FromPointer(pointer) {
-            return HEAPU32[pointer >> 2];
-          };
+          return HEAPU32[pointer >> 2];
+        };
 
     default:
       throw new TypeError("Unknown integer type: " + name);
@@ -7030,14 +6979,14 @@ function __embind_register_integer(
       if (value < minRange || value > maxRange) {
         throw new TypeError(
           'Passing a number "' +
-            _embind_repr(value) +
-            '" from JS side to C/C++ side to an argument of type "' +
-            name +
-            '", which is outside the valid range [' +
-            minRange +
-            ", " +
-            maxRange +
-            "]!"
+          _embind_repr(value) +
+          '" from JS side to C/C++ side to an argument of type "' +
+          name +
+          '", which is outside the valid range [' +
+          minRange +
+          ", " +
+          maxRange +
+          "]!"
         );
       }
       return isUnsignedType ? value >>> 0 : value | 0;
@@ -7393,10 +7342,10 @@ function setMainLoop(
       }
       console.log(
         'main loop blocker "' +
-          blocker.name +
-          '" took ' +
-          (Date.now() - start) +
-          " ms"
+        blocker.name +
+        '" took ' +
+        (Date.now() - start) +
+        " ms"
       );
       Browser.mainLoop.updateStatus();
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
@@ -7520,10 +7469,10 @@ var Browser = {
       typeof MozBlobBuilder != "undefined"
         ? MozBlobBuilder
         : typeof WebKitBlobBuilder != "undefined"
-        ? WebKitBlobBuilder
-        : !Browser.hasBlobConstructor
-        ? console.log("warning: no BlobBuilder")
-        : null;
+          ? WebKitBlobBuilder
+          : !Browser.hasBlobConstructor
+            ? console.log("warning: no BlobBuilder")
+            : null;
     Browser.URLObject =
       typeof window != "undefined"
         ? window.URL
@@ -7560,8 +7509,8 @@ var Browser = {
         } catch (e) {
           warnOnce(
             "Blob constructor present but fails: " +
-              e +
-              "; falling back to blob builder"
+            e +
+            "; falling back to blob builder"
           );
         }
       }
@@ -7595,11 +7544,11 @@ var Browser = {
       return (
         !Module.noAudioDecoding &&
         name.substr(-4) in
-          {
-            ".ogg": 1,
-            ".wav": 1,
-            ".mp3": 1,
-          }
+        {
+          ".ogg": 1,
+          ".wav": 1,
+          ".mp3": 1,
+        }
       );
     };
     audioPlugin["handle"] = function audioPlugin_handle(
@@ -7642,8 +7591,8 @@ var Browser = {
           if (done) return;
           console.log(
             "warning: browser could not fully decode audio " +
-              name +
-              ", trying slower base64 approach"
+            name +
+            ", trying slower base64 approach"
           );
           function encode64(data) {
             var BASE =
@@ -7700,13 +7649,13 @@ var Browser = {
         canvas["mozRequestPointerLock"] ||
         canvas["webkitRequestPointerLock"] ||
         canvas["msRequestPointerLock"] ||
-        function () {};
+        function () { };
       canvas.exitPointerLock =
         document["exitPointerLock"] ||
         document["mozExitPointerLock"] ||
         document["webkitExitPointerLock"] ||
         document["msExitPointerLock"] ||
-        function () {};
+        function () { };
       canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
       document.addEventListener("pointerlockchange", pointerLockChange, false);
       document.addEventListener(
@@ -7784,7 +7733,7 @@ var Browser = {
     }
     return ctx;
   },
-  destroyContext: function (canvas, useWebGL, setInModule) {},
+  destroyContext: function (canvas, useWebGL, setInModule) { },
   fullscreenHandlersInstalled: false,
   lockPointer: undefined,
   resizeCanvas: undefined,
@@ -7845,17 +7794,17 @@ var Browser = {
       canvasContainer["msRequestFullscreen"] ||
       (canvasContainer["webkitRequestFullscreen"]
         ? function () {
-            canvasContainer["webkitRequestFullscreen"](
-              Element["ALLOW_KEYBOARD_INPUT"]
-            );
-          }
+          canvasContainer["webkitRequestFullscreen"](
+            Element["ALLOW_KEYBOARD_INPUT"]
+          );
+        }
         : null) ||
       (canvasContainer["webkitRequestFullScreen"]
         ? function () {
-            canvasContainer["webkitRequestFullScreen"](
-              Element["ALLOW_KEYBOARD_INPUT"]
-            );
-          }
+          canvasContainer["webkitRequestFullScreen"](
+            Element["ALLOW_KEYBOARD_INPUT"]
+          );
+        }
         : null);
     canvasContainer.requestFullscreen();
   },
@@ -7869,7 +7818,7 @@ var Browser = {
       document["mozCancelFullScreen"] ||
       document["msExitFullscreen"] ||
       document["webkitCancelFullScreen"] ||
-      function () {};
+      function () { };
     CFS.apply(document, []);
     return true;
   },
@@ -8087,24 +8036,23 @@ var Browser = {
   },
   asyncLoad: function (url, onload, onerror, noRunDep) {
     var dep = !noRunDep ? getUniqueRunDependency("al " + url) : "";
-    readAsync(
-      url,
-      function (arrayBuffer) {
-        assert(
-          arrayBuffer,
-          'Loading data file "' + url + '" failed (no arrayBuffer).'
-        );
-        onload(new Uint8Array(arrayBuffer));
-        if (dep) removeRunDependency(dep);
-      },
-      function (event) {
-        if (onerror) {
-          onerror();
-        } else {
-          throw 'Loading data file "' + url + '" failed.';
-        }
-      }
-    );
+    readAsync = function readAsync(url, onload, onerror) {
+      fetch(url)
+        .then(function (response) {
+          if (!response.ok) throw new Error("Network error: " + response.statusText);
+          return response.arrayBuffer();
+        })
+        .then(function (buffer) {
+          onload(buffer);
+        })
+        .catch(function (err) {
+          if (onerror) {
+            onerror(err);
+          } else {
+            throw err;
+          }
+        });
+    }
     if (dep) addRunDependency(dep);
   },
   resizeListeners: [],
@@ -8226,7 +8174,7 @@ var EGL = {
       return 0;
     }
     if (attribList) {
-      for (;;) {
+      for (; ;) {
         var param = HEAP32[attribList >> 2];
         if (param == 12321) {
           var alphaSize = HEAP32[(attribList + 4) >> 2];
@@ -8491,7 +8439,7 @@ function _eglCreateContext(display, config, hmm, contextAttribs) {
     return 0;
   }
   var glesContextVersion = 1;
-  for (;;) {
+  for (; ;) {
     var param = HEAP32[contextAttribs >> 2];
     if (param == 12440) {
       glesContextVersion = HEAP32[(contextAttribs + 4) >> 2];
@@ -8968,7 +8916,7 @@ var JSEvents = {
         if (
           JSEvents.eventHandlers[i].target == eventHandler.target &&
           JSEvents.eventHandlers[i].eventTypeString ==
-            eventHandler.eventTypeString
+          eventHandler.eventTypeString
         ) {
           JSEvents._removeHandler(i--);
         }
@@ -9124,9 +9072,9 @@ function __getBoundingClientRect(e) {
   return specialHTMLTargets.indexOf(e) < 0
     ? e.getBoundingClientRect()
     : {
-        left: 0,
-        top: 0,
-      };
+      left: 0,
+      top: 0,
+    };
 }
 
 function _JSEvents_resizeCanvasForFullscreen(target, strategy) {
@@ -9890,12 +9838,12 @@ function emscriptenWebGLGet(name_, p, type) {
             GL.recordError(1280);
             err(
               "GL_INVALID_ENUM in glGet" +
-                type +
-                "v: Unknown object returned from WebGL getParameter(" +
-                name_ +
-                ")! (error: " +
-                e +
-                ")"
+              type +
+              "v: Unknown object returned from WebGL getParameter(" +
+              name_ +
+              ")! (error: " +
+              e +
+              ")"
             );
             return;
           }
@@ -9906,16 +9854,16 @@ function emscriptenWebGLGet(name_, p, type) {
         GL.recordError(1280);
         err(
           "GL_INVALID_ENUM in glGet" +
-            type +
-            "v: Native code calling glGet" +
-            type +
-            "v(" +
-            name_ +
-            ") and it returns " +
-            result +
-            " of type " +
-            typeof result +
-            "!"
+          type +
+          "v: Native code calling glGet" +
+          type +
+          "v(" +
+          name_ +
+          ") and it returns " +
+          result +
+          " of type " +
+          typeof result +
+          "!"
         );
         return;
     }
@@ -10516,7 +10464,7 @@ function _emscripten_glReadPixels(x, y, width, height, format, type, pixels) {
   GLctx.readPixels(x, y, width, height, format, type, pixelData);
 }
 
-function _emscripten_glReleaseShaderCompiler() {}
+function _emscripten_glReleaseShaderCompiler() { }
 
 function _emscripten_glRenderbufferStorage(x0, x1, x2, x3) {
   GLctx["renderbufferStorage"](x0, x1, x2, x3);
@@ -10585,13 +10533,13 @@ function _emscripten_glTexImage2D(
     type,
     pixels
       ? emscriptenWebGLGetTexPixelData(
-          type,
-          format,
-          width,
-          height,
-          pixels,
-          internalFormat
-        )
+        type,
+        format,
+        width,
+        height,
+        pixels,
+        internalFormat
+      )
       : null
   );
 }
@@ -11004,7 +10952,7 @@ function emscripten_realloc_buffer(size) {
     wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16);
     updateGlobalBufferAndViews(wasmMemory.buffer);
     return 1;
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function _emscripten_resize_heap(requestedSize) {
@@ -11038,8 +10986,8 @@ function _emscripten_sample_gamepad_data() {
   return (JSEvents.lastGamepadState = navigator.getGamepads
     ? navigator.getGamepads()
     : navigator.webkitGetGamepads
-    ? navigator.webkitGetGamepads()
-    : null)
+      ? navigator.webkitGetGamepads()
+      : null)
     ? 0
     : -1;
 }
@@ -12019,7 +11967,7 @@ function _emscripten_sleep() {
 
 function _emscripten_thread_sleep(msecs) {
   var start = _emscripten_get_now();
-  while (_emscripten_get_now() - start < msecs) {}
+  while (_emscripten_get_now() - start < msecs) { }
 }
 
 var ENV = {};
@@ -12130,13 +12078,13 @@ function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
     (tempI64 = [
       stream.position >>> 0,
       ((tempDouble = stream.position),
-      +Math.abs(tempDouble) >= 1
-        ? tempDouble > 0
-          ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
+        +Math.abs(tempDouble) >= 1
+          ? tempDouble > 0
+            ? (Math.min(+Math.floor(tempDouble / 4294967296), 4294967295) | 0) >>>
             0
-          : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
+            : ~~+Math.ceil((tempDouble - +(~~tempDouble >>> 0)) / 4294967296) >>>
             0
-        : 0),
+          : 0),
     ]),
       (HEAP32[newOffset >> 2] = tempI64[0]),
       (HEAP32[(newOffset + 4) >> 2] = tempI64[1]);
@@ -12201,7 +12149,7 @@ function __isLeapYear(year) {
 
 function __arraySum(array, index) {
   var sum = 0;
-  for (var i = 0; i <= index; sum += array[i++]) {}
+  for (var i = 0; i <= index; sum += array[i++]) { }
   return sum;
 }
 
@@ -12409,12 +12357,12 @@ function _strftime(s, maxsize, format, tm) {
     "%j": function (date) {
       return leadingNulls(
         date.tm_mday +
-          __arraySum(
-            __isLeapYear(date.tm_year + 1900)
-              ? __MONTH_DAYS_LEAP
-              : __MONTH_DAYS_REGULAR,
-            date.tm_mon - 1
-          ),
+        __arraySum(
+          __isLeapYear(date.tm_year + 1900)
+            ? __MONTH_DAYS_LEAP
+            : __MONTH_DAYS_REGULAR,
+          date.tm_mon - 1
+        ),
         3
       );
     },
@@ -12499,9 +12447,9 @@ function _strftime(s, maxsize, format, tm) {
         janFirst.getDay() === 1
           ? janFirst
           : __addDays(
-              janFirst,
-              janFirst.getDay() === 0 ? 1 : 7 - janFirst.getDay() + 1
-            );
+            janFirst,
+            janFirst.getDay() === 0 ? 1 : 7 - janFirst.getDay() + 1
+          );
       var endDate = new Date(date.tm_year + 1900, date.tm_mon, date.tm_mday);
       if (compareByDay(firstMonday, endDate) < 0) {
         var februaryFirstUntilEndMonth =
