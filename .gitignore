@@ -25,6 +25,7 @@ nyc
 *.lcov
 Mac
 .DS_Store
+Boxedwine
 
 #Access token
 electron-builder.yml
