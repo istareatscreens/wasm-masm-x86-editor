@@ -204,7 +204,7 @@ export default class FileSystem {
 
   static createAssemblyFile(filename, isInitial = false) {
     //if (!(`${filename}.asm` in fileList)) { //turn this into a call back or something
-    const template = `INCLUDE D:/irvine/Irvine32.inc
+    const template = `INCLUDE Irvine32.inc
 
   .data                          ;data decleration
 

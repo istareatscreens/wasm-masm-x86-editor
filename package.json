@@ -5,7 +5,8 @@
   "main": "./build/electron-main.js",
   "scripts": {
     "build": "gulp",
-    "dev": "NODE_OPTIONS=--openssl-legacy-provider gulp watch",
+    "dev-legacy": "NODE_OPTIONS=--openssl-legacy-provider gulp watch",
+    "dev": "gulp watch",
     "build-electron": "gulp electron",
     "build-installer": "electron-builder",
     "deploy": "electron-builder build -mwl --publish always"
