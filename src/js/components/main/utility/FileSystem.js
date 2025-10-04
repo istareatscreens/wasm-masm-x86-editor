@@ -1,5 +1,4 @@
 import { Inode, fromBuffer } from "./filesystem/inode";
-import { Buffer } from "buffer";
 import {
   generateRandomID,
   renameObjectKey,
@@ -125,10 +124,10 @@ export default class FileSystem {
     return hf.getFileMetaData(FileSystem._readFileList()[filename]);
   }
 
-  static getRawFileData(filename) {
+  static getBase64Data(filename) {
     const fileList = FileSystem._readFileList();
     const fileMetaData = hf.getFileMetaData(fileList[filename]);
-    return window.localStorage.getItem(fileMetaData.id);
+    return hf.getFromLocalStorage(fileMetaData.id);
   }
 
   static getFileData(filename) {

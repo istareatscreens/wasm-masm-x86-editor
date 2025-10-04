@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy } from "react";
+import React, { useState, useEffect, lazy, useMemo } from "react";
 import TextEditor from "./TextEditor.jsx";
 import FileSystem from "../utility/FileSystem.js";
 import { getFileExtension } from "../../../utility/utilityFunctions";
@@ -17,21 +17,26 @@ const Editor = function Editor({
   const [isHexViewer, setIsHexViewer] = useState(false);
 
   useEffect(() => {
-    if (FileSystem.fileListKey !== "") {
+    if (FileSystem.fileListKey !== "" && filename) {
       const fileExt = getFileExtension(filename);
-      const isHex = ['exe', 'obj'].includes(fileExt);
+      const isHex = ['.exe', '.obj'].includes(fileExt.toLowerCase());
       setIsHexViewer(isHex);
-      setCode(isHex ? FileSystem.getRawFileData(filename) : FileSystem.getFileData(filename) )  
+      setCode(
+        isHex ? FileSystem.getBase64Data(filename) :
+          FileSystem.getFileData(filename)
+      );
     }
   }, [filename, shouldRefreshFile]);
 
   return (
-    <div className="editor-container" >
+    <>
       {isHexViewer ? (
-        <HexViewer 
-          filename={filename}
-          selectedTheme={selectedTheme}
-        />
+        <React.Suspense fallback={<div>Loading hex viewer...</div>}>
+          <HexViewer 
+            data={code}
+            selectedTheme={selectedTheme}
+          />
+        </React.Suspense>
       ) : (
         <TextEditor
           selectedTheme={selectedTheme}
@@ -42,7 +47,7 @@ const Editor = function Editor({
           selectedFont={selectedFont}
         />
       )}
-    </div>
+     </>
   );
 };
 

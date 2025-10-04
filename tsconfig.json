@@ -7,8 +7,10 @@
       "allowSyntheticDefaultImports": true,
       "jsx": "react",
       "allowJs": true,
-      "lib": [ "dom", "dom.iterable", "esnext" ],
+      "lib": [ "dom", "dom.iterable", "esnext", "webworker" ],
       "downlevelIteration": true,
+      "moduleResolution": "node",
+      "types": ["react", "react-dom", "node"]
     },
     "exclude": ["node_modules", "src/js/boxedwine"],
     "include": ["src/js", "src/main/index-main.jsx", "src/main/App.jsx"]
