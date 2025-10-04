@@ -125,6 +125,12 @@ export default class FileSystem {
     return hf.getFileMetaData(FileSystem._readFileList()[filename]);
   }
 
+  static getRawFileData(filename) {
+    const fileList = FileSystem._readFileList();
+    const fileMetaData = hf.getFileMetaData(fileList[filename]);
+    return window.localStorage.getItem(fileMetaData.id);
+  }
+
   static getFileData(filename) {
     return hf.getFileData(
       hf.getFileMetaData(FileSystem._readFileList()[filename]).id

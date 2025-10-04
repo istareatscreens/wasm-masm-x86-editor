@@ -1,0 +1,74 @@
+$hex-color: #000 !default;
+$hex-item-active-background: green !default;
+$hex-item-active-color: white !default;
+$hex-set-active-color: green !default;
+$hex-ascii-color: #555 !default;
+$hex-font-family: monoscape !default;
+
+.hexviewer {
+  font-size: 15px;
+  color: $hex-color;
+
+  div.heading {
+    font-family: $hex-font-family;
+  }
+  div.hex-row {
+    display: flex;
+    flex-direction: row;
+    height: 25px;
+    line-height: 25px;
+    .hex {
+      flex-grow: 0;
+      display: flex;
+      flex-direction: row;
+      white-space: nowrap;
+    }
+    .ascii {
+      flex-grow: 1;
+    }
+  }
+  .none {
+    visibility: hidden;
+  }
+  ul.setAscii,
+  ul.setHex {
+    float: left;
+    margin: 0;
+    padding: 0;
+    font-family: $hex-font-family;
+    text-align: center;
+    margin-right: 5px;
+    margin-left: 5px;
+    li {
+      margin: 0;
+      padding: 0;
+      display: inline-block;
+      width: 1.5em;
+      &.active {
+        font-weight: bold;
+        color: $hex-item-active-color;
+        background-color: $hex-item-active-background;
+      }
+    }
+    &.active {
+      color: $hex-set-active-color;
+    }
+  }
+  .ascii {
+    color: $hex-ascii-color;
+    display: flex;
+    flex-direction: row;
+    white-space: nowrap;
+    ul.setAscii {
+      display: flex;
+      flex-grow: 1;
+      justify-content: center;
+      li {
+        flex-grow: 1;
+        white-space: nowrap;
+        width: auto;
+        max-width: 1.5em;
+      }
+    }
+  }
+}
