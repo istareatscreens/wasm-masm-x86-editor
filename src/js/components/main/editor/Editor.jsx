@@ -1,6 +1,7 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy } from "react";
 import TextEditor from "./TextEditor.jsx";
 import FileSystem from "../utility/FileSystem.js";
+import { getFileExtension } from "../../../utility/utilityFunctions";
 
 // Lazy load the HexViewer component
 const HexViewer = lazy(() => import("./HexViewer.jsx"));
@@ -25,14 +26,12 @@ const Editor = function Editor({
   }, [filename, shouldRefreshFile]);
 
   return (
-    <div className="editor-container" style={{ height: '100%', overflow: 'hidden' }}>
+    <div className="editor-container" >
       {isHexViewer ? (
-        <Suspense fallback={<div>Loading hex viewer...</div>}>
-          <HexViewer 
-            filename={filename}
-            selectedTheme={selectedTheme}
-          />
-        </Suspense>
+        <HexViewer 
+          filename={filename}
+          selectedTheme={selectedTheme}
+        />
       ) : (
         <TextEditor
           selectedTheme={selectedTheme}

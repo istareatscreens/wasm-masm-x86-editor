@@ -168,16 +168,19 @@ function App() {
   );
 
   useEffect(() => {
+    const handleStorageChange = () => {
+      refreshFileList();
+    };
+
     const init = async () => {
       await FileSystem.init();
-      window.addEventListener("storage", () => {
-        refreshFileList();
-      });
+      window.addEventListener("storage", handleStorageChange);
       refreshFileList(true);
     };
+    
     init();
     return () => {
-      window.removeEventListener("storage");
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
 
