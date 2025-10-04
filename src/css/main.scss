@@ -5,6 +5,7 @@
 
 @use "vendors/codemirror";
 @use "vendors/reactdragable";
+@use "vendors/_hex-viewer";
 
 @use "base/base";
 @use "base/typography";
@@ -24,6 +25,8 @@
 @use "components/editor";
 @use "components/dropdown";
 @use "components/image";
+@use "components/loading-indicator";
+@use "components/loading-screen";
 
 @use "layout/layout";
 @use "layout/banner" as banner2;

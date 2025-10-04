@@ -24,8 +24,46 @@
   </div>
   <div id="bw-root"></div>
   <noscript> You need to enable JavaScript to run this app. </noscript>
+  <script>
+    // Initialize Module - let Emscripten handle WASM loading
+    var Module = {};
+    
+    Module.print = function(text) {
+      if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+      console.log(text);
+    };
+    
+    Module.printErr = function(text) {
+      if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+      console.error(text);
+    };
+    
+    Module.setStatus = function(text) {
+      var statusElement = document.getElementById('status');
+      if (statusElement && text) statusElement.innerHTML = text;
+    };
+    
+    window.Module = Module;
+    window.boxedwineLoaded = false;
+    
+    // Load boxedwine.js after canvas is ready
+    window.loadBoxedwine = function(canvasElement) {
+      if (window.boxedwineLoaded) return;
+      window.boxedwineLoaded = true;
+      
+      // Set canvas on Module before loading
+      if (canvasElement) {
+        Module.canvas = canvasElement;
+      }
+      
+      // Dynamically load boxedwine.js
+      var script = document.createElement('script');
+      script.src = 'boxedwine.js';
+      script.async = false;
+      document.body.appendChild(script);
+    };
+  </script>
   <script src="index-bw.js"></script>
-  <script src="boxedwine.js"></script>
 </body>
 
 </html>
