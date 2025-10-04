@@ -81,7 +81,24 @@ function assetsTaskElectron() {
 function imgTaskElectron() {
   //only using for favicon
   return src([imagePath + ".ico", "src/css/images/*"])
-    .pipe(imagemin())
+    .pipe(imagemin({
+      silent: true, // Suppress plugin warnings
+      plugins: [
+        imagemin.gifsicle({ interlaced: false }),
+        imagemin.mozjpeg({ quality: 75, progressive: true }),
+        imagemin.optipng({ optimizationLevel: 5 }),
+        imagemin.svgo({
+          plugins: [
+            { removeViewBox: true },
+            { cleanupIDs: false }
+          ]
+        })
+      ]
+    }))
+    .on('error', function(err) {
+      console.error('Error in imgTaskElectron:', err);
+      this.emit('end');
+    })
     .pipe(gulp.dest(electronOutput));
 }
 
@@ -104,6 +121,10 @@ function fontTaskElectron() {
 function jsTaskProd() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
     .pipe(webpack(require("./webpack.prod.js")))
+    .on('error', function(err) {
+      console.error('Error in jsTaskProd:', err);
+      this.emit('end');
+    })
     .pipe(browserSync.stream())
     .pipe(dest(output));
 }
@@ -136,6 +157,10 @@ Disallow: /boxedwine.html
 function jsTask() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
     .pipe(webpack(require("./webpack.dev.js")))
+    .on('error', function(err) {
+      console.error('Error in jsTask:', err);
+      this.emit('end');
+    })
     .pipe(browserSync.stream())
     .pipe(dest(output));
 }
@@ -175,7 +200,24 @@ function assetsTask() {
 function imgTask() {
   //only using for favicon
   return src([imagePath + ".ico", "src/css/images/*"])
-    .pipe(imagemin())
+    .pipe(imagemin({
+      silent: true, // Suppress plugin warnings
+      plugins: [
+        imagemin.gifsicle({ interlaced: false }),
+        imagemin.mozjpeg({ quality: 75, progressive: true }),
+        imagemin.optipng({ optimizationLevel: 5 }),
+        imagemin.svgo({
+          plugins: [
+            { removeViewBox: true },
+            { cleanupIDs: false }
+          ]
+        })
+      ]
+    }))
+    .on('error', function(err) {
+      console.error('Error in imgTask:', err);
+      this.emit('end');
+    })
     .pipe(gulp.dest("public"));
 }
 
