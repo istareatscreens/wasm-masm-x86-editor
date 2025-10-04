@@ -42,16 +42,16 @@ function CacheResetWindow({ close }) {
       titlebarClass={"title-bar__about"}
       titlebarText={"Hard Rest Everything"}
     >
-      <div class="window__reset-cache__content">
+      <div className="window__reset-cache__content">
         <img
-          class="window__reset-cache__content__image"
+          className="window__reset-cache__content__image"
           src={errorImage}
           alt="Warning Image"
         />
         <div
-          class="window__reset-cache__content__text"
+          className="window__reset-cache__content__text"
         >
-          <h1 class="window__reset-cache__content__text--warning">
+          <h1 className="window__reset-cache__content__text--warning">
             {
               "WARNING: THIS WILL WIPE ALL YOUR DATA AND RESET EVERYTHING MAKE SURE TO BACKUP YOUR FILES"
             }

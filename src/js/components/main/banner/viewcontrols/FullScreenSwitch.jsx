@@ -21,7 +21,7 @@ const FullscreenSwitch = () => {
             className={"switch--file-drawer"}
             imgClass={"switch--file-switch"}
             title={"Toggle Full Screen"}
-            onClick={toggleFullScreen}
+            onChange={toggleFullScreen}
             checked={isFullScreen}
             src={fullScreenImage}
         />

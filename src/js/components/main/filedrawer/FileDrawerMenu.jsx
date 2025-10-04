@@ -27,7 +27,7 @@ function FileDrawerMenu({
           type="checkbox"
           title="Select all"
           className="checkbox checkbox--filedrawer checkbox--selectAll"
-          onClick={(event) => handleSelectAllCheckBox(event.target.checked)}
+          onChange={(event) => handleSelectAllCheckBox(event.target.checked)}
           ref={selectAllCheckbox}
         />
         <Button
@@ -54,6 +54,7 @@ function FileDrawerMenu({
           src={saveFile}
           className={"banner__file-drawer__btn"}
           title="save selected file(s)"
+          type="button"
           onClick={saveFiles}
         />
         <Button

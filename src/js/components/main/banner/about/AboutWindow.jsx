@@ -15,14 +15,14 @@ function AboutWindow({ close }) {
       titlebarClass={"title-bar__about"}
       titlebarText={"WASM MASM x86 Editor Info"}
     >
-      <div class="window__reset-cache__content">
+      <div className="window__reset-cache__content">
         <img
-          class="window__reset-cache__content__image"
+          className="window__reset-cache__content__image"
           src={aboutImage}
           alt="About Image"
         />
         <div
-          class="window__reset-cache__content__text"
+          className="window__reset-cache__content__text"
         >
           <p>
             {

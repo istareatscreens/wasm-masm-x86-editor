@@ -1,0 +1,121 @@
+$hex-color: inherit !default;
+$hex-item-active-background: green !default;
+$hex-item-active-color: white !default;
+$hex-set-active-color: green !default;
+$hex-ascii-color: inherit !default;
+$hex-font-family: monoscape !default;
+
+.hexviewer-container {
+  position: relative;
+  min-height: 100px; // Ensure container has height while loading
+}
+
+.hex-viewer-loading-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  font-family: $hex-font-family;
+  z-index: 1000;
+}
+
+.hexviewer-loading {
+  padding: 20px;
+  text-align: center;
+  font-family: $hex-font-family;
+  color: $hex-color;
+  background: rgba(255, 255, 255, 0.95);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.hexviewer {
+  font-size: 15px;
+  color: $hex-color;
+  position: relative;
+
+  div.heading {
+    font-family: $hex-font-family;
+  }
+
+  div.hex-row {
+    display: flex;
+    flex-direction: row;
+    height: 25px;
+    line-height: 25px;
+
+    .hex {
+      flex-grow: 0;
+      display: flex;
+      flex-direction: row;
+      white-space: nowrap;
+    }
+
+    .ascii {
+      flex-grow: 1;
+    }
+  }
+
+  .none {
+    visibility: hidden;
+  }
+
+  ul.setAscii,
+  ul.setHex {
+    float: left;
+    margin: 0;
+    padding: 0;
+    font-family: $hex-font-family;
+    text-align: center;
+    margin-right: 5px;
+    margin-left: 5px;
+
+    li {
+      margin: 0;
+      padding: 0;
+      display: inline-block;
+      width: 1.5em;
+
+      &.active {
+        font-weight: bold;
+        color: $hex-item-active-color;
+        background-color: $hex-item-active-background;
+      }
+    }
+
+    &.active {
+      color: $hex-set-active-color;
+    }
+  }
+
+  .ascii {
+    color: $hex-ascii-color;
+    display: flex;
+    flex-direction: row;
+    white-space: nowrap;
+
+    ul.setAscii {
+      display: flex;
+      flex-grow: 1;
+      justify-content: center;
+
+      li {
+        flex-grow: 1;
+        white-space: nowrap;
+        width: auto;
+        max-width: 1.5em;
+      }
+    }
+  }
+}
