@@ -170,6 +170,11 @@ function fontTask() {
   return src("src/fonts/*").pipe(browserSync.stream()).pipe(dest(output));
 }
 
+function codeMirrorTask() {
+  return src(["node_modules/codemirror/theme/*.css", "node_modules/codemirror/lib/*.css"], { base: 'node_modules' })
+    .pipe(gulp.dest("public"));
+}
+
 function jsBoxedTask() {
   return src(["!" + jsPath, jsBoxedPath])
     .pipe(sourcemaps.init())
@@ -286,6 +291,7 @@ exports.default = series(
     copyHtml,
     imgTask,
     fontTask,
+    codeMirrorTask,
     generateSitemapTask,
     generateRobotsTask
   )
@@ -302,6 +308,7 @@ exports.watch = series(
     copyHtml,
     imgTask,
     fontTask,
+    codeMirrorTask,
     generateSitemapTask,
     generateRobotsTask,
   ),

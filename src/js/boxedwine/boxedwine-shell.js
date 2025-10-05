@@ -5,6 +5,26 @@ let STORAGE_DROPBOX = "DROPBOX";
 let STORAGE_LOCAL_STORAGE = "LOCAL_STORAGE";
 let STORAGE_MEMORY = "MEMORY";
 
+// Performance tracking
+let PERF_START_TIME = null;
+let PERF_CHECKPOINTS = {};
+function perfLog(label) {
+  if (!PERF_START_TIME) {
+    PERF_START_TIME = performance.now();
+    console.log(`[PERF] Starting load at ${PERF_START_TIME}`);
+  }
+  const now = performance.now();
+  const elapsed = now - PERF_START_TIME;
+  const delta = PERF_CHECKPOINTS.last ? now - PERF_CHECKPOINTS.last : 0;
+  PERF_CHECKPOINTS[label] = now;
+  PERF_CHECKPOINTS.last = now;
+  console.log(`[PERF] ${label}: ${elapsed.toFixed(0)}ms total (${delta.toFixed(0)}ms since last)`);
+}
+// Expose perfLog globally for use in boxedwine.js
+if (typeof window !== 'undefined') {
+  window.perfLog = perfLog;
+}
+
 let ONDEMAND_DEFAULT = "unset";
 let ONDEMAND_ROOT = "root";
 
@@ -317,6 +337,7 @@ function dropboxLogin() {
   document.getElementById("startbtn").textContent = "Start";
 }
 function initFileSystem() {
+  perfLog("initFileSystem - START");
   console.log("Use Storage mode: " + Config.storageMode);
   if (Config.storageMode === STORAGE_LOCAL_STORAGE) {
     var writableStorage;
@@ -439,13 +460,17 @@ function getCentralOffset(buffer) {
 }
 
 function buildFileSystem(writableStorage, isDropBox) {
+  perfLog("buildFileSystem - START");
   spinnerElement.style.display = "";
   spinnerElement.hidden = false;
   var Buffer = BrowserFS.BFSRequire("buffer").Buffer;
   buildExtraFileSystems(Buffer, function (extraFSs) {
+    perfLog("buildExtraFileSystems - DONE");
     buildAppFileSystems(function (homeAdapter) {
+      perfLog("buildAppFileSystems - DONE");
       if (Config.useRangeRequests == ONDEMAND_ROOT) {
         buildRemoteZipFile(Config.rootZipFile, function callback(zipfs) {
+          perfLog("buildRemoteZipFile (" + Config.rootZipFile + ") - DONE");
           buildBrowserFileSystem(
             writableStorage,
             isDropBox,
@@ -479,6 +504,7 @@ function buildFileSystem(writableStorage, isDropBox) {
                     if (e3) {
                       console.log(e3);
                     }
+                    perfLog("Root ZipFS.Create (" + Config.rootZipFile + ") - DONE");
                     buildBrowserFileSystem(
                       writableStorage,
                       isDropBox,
@@ -488,7 +514,6 @@ function buildFileSystem(writableStorage, isDropBox) {
                     );
                   }
                 );
-                rootMfs = null;
               }
             );
           }
@@ -660,6 +685,7 @@ function buildBrowserFileSystem(
   extraFSs,
   zipfs
 ) {
+  perfLog("buildBrowserFileSystem - START");
   FS.createPath(FS.root, "root", FS.createPath);
   FS.createPath("/root", "base", true, true);
   FS.createPath("/root", "files", true, true);
@@ -685,6 +711,7 @@ function buildBrowserFileSystem(
             if (e2) {
               console.log(e2);
             }
+            perfLog("Home OverlayFS.Create - DONE");
             if (isDropBox) {
               var mirrorFS = new BrowserFS.FileSystem.AsyncMirror(
                 homeOverlay,
@@ -706,6 +733,7 @@ function buildBrowserFileSystem(
   );
 }
 function postBuildFileSystem(rootFS, homeFS, extraFSs) {
+  perfLog("postBuildFileSystem - START");
   var mfs = new BrowserFS.FileSystem.MountableFileSystem();
   mfs.mount("/root/base", rootFS);
   mfs.mount(
@@ -717,10 +745,14 @@ function postBuildFileSystem(rootFS, homeFS, extraFSs) {
   BrowserFS.initialize(mfs);
   FS.mount(BFS, { root: "/root" }, "/root");
 
+  if (extraFSs.length > 0) {
+    perfLog("Starting recursive copy of " + extraFSs.length + " extra filesystems");
+  }
   for (let i = 0; i < extraFSs.length; i++) {
     recursiveCopy(extraFSs[i], Config.extraZipFiles[i], "/");
   }
   extraFSs = null;
+  perfLog("postBuildFileSystem - FS mounted and ready");
 
   if (Config.showUploadDownload) {
     document.getElementById("uploadbtn").style.display = "";
@@ -792,7 +824,8 @@ function createFileIfNecessary(fs, fullPath, prefix) {
     var filename = extractLastPartOfPath(fullPath);
     var contents = fs.readFileSync(file, null, flag_r);
     try {
-      console.log("creating: root/base" + parent + "/" + filename);
+      // Removed verbose logging to improve performance - only log errors
+      // console.log("creating: root/base" + parent + "/" + filename);
       FS.createDataFile("root/base" + parent, filename, contents, true, true);
     } catch (ef) {
       if (ef.message === "File exists" || ef.message === "FS error") {
@@ -887,6 +920,7 @@ function start() {
   }
 }
 function startEmulator() {
+  perfLog("startEmulator - START");
   isRunning = true;
   /*
             document.getElementById('startbtn').style.display = 'none';
@@ -899,6 +933,7 @@ function startEmulator() {
   }
 
   //           document.getElementById('startbtn').textContent = "Running...";
+  perfLog("startEmulator - Removing run dependency");
   Module["removeRunDependency"]("setupBoxedWine");
 }
 function loadScreen() {
@@ -911,8 +946,10 @@ function loadScreen() {
   }
 }
 var initialSetup = function () {
+  perfLog("initialSetup - START");
   console.log("running initial setup");
   setConfiguration();
+  perfLog("setConfiguration - DONE");
   //loadScreen();
 
   Module["addRunDependency"]("setupBoxedWine");
@@ -1133,9 +1170,19 @@ var Module = {
   postRun: [],
   print: (function () {
     var element = document.getElementById("output");
+    var wineInitDetected = false;
     //  if (element) element.value = ""; // clear browser cache
     return function (text) {
       text = Array.prototype.slice.call(arguments).join(" ");
+      
+      // Detect Wine initialization output
+      if (!wineInitDetected && typeof window !== 'undefined' && window.perfLog) {
+        if (text.includes("wine") || text.includes("Wine") || text.includes("cmd")) {
+          wineInitDetected = true;
+          window.perfLog("Wine output detected - Wine has started initializing");
+        }
+      }
+      
       // These replacements are necessary if you render to raw HTML
       //text = text.replace(/&/g, "&amp;");
       //text = text.replace(/</g, "&lt;");
@@ -1181,6 +1228,7 @@ var Module = {
     );
     canvas.width = 800;
     canvas.height = 600;
+
     return canvas;
   })(),
   setStatus: function (text) {
@@ -1203,6 +1251,19 @@ var Module = {
       if (!text) spinnerElement.hidden = true;
     }
     statusElement.innerHTML = text;
+    
+    // When status is cleared (empty string), Wine has finished loading
+    if (!text && Module.setStatus.last.text && typeof window !== 'undefined') {
+      if (typeof window.perfLog !== 'undefined') {
+        window.perfLog("setStatus('') called - Status cleared, Wine initialization complete");
+      }
+      if (!window._boxedwineFullyLoadedFired) {
+        window._boxedwineFullyLoadedFired = true;
+        window.dispatchEvent(new CustomEvent('boxedwine-fully-loaded', {
+          detail: { timestamp: performance.now() }
+        }));
+      }
+    }
   },
   totalDependencies: 0,
   monitorRunDependencies: function (left) {
