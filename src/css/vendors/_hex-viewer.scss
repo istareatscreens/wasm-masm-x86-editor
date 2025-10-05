@@ -38,7 +38,12 @@ $hex-font-family: monoscape !default;
   justify-content: center;
   border-radius: 4px;
   z-index: 1;
+
+  &.dark {
+    background: black;
+  }
 }
+
 
 .hexviewer {
   font-size: 15px;

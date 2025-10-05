@@ -10,7 +10,8 @@ const HexViewer = ({
     hex,
     noData,
     onLoadingStateChange,
-    onProgressChange
+    onProgressChange,
+    darkMode
 }) => {
     const [rows, setRows] = useState([]);
     const [isErrorData, setIsErrorData] = useState(false);
@@ -110,28 +111,28 @@ const HexViewer = ({
 
                 const worker = await loadWorker();
                 const processedRows = await processData(worker, bufferData);
-                
+
                 // Transition to preparing state
                 setLoadingState('preparing');
                 onLoadingStateChange?.('preparing');
-                
+
                 if (!isMounted) return;
-                
+
                 // Set rows first
                 setRows(processedRows);
-                
+
                 // Wait before allowing Hex to render
                 await new Promise(resolve => setTimeout(resolve, 100));
-                
+
                 if (!isMounted) return;
-                
+
                 setRenderReady(true);
-                
+
                 // Clear any pending idle timeout
                 if (idleTimeoutRef.current) {
                     clearTimeout(idleTimeoutRef.current);
                 }
-                
+
                 // Set idle state immediately
                 setLoadingState('idle');
                 onLoadingStateChange?.('idle');
@@ -150,32 +151,32 @@ const HexViewer = ({
         return function cleanup() {
             isMounted = false;
             isMountedRef.current = false;
-            
+
             // Clear any pending timeouts
             if (idleTimeoutRef.current) {
                 clearTimeout(idleTimeoutRef.current);
                 idleTimeoutRef.current = null;
             }
-            
+
             if (workerRef.current) {
                 workerRef.current.terminate();
                 workerRef.current = null;
             }
         };
     }, [children, base64, hex, rowLength, setLength]);
-    
+
     return (
         <div className="hexviewer-container" style={{ height: '100%', width: '100%' }}>
             {loadingState === 'processing' && (
-                <div className="hexviewer-loading">Processing data...</div>
+                <div className={`hexviewer-loading ${darkMode ? 'dark' : ''}`}>Processing data...</div>
             )}
             {loadingState === 'preparing' && (
-                <div className="hexviewer-loading">Preparing display...</div>
+                <div className={`hexviewer-loading ${darkMode ? 'dark' : ''}`}>Preparing display...</div>
             )}
             {isErrorData && (errorData || <div>Error Data</div>)}
             {!rows.length && !isErrorData && loadingState === 'idle' && (noData || <div>No Data</div>)}
             {!!rows.length && !isErrorData && renderReady && (
-                <React.Suspense fallback={<div className="hexviewer-loading">Loading...</div>}>
+                <React.Suspense fallback={<div className={`hexviewer-loading ${darkMode ? 'dark' : ''}`}>Loading...</div>}>
                     <Hex rows={rows} bytesper={rowLength} />
                 </React.Suspense>
             )}
