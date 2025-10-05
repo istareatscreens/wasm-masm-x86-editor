@@ -97,6 +97,7 @@ const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'mo
           bytesPerLine={16}
           onLoadingStateChange={handleLoadingStateChange}
           onProgressChange={handleProgressChange}
+          darkMode={!lightMode}
         >
           {data}
         </HexViewer>
