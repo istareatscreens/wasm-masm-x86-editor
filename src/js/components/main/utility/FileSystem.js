@@ -105,7 +105,14 @@ export default class FileSystem {
 
   //reads file list
   static _readFileList() {
-    return JSON.parse(atob(hf.getFromLocalStorage(FileSystem.fileListKey)));
+    try {
+      const data = hf.getFromLocalStorage(FileSystem.fileListKey);
+      if (!data) return {};
+      return JSON.parse(atob(data));
+    } catch (error) {
+      console.error('Error reading file list:', error);
+      return {};
+    }
   }
 
   //Gets file list key
@@ -122,13 +129,28 @@ export default class FileSystem {
 
   //gets data from file
   static getFileMetaData(filename) {
-    return hf.getFileMetaData(FileSystem._readFileList()[filename]);
+    const fileList = FileSystem._readFileList();
+    const fileKey = fileList[filename];
+    if (!fileKey) return null;
+    return hf.getFileMetaData(fileKey);
+  }
+
+  static getRawFileData(filename) {
+    const fileList = FileSystem._readFileList();
+    const fileKey = fileList[filename];
+    if (!fileKey) return '';
+    const fileMetaData = hf.getFileMetaData(fileKey);
+    if (!fileMetaData) return '';
+    return hf.getFromLocalStorage(fileMetaData.id) || '';
   }
 
   static getFileData(filename) {
-    return hf.getFileData(
-      hf.getFileMetaData(FileSystem._readFileList()[filename]).id
-    );
+    const fileList = FileSystem._readFileList();
+    const fileKey = fileList[filename];
+    if (!fileKey) return '';
+    const fileMetaData = hf.getFileMetaData(fileKey);
+    if (!fileMetaData || !fileMetaData.id) return '';
+    return hf.getFileData(fileMetaData.id) || '';
   }
   /**
    * @description finds file in local storage and replaces its text
@@ -140,7 +162,16 @@ export default class FileSystem {
   static writeToFile(filename, text) {
     //get data
     const fileMetaDataKey = FileSystem._readFileList()[filename];
+    if (!fileMetaDataKey) {
+      console.error(`File ${filename} not found in file list`);
+      return;
+    }
+    
     const fileMetaData = hf.getFileMetaData(fileMetaDataKey);
+    if (!fileMetaData) {
+      console.error(`File metadata for ${filename} not found`);
+      return;
+    }
 
     //Append changes
     fileMetaData.size = text.length;

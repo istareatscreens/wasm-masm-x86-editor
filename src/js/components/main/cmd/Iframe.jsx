@@ -35,7 +35,6 @@ function Iframe(props) {
       height="100%"
       id="boxedwine"
       src="boxedwine.html"
-      sandbox="allow-scripts allow-same-origin"
       border="none"
       ref={iframeCallbackRef}
     />

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
 
 import CreateFileWindow from "./CreateFileWindow.jsx";
@@ -26,6 +26,7 @@ const FileDrawer = function FileDrawer({
   const [filesSelected, setFilesSelected] = useState([]);
   //checkbox logic
   const [numberOfCheckboxesSelected, setNumberCheckboxesSelected] = useState(0);
+  const saveDebounceRef = useRef(false);
   const [showAsm, setShowAsm] = useState(true);
   const [showCreateFile, setShowCreateFile] = useState(false);
 
@@ -145,22 +146,37 @@ const FileDrawer = function FileDrawer({
   };
 
   //Save file
-  const saveFiles = () => {
-    //handle case where Multiple files are checked
-    if (numberOfCheckboxesSelected != 1 && numberOfCheckboxesSelected) {
-      FileSystem.saveFiles(filesSelected.map((file) => file.filename));
-    } else {
-      //handle case where single file is checked
-      if (numberOfCheckboxesSelected) {
-        FileSystem.saveFile(
-          filesSelected.filter((file) => file.isSelected)[0].filename
-        );
-        //handle case where no file is checked
-      } else {
-        FileSystem.saveFile(fileSelected);
-      }
+  const saveFiles = useCallback((event) => {
+    // Prevent event propagation and default behavior
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
-  };
+    
+    // Debounce: prevent rapid clicks
+    if (saveDebounceRef.current) return;
+    
+    saveDebounceRef.current = true;
+    setTimeout(() => {
+      saveDebounceRef.current = false;
+    }, 500);
+
+    //handle case where Multiple files are checked
+    if (numberOfCheckboxesSelected > 1) {
+      // Filter to only selected files
+      const selectedFiles = filesSelected
+        .filter((file) => file.isSelected)
+        .map((file) => file.filename);
+      FileSystem.saveFiles(selectedFiles);
+    } else if (numberOfCheckboxesSelected === 1) {
+      //handle case where single file is checked
+      const singleFile = filesSelected.filter((file) => file.isSelected)[0].filename;
+      FileSystem.saveFile(singleFile);
+    } else {
+      //handle case where no file is checked
+      FileSystem.saveFile(fileSelected);
+    }
+  }, [numberOfCheckboxesSelected, filesSelected, fileSelected]);
 
   //Delete files
   //Handle multiselection deletion

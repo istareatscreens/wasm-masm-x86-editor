@@ -1,12 +1,19 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { keyCodes } from "./keypress.js";
-import FileSystem from "../main/utility/FileSystem.js"
+import FileSystem from "../main/utility/FileSystem.js";
+import LoadingScreen from "./LoadingScreen.jsx";
 
 function Boxedwine() {
   const canvas = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Load boxedwine.js after canvas is rendered
+    if (canvas.current && window.loadBoxedwine) {
+      window.loadBoxedwine(canvas.current);
+    }
+    
     createEventListeners();
     return () => {
       removeEventListeners();
@@ -20,6 +27,7 @@ function Boxedwine() {
     createCommandWriteListener();
     createCommandRunListener();
     createResetListener();
+    createBoxedwineLoadedListener();
   };
 
   const removeEventListeners = () => {
@@ -29,6 +37,7 @@ function Boxedwine() {
     window.removeEventListener("write-command");
     window.removeEventListener("run-command");
     window.removeEventListener("zip-files");
+    window.removeEventListener("boxedwine-fully-loaded");
   };
 
   const createZipListener = () => {
@@ -183,6 +192,20 @@ function Boxedwine() {
     });
   };
 
+  const createBoxedwineLoadedListener = () => {
+    window.addEventListener("boxedwine-fully-loaded", (event) => {
+      console.log("🎉 Boxedwine fully loaded!", event.detail);
+      
+      // Hide loading screen - Wine is ready!
+      setIsLoading(false);
+      
+      // Dispatch a custom event that other parts of your app can listen to
+      window.dispatchEvent(new CustomEvent("emulator-ready", {
+        detail: { timestamp: event.detail.timestamp }
+      }));
+    });
+  };
+
   const createClickListener = () => {
     window.addEventListener("editor-selected", (event) => {
       event.preventDefault();
@@ -247,6 +270,7 @@ function Boxedwine() {
 
   return (
     <>
+      {isLoading && <LoadingScreen />}
       <canvas
         onContextMenu={(event) => event.preventDefault()}
         className={"emscripten"}

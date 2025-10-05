@@ -66,16 +66,18 @@
     "webpack-stream": "^7.0.0"
   },
   "dependencies": {
+    "buffer": "^6.0.3",
     "codemirror": "^5.65.19",
     "electron-updater": "^4.3.5",
     "eol": "^0.9.1",
     "file-saver": "^2.0.5",
     "gulp-htmlmin": "^5.0.1",
-    "react": "^17.0.2",
-    "react-codemirror2": "^7.3.0",
-    "react-dom": "^17.0.2",
+    "react": "^18.3.1",
+    "react-codemirror2": "^8.0.1",
+    "react-dom": "^18.3.1",
     "react-draggable": "^4.4.3",
     "react-onclickoutside": "^6.13.2",
+    "react-window": "^2.2.0",
     "use-debounce": "^5.2.1"
   },
   "build": {

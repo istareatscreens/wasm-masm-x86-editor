@@ -19,12 +19,14 @@ function ViewControlGroup({ className, refApp, ...props }) {
 
   const refCMDBtn = useRef(null);
 
+  const handleShowCmd = () => {
+    refCMDBtn.current.click();
+  };
+
   useEffect(() => {
-    window.addEventListener("show-cmd", () => {
-      refCMDBtn.current.click();
-    });
+    window.addEventListener("show-cmd", handleShowCmd);
     return () => {
-      window.removeEventListener("show-cmd");
+      window.removeEventListener("show-cmd", handleShowCmd);
     };
   }, []);
 

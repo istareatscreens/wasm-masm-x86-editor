@@ -91,7 +91,9 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       });
   };
 
-  // ----- NEW: WebAssembly.instantiateStreaming loader -----
+  // ----- DISABLED: Custom WebAssembly loader - causes "import object field 'a' is not an Object" error -----
+  // The normal Emscripten createWasm() function below handles loading correctly
+  /*
   (async function () {
     // 1) Reconstruct any Module.* overrides
     for (var k in moduleOverrides) {
@@ -125,6 +127,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
       console.error("No entrypoint found (neither _main nor start).");
     }
   })();
+  */
 }
 
 var out = Module["print"] || console.log.bind(console);
@@ -577,6 +580,9 @@ function addRunDependency(id) {
 
 function removeRunDependency(id) {
   runDependencies--;
+  if (typeof window !== 'undefined' && window.perfLog) {
+    window.perfLog("removeRunDependency: " + id + " (remaining: " + runDependencies + ")");
+  }
   if (Module["monitorRunDependencies"]) {
     Module["monitorRunDependencies"](runDependencies);
   }
@@ -588,6 +594,9 @@ function removeRunDependency(id) {
     if (dependenciesFulfilled) {
       var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
+      if (typeof window !== 'undefined' && window.perfLog) {
+        window.perfLog("All run dependencies fulfilled - executing callback");
+      }
       callback();
     }
   }
@@ -676,15 +685,24 @@ function getBinaryPromise() {
 }
 
 function createWasm() {
+  if (typeof window !== 'undefined' && window.perfLog) {
+    window.perfLog("createWasm - START");
+  }
   var info = {
     a: asmLibraryArg,
   };
   function receiveInstance(instance, module) {
+    if (typeof window !== 'undefined' && window.perfLog) {
+      window.perfLog("WASM instance received");
+    }
     var exports = instance.exports;
     Module["asm"] = exports;
     wasmMemory = Module["asm"]["_d"];
     updateGlobalBufferAndViews(wasmMemory.buffer);
     wasmTable = Module["asm"]["$d"];
+    if (typeof window !== 'undefined' && window.perfLog) {
+      window.perfLog("WASM exports loaded and memory initialized");
+    }
     removeRunDependency("wasm-instantiate");
   }
   addRunDependency("wasm-instantiate");
@@ -709,9 +727,15 @@ function createWasm() {
       !isFileURI(wasmBinaryFile) &&
       typeof fetch === "function"
     ) {
+      if (typeof window !== 'undefined' && window.perfLog) {
+        window.perfLog("Fetching WASM file: " + wasmBinaryFile);
+      }
       return fetch(wasmBinaryFile, {
         credentials: "same-origin",
       }).then(function (response) {
+        if (typeof window !== 'undefined' && window.perfLog) {
+          window.perfLog("WASM file fetched, starting instantiateStreaming");
+        }
         var result = WebAssembly.instantiateStreaming(response, info);
         return result.then(receiveInstantiatedSource, function (reason) {
           err("wasm streaming compile failed: " + reason);
@@ -7321,6 +7345,12 @@ function setMainLoop(
     !Browser.mainLoop.func,
     "emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters."
   );
+  
+  // Log when main loop is set up
+  if (typeof window !== 'undefined' && window.perfLog) {
+    window.perfLog("setMainLoop - Main rendering loop configured (fps: " + fps + ")");
+  }
+  
   Browser.mainLoop.func = browserIterationFunc;
   Browser.mainLoop.arg = arg;
   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
@@ -9321,6 +9351,34 @@ function _emscripten_glCheckFramebufferStatus(x0) {
 }
 
 function _emscripten_glClear(x0) {
+  // Track when WASM starts clearing/rendering frames
+  if (typeof window !== 'undefined' && !window._wineRenderingDetected) {
+    if (!window._glClearCount) {
+      window._glClearCount = 0;
+      window._firstGlClearTime = performance.now();
+      if (window.perfLog) {
+        window.perfLog("First glClear call - WASM starting to render frames");
+      }
+    }
+    
+    window._glClearCount++;
+    
+    // After 10 consistent frame clears, Wine is rendering properly
+    if (window._glClearCount === 10) {
+      window._wineRenderingDetected = true;
+      if (window.perfLog) {
+        var elapsed = performance.now() - window._firstGlClearTime;
+        window.perfLog("Consistent rendering detected - 10 glClear calls in " + elapsed.toFixed(0) + "ms (Wine is ready!)");
+      }
+      if (!window._boxedwineFullyLoadedFired) {
+        window._boxedwineFullyLoadedFired = true;
+        window.dispatchEvent(new CustomEvent('boxedwine-fully-loaded', {
+          detail: { timestamp: performance.now() }
+        }));
+      }
+    }
+  }
+  
   GLctx["clear"](x0);
 }
 
@@ -11380,6 +11438,12 @@ function _emscripten_set_main_loop(
   arg,
   noSetTiming
 ) {
+  // This is called when WASM starts its rendering loop
+  // NOTE: Wine still needs to initialize within the loop - this is NOT the final ready signal
+  if (typeof window !== 'undefined' && window.perfLog) {
+    window.perfLog("emscripten_set_main_loop called - WASM rendering loop starting");
+  }
+  
   var browserIterationFunc = wasmTable.get(func);
   setMainLoop(
     browserIterationFunc,
@@ -13136,6 +13200,9 @@ dependenciesFulfilled = function runCaller() {
 };
 
 function callMain(args) {
+  if (typeof window !== 'undefined' && window.perfLog) {
+    window.perfLog("callMain - START (args: " + (args || []).join(',') + ")");
+  }
   var entryFunction = Module["_main"];
   args = args || [];
   var argc = args.length + 1;
@@ -13147,6 +13214,9 @@ function callMain(args) {
   HEAP32[(argv >> 2) + argc] = 0;
   try {
     var ret = entryFunction(argc, argv);
+    if (typeof window !== 'undefined' && window.perfLog) {
+      window.perfLog("callMain - COMPLETED");
+    }
     exit(ret, true);
   } catch (e) {
     if (e instanceof ExitStatus) {
@@ -13179,11 +13249,19 @@ function run(args) {
     calledRun = true;
     Module["calledRun"] = true;
     if (ABORT) return;
+    if (typeof window !== 'undefined' && window.perfLog) {
+      window.perfLog("doRun - Initializing runtime");
+    }
     initRuntime();
     preMain();
     if (Module["onRuntimeInitialized"]) Module["onRuntimeInitialized"]();
     if (shouldRunNow) callMain(args);
     postRun();
+    if (typeof window !== 'undefined' && window.perfLog) {
+      window.perfLog("doRun - COMPLETED - WASM runtime ready (Wine still loading)");
+    }
+    // Note: boxedwine-fully-loaded event now fires from canvas rendering detection
+    // in boxedwine-shell.js when Wine actually renders to the screen
   }
   if (Module["setStatus"]) {
     Module["setStatus"]("Running...");
