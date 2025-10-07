@@ -57,6 +57,13 @@ function Boxedwine() {
   };
 
   const reset = (command = "cmd.bat") => {
+    setLoading(true);
+    // Reset boxedwine-fully-loaded event flags so they can fire again after restart
+    window._boxedwineFullyLoadedFired = false;
+    window._glClearCount = 0;
+    window._firstGlClearTime = null;
+    window._wineRenderingDetected = false;
+    
     const callMain = () => {
       Module.pauseMainLoop();
       Module.restartBW();
@@ -288,3 +295,4 @@ function Boxedwine() {
 }
 
 export default Boxedwine;
+
