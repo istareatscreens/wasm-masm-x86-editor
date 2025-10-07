@@ -48,7 +48,7 @@ const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'mo
         boxSizing: 'border-box',
         position: 'relative',
         background: 'transparent'
-      }}
+      }}></div>
     >
       {loadingState !== 'idle' && (
         <div
