@@ -20,7 +20,14 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
   return (
     <>
       {isHexViewer ? (
-        <Suspense>
+        <Suspense
+          fallback={
+            <div
+              className="editor"
+              style={{
+                background: !lightMode ? "#ffffff" : "#1e1e1e",
+              }}
+            >
           <HexViewer
             data={code}
             lightMode={lightMode}
