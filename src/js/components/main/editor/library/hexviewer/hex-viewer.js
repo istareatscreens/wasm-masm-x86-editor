@@ -176,7 +176,7 @@ const HexViewer = ({
             {isErrorData && (errorData || <div>Error Data</div>)}
             {!rows.length && !isErrorData && loadingState === 'idle' && (noData || <div>No Data</div>)}
             {!!rows.length && !isErrorData && renderReady && (
-                <React.Suspense fallback={<div className={`hexviewer-loading ${darkMode ? 'dark' : ''}`}>Loading...</div>}>
+                <React.Suspense fallback={<div className={`hexviewer-loading ${darkMode ? 'dark' : ''}`}></div>}>
                     <Hex rows={rows} bytesper={rowLength} />
                 </React.Suspense>
             )}

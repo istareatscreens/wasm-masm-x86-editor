@@ -41,14 +41,13 @@ const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'mo
     <div
       className="hex-viewer-container editor"
       style={{
-        height: '100%',
         overflow: 'auto',
         padding: 0,
         margin: 0,
         boxSizing: 'border-box',
         position: 'relative',
-        background: 'transparent'
-      }}></div>
+        background: lightMode ? '#ffffff' : '#1e1e1e'
+      }}
     >
       {loadingState !== 'idle' && (
         <div
