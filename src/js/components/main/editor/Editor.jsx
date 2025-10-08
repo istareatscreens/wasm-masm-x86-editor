@@ -16,7 +16,6 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
     setIsHexViewer(isHex);
     setCode(isHex ? FileSystem.getRawFileData(filename) : FileSystem.getFileData(filename));
   }, [filename, shouldRefreshFile]);
-  console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", lightMode ? "light" : "dark");
 
   return (
     <>
