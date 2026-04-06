@@ -5,7 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="boxedwine authors" content="James Bryant, Kevin O'Dwyer" />
-  <link rel="preload" href="boxedwine.zip" as="fetch" crossorigin>
   <link rel="preload" href="boxedwine.wasm" as="fetch" type="application/wasm" crossorigin>
   <meta name="robots" content="noindex, nofollow">
   <title>Document</title>
@@ -25,42 +24,81 @@
   <div id="bw-root"></div>
   <noscript> You need to enable JavaScript to run this app. </noscript>
   <script>
+    // Register chunk-assembly service worker — it pre-assembles boxedwine.zip
+    // from chunks during install, then serves it from Cache API on fetch.
+    window.__swReady = new Promise(function (resolve) {
+      if (!('serviceWorker' in navigator)) {
+        console.warn('[SW] Service workers not supported — falling back');
+        resolve();
+        return;
+      }
+      navigator.serviceWorker.register('chunk-assembly-sw.js').then(function (reg) {
+        console.log('[SW] Registered, scope:', reg.scope);
+        // If an update is pending (installing/waiting), wait for the NEW SW
+        // to take control — do NOT use the old controller.
+        if (reg.installing || reg.waiting) {
+          console.log('[SW] Update in progress — waiting for new SW');
+          navigator.serviceWorker.addEventListener('controllerchange', function () {
+            console.log('[SW] New SW now controlling');
+            resolve();
+          });
+          return;
+        }
+        // No update pending and already controlling — ready immediately
+        if (navigator.serviceWorker.controller) {
+          console.log('[SW] Already controlling (up to date)');
+          resolve();
+          return;
+        }
+        // First install — wait for controller
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          console.log('[SW] Now controlling (first install)');
+          resolve();
+        });
+      }).catch(function (err) {
+        console.error('[SW] Registration failed:', err);
+        resolve();
+      });
+    });
+  </script>
+  <script>
     // Initialize Module - let Emscripten handle WASM loading
     var Module = {};
-    
-    Module.print = function(text) {
+
+    Module.print = function (text) {
       if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
       console.log(text);
     };
-    
-    Module.printErr = function(text) {
+
+    Module.printErr = function (text) {
       if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
       console.error(text);
     };
-    
-    Module.setStatus = function(text) {
+
+    Module.setStatus = function (text) {
       var statusElement = document.getElementById('status');
       if (statusElement && text) statusElement.innerHTML = text;
     };
-    
+
     window.Module = Module;
     window.boxedwineLoaded = false;
-    
-    // Load boxedwine.js after canvas is ready
-    window.loadBoxedwine = function(canvasElement) {
+
+    // Load boxedwine.js after canvas is ready and SW is controlling
+    window.loadBoxedwine = function (canvasElement) {
       if (window.boxedwineLoaded) return;
       window.boxedwineLoaded = true;
-      
-      // Set canvas on Module before loading
+
       if (canvasElement) {
         Module.canvas = canvasElement;
       }
-      
-      // Dynamically load boxedwine.js
-      var script = document.createElement('script');
-      script.src = 'boxedwine.js';
-      script.async = false;
-      document.body.appendChild(script);
+
+      // Wait for SW to be ready (zip pre-assembled in cache) before loading
+      window.__swReady.then(function () {
+        var script = document.createElement('script');
+        script.src = 'boxedwine.js';
+        script.async = false;
+        document.body.appendChild(script);
+      });
     };
   </script>
   <script src="index-bw.js"></script>
