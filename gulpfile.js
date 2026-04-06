@@ -16,6 +16,9 @@ const htmlmin = require("gulp-htmlmin");
 const del = require("del");
 const sitemap = require('gulp-sitemap');
 const file = require('gulp-file');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const siteUrl = 'https://masm.isas.dev';
 
@@ -95,7 +98,7 @@ function imgTaskElectron() {
         })
       ]
     }))
-    .on('error', function(err) {
+    .on('error', function (err) {
       console.error('Error in imgTaskElectron:', err);
       this.emit('end');
     })
@@ -121,7 +124,7 @@ function fontTaskElectron() {
 function jsTaskProd() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
     .pipe(webpack(require("./webpack.prod.js")))
-    .on('error', function(err) {
+    .on('error', function (err) {
       console.error('Error in jsTaskProd:', err);
       this.emit('end');
     })
@@ -157,7 +160,7 @@ Disallow: /boxedwine.html
 function jsTask() {
   return src([jsPath, "!" + jsBoxedPath, "!node_modules"])
     .pipe(webpack(require("./webpack.dev.js")))
-    .on('error', function(err) {
+    .on('error', function (err) {
       console.error('Error in jsTask:', err);
       this.emit('end');
     })
@@ -198,8 +201,54 @@ function copyHtml() {
 function assetsTask() {
   return src([
     assetsPath + "assembler.zip",
-    assetsPath + "web/boxedwine.zip",
   ]).pipe(gulp.dest("public"));
+}
+
+const CHUNK_SIZE = 24 * 1024 * 1024; // 24MB chunks (under 25MiB Cloudflare limit)
+
+function splitBoxedwineZip(done) {
+  const zipPath = path.resolve(assetsPath, "web/boxedwine.zip");
+  const outputDir = path.resolve(output);
+
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const fileBuffer = fs.readFileSync(zipPath);
+  const totalSize = fileBuffer.length;
+
+  const hash = crypto.createHash("sha256").update(fileBuffer).digest("hex").substring(0, 8);
+
+  const chunks = [];
+  let offset = 0;
+  let partIndex = 0;
+
+  while (offset < totalSize) {
+    const end = Math.min(offset + CHUNK_SIZE, totalSize);
+    const chunkBuffer = fileBuffer.slice(offset, end);
+    const chunkName = `boxedwine.zip.${hash}.part${partIndex}`;
+    fs.writeFileSync(path.join(outputDir, chunkName), chunkBuffer);
+    chunks.push(chunkName);
+    offset = end;
+    partIndex++;
+  }
+
+  const manifest = {
+    originalFile: "boxedwine.zip",
+    version: hash,
+    chunkSize: CHUNK_SIZE,
+    totalSize: totalSize,
+    chunks: chunks,
+  };
+  fs.writeFileSync(path.join(outputDir, "boxedwine-manifest.json"), JSON.stringify(manifest, null, 2));
+
+  console.log(`splitBoxedwineZip: ${totalSize} bytes → ${chunks.length} chunks (hash: ${hash})`);
+  done();
+}
+
+function copyChunkAssemblySW() {
+  return src("src/js/chunk-assembly-sw.js")
+    .pipe(gulp.dest(output));
 }
 
 function imgTask() {
@@ -219,7 +268,7 @@ function imgTask() {
         })
       ]
     }))
-    .on('error', function(err) {
+    .on('error', function (err) {
       console.error('Error in imgTask:', err);
       this.emit('end');
     })
@@ -252,6 +301,8 @@ function watchTask() {
       jsTask,
       wasmTask,
       assetsTask,
+      splitBoxedwineZip,
+      copyChunkAssemblySW,
       copyHtml,
       jsBoxedTask,
       imgTask,
@@ -281,13 +332,15 @@ exports.electron = series(
 );
 //BUILD Web Production
 exports.default = series(
+  cleanTask,
   parallel(
-    cleanTask,
     jsTaskProd,
     jsBoxedTask,
     cssTask,
     wasmTask,
     assetsTask,
+    splitBoxedwineZip,
+    copyChunkAssemblySW,
     copyHtml,
     imgTask,
     fontTask,
@@ -305,6 +358,8 @@ exports.watch = series(
     cssTask,
     wasmTask,
     assetsTask,
+    splitBoxedwineZip,
+    copyChunkAssemblySW,
     copyHtml,
     imgTask,
     fontTask,
