@@ -31,7 +31,6 @@
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "autoprefixer": "^9.8.8",
-    "axios": "^0.21.1",
     "babel-loader": "^8.2.2",
     "browser-sync": "^3.0.4",
     "css-loader": "^5.0.1",
