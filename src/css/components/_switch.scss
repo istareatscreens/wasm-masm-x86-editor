@@ -25,6 +25,8 @@
   &__container {
     box-shadow: none;
     margin-left: 0;
+    // positioning context for absolutely-centered images (see &__image--vim)
+    position: relative;
   }
 
   &__image {
@@ -37,6 +39,24 @@
     padding: 0.3rem;
     &--theme-mode {
       margin-left: 0.2rem;
+    }
+    // Vim-mode switch: the standard Vim logo, centered in the switch box by
+    // absolute positioning instead of the generic negative-top offset (which
+    // needs a per-icon nudge and left this one off-center).
+    &--vim {
+      position: absolute;
+      top: 0;
+      // the checkbox (the button the user sees) sits 0.2rem right of its container
+      // (.switch margin-left): centre on the checkbox, not on the container
+      // (measured headed: 2 px off before this offset — harness `vimicon`)
+      left: 0.2rem;
+      right: -0.2rem;
+      bottom: 0;
+      margin: auto;
+      width: 78%;
+      height: 78%;
+      padding: 0;
+      object-fit: contain;
     }
   }
   &__view {

@@ -41,6 +41,19 @@
           color: red;
         }
       }
+
+      // factory-reset opt-in ("also delete all my files"): checkbox + label on one row
+      &__option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        cursor: pointer;
+
+        input {
+          margin-top: 0.15rem;
+          flex: 0 0 auto;
+        }
+      }
     }
 
   }

@@ -3,11 +3,20 @@
 
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <title>WASM MASM x86 Editor</title>
-  <meta name="description" content="MASM x86 editor compiler and linker with Irvine library" />
-  <meta name="keywords"
-    content="MASM, MASM compiler, MASM linker, MASM x86, Irvine library for assembly language, assembly language, x86, asm" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Online MASM Compiler, Linker &amp; Runner | WASM MASM x86 Editor</title>
+  <meta name="description" content="Write, assemble, link and run 32-bit x86 MASM assembly online. Free browser editor with JWasm, JWlink, Irvine32 and a BoxedWine terminal. No local install." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="WASM MASM x86 Editor" />
+  <meta property="og:title" content="Online MASM Compiler, Linker &amp; Runner" />
+  <meta property="og:description" content="Write and run 32-bit x86 MASM assembly in your browser with JWasm, JWlink and Irvine32." />
   <meta property="og:url" content="https://masm.isas.dev/" />
+  <meta property="og:image" content="https://masm.isas.dev/masm-icon-512w.png" />
+  <meta property="og:image:alt" content="WASM MASM x86 Editor icon" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Online MASM Compiler, Linker &amp; Runner" />
+  <meta name="twitter:description" content="Assemble, link and run 32-bit x86 MASM code online with Irvine32 support." />
+  <meta name="twitter:image" content="https://masm.isas.dev/masm-icon-512w.png" />
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
   <link rel="canonical" href="https://masm.isas.dev/" />
   <link rel="stylesheet" type="text/css" href="style.css" />
@@ -17,20 +26,34 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "MASM x86 Editor",
-    "description": "MASM x86 Editor is a web-based tool designed for writing and compiling x86 Assembly code using the Microsoft Macro Assembler (MASM).",
-    "url": "https://masm.isas.dev",
-    "mainEntityOfPage": "https://masm.isas.dev"
+    "@type": "WebApplication",
+    "name": "WASM MASM x86 Editor",
+    "alternateName": "Online MASM Compiler, Linker and Runner",
+    "description": "A browser-based editor that assembles and links MASM (Microsoft Assembly Language) code with JWasm and JWlink and runs 32-bit x86 programs with BoxedWine. Includes Irvine32.",
+    "url": "https://masm.isas.dev/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web browser",
+    "browserRequirements": "JavaScript and WebAssembly required",
+    "isAccessibleForFree": true,
+    "sameAs": "https://github.com/istareatscreens/wasm-masm-x86-editor"
   }
+  </script>
+  <div id="root"></div>
+  <noscript>
+    <main style="position:fixed;inset:1rem;overflow:auto;padding:1rem;font-size:16px">
+      <h1>Online MASM compiler, linker and runner</h1>
+      <p>WASM MASM x86 Editor lets you write MASM-compatible assembly, assemble and
+        link with JWasm and JWlink, and run 32-bit x86 programs in a BoxedWine terminal.
+        The Irvine32 library is included.</p>
+      <p>Enable JavaScript to use the editor and WebAssembly runtime. No local installation is needed.</p>
+      <p><a href="/guide/">Read the MASM and Irvine32 getting-started guide</a></p>
+      <p><a href="https://github.com/istareatscreens/wasm-masm-x86-editor">Source code and desktop downloads</a></p>
+    </main>
+  </noscript>
+  <script src="index-editor.js"></script>
   <!-- Cloudflare Web Analytics -->
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
     data-cf-beacon='{"token": "f79eb32de8974cdf89be4c0ae6d50445"}'></script><!-- End Cloudflare Web Analytics -->
-  </script>
-  <!--<button id="pushData">push data</button>-->
-  <div id="root"></div>
-  <noscript> You need to enable JavaScript to run this app. </noscript>
-  <script src="index-editor.js"></script>
 </body>
 
 </html>

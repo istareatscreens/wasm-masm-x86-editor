@@ -157,7 +157,7 @@ class List
         checked={showEditor}
         src={editor}
         imgClass={"switch__view--editor"}
-        title={altPrint(showEditor, "hide editor", "show editor")}
+        title={altPrint(showEditor, "show editor", "hide editor")}
       />
 
       <Switch
@@ -173,7 +173,7 @@ class List
         checked={showCMD}
         src={cmd}
         imgClass={"switch__view--cmd"}
-        title={altPrint(showCMD, "hide command prompt", "show command prompt")}
+        title={altPrint(showCMD, "show command prompt", "hide command prompt")}
       />
       <Switch
         src={filedrawer}
@@ -189,8 +189,8 @@ class List
         imgClass={"switch__view--file-drawer"}
         title={altPrint(
           showFileDrawer,
-          "hide file explorer",
-          "show file explorer"
+          "show file explorer",
+          "hide file explorer"
         )}
       />
     </div>

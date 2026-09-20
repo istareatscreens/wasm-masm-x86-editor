@@ -9,6 +9,9 @@
       "allowJs": true,
       "lib": [ "dom", "dom.iterable", "esnext" ],
       "downlevelIteration": true,
+      // "node" (node10) resolution: the implied default for module=es6 is "classic",
+      // which cannot resolve bare package imports inside @types (csstype, undici-types).
+      "moduleResolution": "node",
     },
     "exclude": ["node_modules", "src/js/boxedwine"],
     "include": ["src/js", "src/main/index-main.jsx", "src/main/App.jsx"]

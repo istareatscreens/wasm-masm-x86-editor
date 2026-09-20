@@ -19,6 +19,8 @@ function FileDrawerMenu({
   saveFiles,
   handleDeleteFile,
   switchFileView,
+  showLegacyDownload,
+  handleDownloadLegacy,
 }) {
   return (
     <>
@@ -70,6 +72,15 @@ function FileDrawerMenu({
           onClick={(event) => switchFileView(event)}
           src={files}
         />
+        {showLegacyDownload && (
+          <Button
+            src={saveFile}
+            className={"banner__file-drawer__btn banner__file-drawer__btn--legacy"}
+            title="Download your legacy browser-storage files as a .zip (backup before migration)"
+            type="button"
+            onClick={handleDownloadLegacy}
+          />
+        )}
       </div>
     </>
   );

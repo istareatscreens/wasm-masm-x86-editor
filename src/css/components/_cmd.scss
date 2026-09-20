@@ -9,6 +9,18 @@ canvas,
   position: absolute;
 }
 
+// The BoxedWine console is presented via a full-surface 2D-canvas putImageData
+// every frame (SDL software renderer). On some displays/GPUs the browser
+// composites those updates on the main thread unsynced to vsync, which shows as
+// a flash/tear while the console scrolls. Promoting the canvas to its own GPU
+// compositor layer makes the browser composite it vsync-synced and flicker-free.
+// Safe + universal (no-op where already composited); does not change the image.
+canvas {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
 .emscripten-overlay {
   background-color: transparent;
   z-index: 10;

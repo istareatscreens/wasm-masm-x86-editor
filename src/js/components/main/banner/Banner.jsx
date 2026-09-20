@@ -1,15 +1,21 @@
 import React, { useState } from "react";
 import Button from "../../common/ImageButton.jsx";
+import Switch from "../../common/ImageSwitch.jsx";
+import vimImage from "../../../../images/vim.svg";
 import {
-  postMessage,
+  resetEmulator,
+  interruptEmulator,
   writeCommandToCMD,
+  quoteForCmd,
   checkFileExtension,
+  assembleAndRun,
 } from "../../../utility/utilityFunctions.ts";
 
 import FileSystem from "../utility/FileSystem.js";
 
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
+import cmdCancel from "../../../../images/cmdCancel.png";
 import runBinary from "../../../../images/runBinary.png";
 import about from "../../../../images/about.png";
 import resetCache from "../../../../images/cacheReset.png";
@@ -40,6 +46,9 @@ const Banner = function Banner({
   setSelectedNightTheme,
   selectedDayTheme,
   selectedNightTheme,
+  //vim
+  vimMode,
+  setVimMode,
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
   const [resetCachePageOpened, setResetCacheOpened] = useState(false);
@@ -55,13 +64,20 @@ const Banner = function Banner({
     }
   };
 
-  const build = () => {
-    //TODO rework assemble.bat to simplify this logic
+  const build = async () => {
     if (/.asm$/.test(filename)) {
-      fileList = FileSystem.getFileList();
-      writeCommandToCMD(
-        `assemble ${filename.substring(0, filename.length - 4)}`
-      );
+      // Sync the current .asm directly into the guest (D:, no echo) and
+      // assemble->link->run it in one atomic iframe step. Content comes from the
+      // app's storage (IndexedDB, async) with a localStorage fallback for
+      // legacy-stored files, so it reflects the latest editor save.
+      let content = "";
+      try {
+        content = await FileSystem.getFileData(filename);
+      } catch (error) {
+        console.error("build: async read failed, trying sync", error);
+      }
+      if (!content) content = FileSystem.getFileContentSync(filename);
+      assembleAndRun(filename, content);
       unhideTerminal();
     } else {
       console.log("not an assembly file: " + filename);
@@ -78,12 +94,22 @@ const Banner = function Banner({
   };
 
   const reset = () => {
-    postMessage("reset", {});
+    resetEmulator();
   };
 
+  // Ctrl+C for the terminal: stops the running program/command, keeps the session.
+  const cancel = () => {
+    interruptEmulator();
+    unhideTerminal();
+  };
+
+  // The drawer's files live in the root of D:; the user may have cd'd anywhere in the
+  // terminal, so run the binary FROM D:\ (pushd/popd: the prompt's own directory is
+  // restored afterwards) instead of hoping the current directory is still D:\.
+  // A name with spaces (or other cmd-special characters) is quoted for cmd.
   const run = () => {
     if (/.asm$/.test(filename)) {
-      writeCommandToCMD(getExecutableName());
+      writeCommandToCMD("pushd D:\\ & " + quoteForCmd(getExecutableName()) + " & popd");
       unhideTerminal();
     }
   };
@@ -137,6 +163,13 @@ const Banner = function Banner({
             src={runBinary}
           />
           <Button
+            title={"cancel the running command (Ctrl+C)"}
+            className={"banner__main__btn"}
+            onClick={cancel}
+            id={"cancelCMD"}
+            src={cmdCancel}
+          />
+          <Button
             title={"reset command prompt"}
             className={"banner__main__btn"}
             onClick={reset}
@@ -173,6 +206,13 @@ const Banner = function Banner({
             themeSettingsOpened={themeSettingsOpened}
             lightMode={lightMode}
             setLightMode={setLightMode}
+          />
+          <Switch
+            checked={!!vimMode}
+            title={vimMode ? "disable Vim mode" : "enable Vim mode"}
+            imgClass={"switch__image--vim"}
+            onChange={(event) => setVimMode(event.target.checked)}
+            src={vimImage}
           />
           <ViewControlGroup
             className={"banner__main__group banner__main__group--mid"}

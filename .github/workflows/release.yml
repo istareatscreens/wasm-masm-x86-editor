@@ -1,0 +1,155 @@
+# Build the Electron desktop app for Windows, macOS (x64 + arm64) and Linux on
+# GitHub-hosted runners and publish the installers on the Releases page.
+#
+#   push to master/main -> the three builds run and the rolling "nightly"
+#                          pre-release is updated with the new installers (its
+#                          tag is force-moved to the commit). Pre-releases are
+#                          ignored by electron-updater, so installed apps keep
+#                          updating from tagged releases only.
+#   push a tag v<x.y.z>  -> a normal release "v<x.y.z>" marked as latest. Bump
+#                          "version" in package.json first: the artifact names
+#                          and the latest*.yml update manifests embed it.
+#   "Run workflow"       -> dry run: builds everything and uploads the installers
+#                          as workflow artifacts, publishes nothing.
+#
+# Requirements the workflow cannot satisfy by itself: the Electron build copies
+# guest-assets/*.zip, src/wasm/*.wasm and the Boxedwine glue under
+# src/js/boxedwine into build/ - those files must be committed for CI to produce
+# a complete app. macOS builds are unsigned (no signing secrets are configured).
+name: Release desktop app
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            args: --win
+          - os: macos-latest
+            name: macos
+            args: --mac --x64 --arm64
+          - os: ubuntu-latest
+            name: linux
+            args: --linux
+    env:
+      # never look for a code-signing identity on the macOS runner
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Set up Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install Linux packaging tools (rpm and pacman targets)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libarchive-tools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the Electron bundle (gulp electron -> build/)
+        run: npm run build-electron
+
+      - name: Package with electron-builder
+        run: npx electron-builder ${{ matrix.args }} --publish never
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/*.zip
+            dist/*.zip.blockmap
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pacman
+            dist/*.AppImage
+            dist/latest*.yml
+
+  release:
+    name: publish release
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for the nightly tag update)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          pattern: installers-*
+          merge-multiple: true
+
+      - name: List assets
+        run: ls -la installers
+
+      - name: Move the nightly tag to this commit
+        if: github.ref_type == 'branch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f nightly ${{ github.sha }}
+          git push -f origin refs/tags/nightly
+
+      - name: Update the nightly pre-release
+        if: github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Development build (${{ github.ref_name }} @ ${{ github.sha }})
+          body: |
+            Automated build of `${{ github.ref_name }}` at ${{ github.sha }}.
+            Assets are replaced on every push; use a tagged release for a stable version.
+          prerelease: true
+          make_latest: false
+          files: installers/*
+          fail_on_unmatched_files: true
+
+      - name: Publish the tagged release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          make_latest: true
+          files: installers/*
+          fail_on_unmatched_files: true
