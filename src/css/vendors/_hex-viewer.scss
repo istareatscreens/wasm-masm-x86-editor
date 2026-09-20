@@ -46,7 +46,7 @@ $hex-font-family: monoscape !default;
 
 
 .hexviewer {
-  font-size: 15px;
+  font-size: inherit; // the banner's font-size box (HexViewer.jsx sets it on the wrapper)
   color: $hex-color;
   position: relative;
 

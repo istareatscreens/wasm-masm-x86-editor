@@ -1,0 +1,716 @@
+// MASM (Microsoft Macro Assembler) grammar for Lezer / CodeMirror 6.
+//
+// Derived rule by rule from the Microsoft MASM reference vendored under
+// ../syntax (see ../syntax/README-SNAPSHOT.md for provenance). Structure comes
+// from syntax/masm-bnf-grammar.md ("BNF" below, nonterminal names quoted as
+// they appear there); operand shapes and keyword sets that the BNF leaves out
+// come from the per-directive pages named in comments and in keywords.js.
+//
+// Conventions
+//   * Statements are line-oriented (BNF ";;" = endOfLine | comment). Every
+//     directive family is its own capitalized node. Block openers and closers
+//     (PROC/ENDP, MACRO/ENDM, IF/ENDIF, .IF/.ENDIF ...) are independent
+//     statements: the BNF's nesting is deliberately not encoded so that an
+//     unclosed block while editing never invalidates the rest of the file.
+//   * Keywords are recognised case-insensitively by the external specializers
+//     in tokens.js (MASM defaults to /Cu, ml-and-ml64-command-line-reference.md)
+//     and given shared node names (Directive, DotDirective, DataType,
+//     OperatorKeyword, Attribute, Register, ...) with [@name=...].
+//   * "sep" is a comma that may be followed by a newline: the BNF writes
+//     ", ⟦;;⟧" in exactly the lists that use sep below.
+//   * Precedence markers encode BNF e01..e11 (see @precedence at the end).
+
+@top Program { statement* line? }
+
+@skip { space | LineComment | lineContinuation }
+
+statement { line? eol }
+
+line { Label body? | body }
+
+// BNF labelDef: id ":" | id "::" | "@@:"
+Label { Identifier ":" | Identifier "::" | AnonLabel ":" }
+
+body {
+  Instruction |
+  MacroCall |
+  DataDefinition |
+  TypedDataDefinition |
+  EqualsDirective |
+  EquDirective |
+  TextEquDirective |
+  SizeStrDirective |
+  SubStrDirective |
+  InStrDirective |
+  ProcDirective |
+  EndpDirective |
+  ProtoDirective |
+  InvokeDirective |
+  LocalDirective |
+  MacroDirective |
+  EndmDirective |
+  ExitmDirective |
+  GotoDirective |
+  MacroLabel |
+  PurgeDirective |
+  ForDirective |
+  ForcDirective |
+  RepeatDirective |
+  WhileDirective |
+  IfDirective |
+  ElseifDirective |
+  ElseDirective |
+  EndifDirective |
+  ErrorDirective |
+  ControlIfDirective |
+  ControlElseifDirective |
+  ControlElseDirective |
+  ControlEndifDirective |
+  ControlWhileDirective |
+  ControlEndwDirective |
+  ControlRepeatDirective |
+  ControlUntilDirective |
+  BreakDirective |
+  ContinueDirective |
+  SegmentDirective |
+  EndsDirective |
+  GroupDirective |
+  AssumeDirective |
+  SimpleSegmentDirective |
+  ModelDirective |
+  StartupDirective |
+  ExitDirective |
+  SegmentOrderDirective |
+  ProcessorDirective |
+  ListingDirective |
+  CrefDirective |
+  TitleDirective |
+  PageDirective |
+  EchoDirective |
+  IncludeDirective |
+  IncludeLibDirective |
+  ExternDirective |
+  PublicDirective |
+  CommDirective |
+  LabelDirective |
+  StructDirective |
+  RecordDirective |
+  TypedefDirective |
+  OptionDirective |
+  ContextDirective |
+  RadixDirective |
+  AliasDirective |
+  NameDirective |
+  EndDirective |
+  AlignDirective |
+  EvenDirective |
+  OrgDirective |
+  FpoDirective |
+  SafesehDirective |
+  UnwindDirective |
+  CommentDirective |
+  GenericDotDirective
+}
+
+// ---------------------------------------------------------------------------
+// Instructions. BNF instruction: ⟦instrPrefix⟧ asmInstruction;
+// asmInstruction: mnemonic ⟦exprList⟧ (exprList is comma separated, no ";;").
+// Prefix set and the AVX-512 operand decorators: instruction-format.md.
+// AND/OR/XOR/NOT/SHL/SHR/SYSCALL are both mnemonics and reference keywords
+// (keywords.js MNEMONIC_DUALS); at instruction position they are mnemonics.
+// ---------------------------------------------------------------------------
+Instruction { Prefix* (Mnemonic | dualMnemonic) (Operand ("," Operand)*)? }
+
+dualMnemonic { opAnd | opOr | opXor | opNot | opShl | opShr | atSyscall }
+
+// A bare type name is a value too (BNF e11: type), e.g. "mov eax, DWORD" or "ALIGN DWORD".
+Operand { expression decorator* | typeValue | RecordConstant }
+
+decorator { MaskDecorator | ZeroDecorator | RoundingDecorator }
+
+MaskDecorator { "{" Register "}" }                                 // {k1} .. {k7}
+ZeroDecorator { "{" xZ "}" }                                       // {z}
+RoundingDecorator { "{" (xRn | xRz | xRd | xRu) "-" xSae "}" | "{" xSae "}" } // {rn-sae} .. {sae}
+
+// ---------------------------------------------------------------------------
+// Macro invocation. BNF macroCall: id macroArgList; macroArg: % constExpr |
+// % textMacroId | % macroFuncId ( macroArgList ) | string | arbitraryText |
+// < arbitraryText >. Arguments are comma separated and may be empty.
+// An identifier statement with no known meaning is a macro call.
+// ---------------------------------------------------------------------------
+MacroCall { Identifier (FirstMacroArg? ("," MacroArg?)*) }
+
+// The first argument cannot be a record constant: "id id <...>" / "id id {...}"
+// is a TypedDataDefinition (BNF dataItem), see design.md D4.
+FirstMacroArg[@name=MacroArg] { TextLiteral | PercentExpression | typeValue | expression }
+MacroArg { TextLiteral | PercentExpression | typeValue | RecordConstant | expression }
+
+// BNF: % constExpr | % textMacroId | % macroFuncId ( macroArgList ) (operator-percent.md)
+PercentExpression { "%" expression }
+
+// ---------------------------------------------------------------------------
+// Data definitions. BNF dataDir: ⟦id⟧ dataItem; dataItem: dataDecl
+// scalarInstList | structTag structInstList | typeId structInstList |
+// unionTag structInstList | recordTag recordInstList. scalarInstList and the
+// aggregate lists use ", ⟦;;⟧".
+// ---------------------------------------------------------------------------
+DataDefinition { Identifier? DataType initializerList }
+
+// The type is a user identifier (structTag | unionTag | recordTag | typeId).
+// A bare identifier followed by an initializer list; when the second word is
+// followed by an operator continuation the statement is a MacroCall instead
+// (precedence typeName, lowest, vs the expression operators).
+TypedDataDefinition { Identifier TypeName initializerList }
+TypeName { Identifier !typeName }
+
+initializerList { Initializer (sep Initializer)* }
+
+// BNF initValue: immExpr | string | ? | constExpr DUP ( scalarInstList ) |
+// floatNumber | bcdConst; structInstance / recordInstance for aggregates.
+Initializer { DupExpression | Uninitialized | AggregateInitializer | RecordConstant | ("+" | "-")? Float | typeValue | expression }
+
+DupExpression { expression opDup "(" initializerList ")" }
+
+// BNF structInstance: < ⟦fieldInitList⟧ > | { ⟦;;⟧ ⟦fieldInitList⟧ ⟦;;⟧ };
+// recordInstance: { ⟦;;⟧ recordFieldList ⟦;;⟧ } | < oldRecordFieldList >.
+// Fields may be empty (<1,,3>); newlines inside the brackets act as separators.
+AggregateInitializer { "<" fieldList ">" | "{" fieldList "}" }
+fieldList { Initializer? (aggSep Initializer?)* }
+aggSep { "," | eol }
+
+// ---------------------------------------------------------------------------
+// Equates and text macros. BNF =Dir, equDir, textDir / textMacroDir.
+// ---------------------------------------------------------------------------
+EqualsDirective { Identifier "=" (typeValue | expression) }          // equal.md
+EquDirective { Identifier kwEqu (TextLiteral | typeValue | expression) } // equ.md
+TextEquDirective { Identifier (kwTextequ | kwCatstr) (TextItem (sep TextItem)*)? } // textequ.md, catstr.md
+SizeStrDirective { Identifier kwSizestr TextItem }                   // sizestr.md
+SubStrDirective { Identifier kwSubstr TextItem "," expression ("," expression)? } // substr.md
+InStrDirective { Identifier kwInstr instrArg "," instrArg ("," instrArg)? } // instr.md: ⟦position,⟧ textitem1, textitem2
+instrArg { TextLiteral | PercentExpression | expression }
+
+// BNF textItem: textLiteral | textMacroId | % constExpr (+ macro function calls, textequ.md)
+TextItem { TextLiteral | PercentExpression | MacroFunctionCall | Identifier }
+
+// ---------------------------------------------------------------------------
+// Procedures. proc.md: label PROC ⟦distance⟧ ⟦language-type⟧ ⟦PUBLIC|PRIVATE|EXPORT⟧
+// ⟦<prologuearg>⟧ ⟦USES reglist⟧ ⟦, parameter⟦:tag⟧ ...⟧ ⟦FRAME⟦:ehandler⟧⟧.
+// BNF procDir / usesRegs / procParmList / parm.
+// ---------------------------------------------------------------------------
+// MASM also accepts the first parameter without the leading comma
+// ("WinMain PROC hInst:DWORD, ..." in the masm32 include files), so the comma
+// before the first parameter is optional here and in PROTO.
+ProcDirective { Identifier kwProc procAttr* TextLiteral? (atUses Register+)? (sep? Parameter (sep Parameter)*)? FrameClause? }
+procAttr { distance | langType | visibility }
+FrameClause[@dynamicPrecedence=1] { xFrame (":" Identifier)? }
+Parameter { Identifier ("[" expression "]")? (":" (atVararg | QualifiedType))? }
+
+EndpDirective { Identifier kwEndp }                                  // endp.md
+
+// proto.md: label PROTO ⟦distance⟧ ⟦language-type⟧ ⟦, ⟦parameter⟧:tag ...⟧; BNF protoSpec | typeId
+ProtoDirective { Identifier kwProto protoSpec }
+protoSpec { distance? langType? (sep? ProtoArg (sep ProtoArg)*)? | Identifier }
+ProtoArg { Identifier? ":" (atVararg | QualifiedType) }
+
+// invoke.md; BNF invokeDir / invokeArg: register :: register | expr | ADDR expr
+InvokeDirective { kwInvoke expression (sep InvokeArg)* }
+InvokeArg { Register "::" Register | opAddr expression | expression }
+
+// local-masm.md: LOCAL localId, ... (macro) | LOCAL labelId ⟦[count]⟧ ⟦:qualifiedType⟧, ... (proc)
+LocalDirective { kwLocal LocalItem (sep LocalItem)* }
+LocalItem { Identifier ("[" expression "]")? (":" QualifiedType)? }
+
+distance { atNear | atFar | atNear16 | atNear32 | atFar16 | atFar32 } // BNF distance / nearfar
+langType { atC | atPascal | atFortran | atBasic | atSyscall | atStdcall } // BNF langType
+visibility { kwPublic | atPrivate | atExport }                        // BNF oVisibility
+
+// BNF qualifiedType: type | ⟦distance⟧ PTR ⟦qualifiedType⟧; label-masm.md adds PROC PTR.
+QualifiedType { PtrType | Identifier | DataType | distance }
+PtrType { (distance | kwProc)? opPtr QualifiedType? }
+
+// ---------------------------------------------------------------------------
+// Macros and repeat blocks. macro.md, endm.md, exitm.md, goto-masm.md,
+// purge.md, for-masm.md, forc.md, repeat.md, while-masm.md; BNF macroDir,
+// macroParm, exitmDir, macroStmt, macroFor, macroForc, macroRepeat, macroWhile.
+// ---------------------------------------------------------------------------
+MacroDirective { Identifier kwMacro (MacroParameter (sep MacroParameter)*)? }
+MacroParameter { Identifier (":" (atReq | atVararg | "=" TextLiteral))? }
+EndmDirective { kwEndm TextItem? }                                   // macro.md: ENDM ⟦value⟧
+ExitmDirective { kwExitm TextItem? }
+GotoDirective { kwGoto Identifier }
+MacroLabel { ":" Identifier }                                        // goto-masm.md: ":macrolabel"
+PurgeDirective { kwPurge Identifier ("," Identifier)* }
+ForDirective { (kwFor | kwIrp) Identifier (":" (atReq | "=" TextLiteral))? "," TextLiteral }
+ForcDirective { (kwForc | kwIrpc) Identifier "," TextLiteral }
+RepeatDirective { (kwRepeat | kwRept) expression }
+WhileDirective { kwWhile expression }
+
+// ---------------------------------------------------------------------------
+// Conditional assembly. if-masm.md and companions; BNF ifStatement,
+// elseifStatement. Conditional error: BNF errorOpt and dot-err*.md.
+// ---------------------------------------------------------------------------
+IfDirective {
+  (kwIf | kwIfe) expression |
+  (kwIfb | kwIfnb) TextItem |
+  (kwIfdef | kwIfndef) (Identifier | PredefinedSymbol) |             // ifdef.md: "label, variable, or symbol" (IFDEF @Model)
+  (kwIfdif | kwIfdifi | kwIfidn | kwIfidni) TextItem "," TextItem |
+  kwIf1 | kwIf2
+}
+ElseifDirective {
+  (kwElseif | kwElseife) expression |
+  (kwElseifb | kwElseifnb) TextItem |
+  (kwElseifdef | kwElseifndef) (Identifier | PredefinedSymbol) |
+  (kwElseifdif | kwElseifdifi | kwElseifidn | kwElseifidni) TextItem "," TextItem |
+  kwElseif1 | kwElseif2
+}
+ElseDirective { kwElse }
+EndifDirective { kwEndif }
+ErrorDirective {
+  (dotErr | dotErr1 | dotErr2) TextItem? |
+  (dotErre | dotErrnz) expression ("," TextItem)? |
+  (dotErrb | dotErrnb) TextItem ("," TextItem)? |
+  (dotErrdef | dotErrndef) (Identifier | PredefinedSymbol) ("," TextItem)? |
+  (dotErrdif | dotErrdifi | dotErridn | dotErridni) TextItem "," TextItem ("," TextItem)?
+}
+
+// ---------------------------------------------------------------------------
+// Runtime control flow. dot-if.md, dot-while.md, dot-repeat.md, dot-until.md,
+// dot-untilcxz.md, dot-break.md, dot-continue.md; BNF controlIf, whileBlock,
+// repeatBlock, untilDir, blockStatements, cExpr .. primary, cxzExpr.
+// ---------------------------------------------------------------------------
+ControlIfDirective { dotIf Condition }
+ControlElseifDirective { dotElseif Condition }
+ControlElseDirective { dotElse }
+ControlEndifDirective { dotEndif }
+ControlWhileDirective { dotWhile Condition }
+ControlEndwDirective { dotEndw }
+ControlRepeatDirective { dotRepeat }
+ControlUntilDirective { dotUntil Condition | dotUntilcxz CxzCondition? }
+BreakDirective { dotBreak (dotIf Condition)? }
+ContinueDirective { dotContinue (dotIf Condition)? }
+
+// BNF cExpr: aExpr | cExpr || aExpr; aExpr: term | aExpr && term;
+// term: simpleExpr | ! simpleExpr; simpleExpr: ( cExpr ) | primary;
+// primary: expr binaryOp expr | flagName | expr
+Condition { innerCondition | expression }
+innerCondition { LogicalOr | LogicalAnd | LogicalNot | ParenthesizedCondition | RuntimeComparison | FlagName }
+LogicalOr { Condition !cor "||" Condition }
+LogicalAnd { Condition !cand "&&" Condition }
+LogicalNot { !cnot "!" Condition }
+ParenthesizedCondition { "(" innerCondition ")" }
+RuntimeComparison { expression binaryOp expression }
+binaryOp { "==" | "!=" | ">=" | "<=" | ">" | "<" | "&" }             // BNF binaryOp (operators-reference.md, Control Flow)
+
+// BNF cxzExpr: expr | ! expr | expr == expr | expr != expr
+CxzCondition { "!"? expression | expression ("==" | "!=") expression }
+
+// ---------------------------------------------------------------------------
+// Segments and memory models. segment.md, ends-masm.md, group.md, assume.md,
+// dot-code.md .. dot-stack.md, dot-model.md, dot-startup.md, dot-exit.md,
+// dot-alpha.md, dot-seq.md, dot-dosseg.md, dosseg.md; BNF segmentDir,
+// segOption*, endsDir, groupDir, assumeDir, segDir, modelDir, segOrderDir.
+// ---------------------------------------------------------------------------
+SegmentDirective { Identifier kwSegment segOption* }
+segOption {
+  DataType | atPara | kwPage | kwAlign "(" expression ")" |          // align (BYTE WORD DWORD PARA PAGE ALIGN(n))
+  atReadonly |                                                        // READONLY
+  kwPublic | atStack | atCommon | atMemory | atAt expression | atPrivate | // combine
+  atUse16 | atUse32 | atFlat |                                        // use
+  xInfo | xRead | xWrite | xExecute | xShared | xNopage | xNocache | xDiscard | // COFF characteristics
+  kwAlias "(" String ")" |                                            // ALIAS(string)
+  String                                                              // 'class'
+}
+EndsDirective { Identifier? kwEnds }                                 // union.md: nested UNION omits the name
+GroupDirective { Identifier kwGroup Identifier ("," Identifier)* }
+
+// assume.md: segregister:name | dataregister:type | register:ERROR | ⟦register:⟧NOTHING
+// BNF assumeSegVal: frameExpr | NOTHING | ERROR; assumeVal: qualifiedType | NOTHING | ERROR;
+// frameExpr: SEG id | DGROUP : id | segmentRegister : id | id
+AssumeDirective { kwAssume (AssumeItem ("," AssumeItem)* | atNothing) }
+AssumeItem { Register ":" assumeValue }
+assumeValue { atNothing | AssumeError | atFlat | PredefinedSymbol | opSeg Identifier | (Register | Identifier) ":" Identifier | QualifiedType }
+// ERROR is a contextual keyword (a label named "error" is legal elsewhere);
+// inside ASSUME the keyword reading wins over the identifier reading.
+AssumeError[@name=Attribute, @dynamicPrecedence=1] { xError }
+
+SimpleSegmentDirective {
+  dotCode Identifier? | dotData | dotDataQ | dotConst |
+  dotFardata Identifier? | dotFardataQ Identifier? | dotStack expression?
+}
+ModelDirective { dotModel memOption ("," modelOption)* }
+memOption { atTiny | atSmall | atMedium | atCompact | atLarge | atHuge | atFlat }
+modelOption { langType | atNearstack | atFarstack }
+StartupDirective { dotStartup }
+ExitDirective { dotExit expression? }
+SegmentOrderDirective { dotAlpha | dotSeq | dotDosseg | kwDosseg }
+
+// dot-386.md .. dot-686p.md, dot-387.md, dot-k3d.md, dot-mmx.md, dot-xmm.md; BNF processor, coprocessor
+ProcessorDirective {
+  dot386 | dot386p | dot387 | dot486 | dot486p | dot586 | dot586p | dot686 | dot686p |
+  dot8087 | dot287 | dotNo87 | dotK3d | dotMmx | dotXmm
+}
+
+// ---------------------------------------------------------------------------
+// Listing control. BNF listOption, crefOption, titleDir, pageDir, echoDir.
+// ---------------------------------------------------------------------------
+ListingDirective {
+  dotList | dotNolist | dotXlist | dotListall | dotListif | dotNolistif | dotLfcond | dotSfcond | dotTfcond |
+  dotListmacro | dotNolistmacro | dotListmacroall | dotLall | dotSall | dotXall
+}
+CrefDirective { dotCref | (dotXcref | dotNocref) (Identifier ("," Identifier)*)? }
+TitleDirective { (kwTitle | kwSubtitle | kwSubttl) RawText? }        // title.md, subtitle.md, subttl.md
+PageDirective { kwPage ("+" | expression ("," expression)? | "," expression)? } // page.md
+EchoDirective { (kwEcho | percentOut) RawText? }                     // echo.md, percent-out.md
+
+// ---------------------------------------------------------------------------
+// Scope and files. include-masm.md, includelib-masm.md, extern-masm.md,
+// externdef.md, extrn.md, public-masm.md, comm.md; BNF includeDir,
+// includeLibDir, externDir/externDef, publicDir/pubDef, commDir/commDecl.
+// ---------------------------------------------------------------------------
+IncludeDirective { kwInclude (FileName | TextLiteral) }
+IncludeLibDirective { kwIncludelib (FileName | TextLiteral) }
+ExternDirective { (kwExtern | kwExtrn | kwExterndef) ExternItem (sep ExternItem)* }
+ExternItem { langType? Identifier ("(" Identifier ")")? ":" (opAbs | kwProc | QualifiedType) }
+PublicDirective { kwPublic PublicItem (sep PublicItem)* }
+PublicItem { langType? Identifier }
+CommDirective { kwComm CommItem ("," CommItem)* }
+CommItem { (langType | distance)* Identifier ":" (QualifiedType | Number | ParenthesizedExpression) (":" expression)? }
+
+// ---------------------------------------------------------------------------
+// Types. label-masm.md, struct-masm.md, struc.md, union.md, record-masm.md,
+// typedef-masm.md; BNF labelDir, structDir/structHdr/nestedStruct,
+// recordDir/bitDef, typedefDir/qualifier.
+// ---------------------------------------------------------------------------
+LabelDirective { Identifier kwLabel QualifiedType }
+StructDirective { Identifier? (kwStruct | kwStruc | kwUnion) expression? ("," atNonunique)? }
+RecordDirective { Identifier kwRecord BitField (sep BitField)* }
+BitField { Identifier ":" expression ("=" expression)? }
+TypedefDirective { Identifier kwTypedef (kwProto protoSpec | QualifiedType) }
+
+// ---------------------------------------------------------------------------
+// OPTION, PUSHCONTEXT/POPCONTEXT, .RADIX, ALIAS, NAME, END, ALIGN, EVEN, ORG,
+// .FPO, .SAFESEH. option-masm.md, option-language-masm.md,
+// option-avxencoding-masm.md, pushcontext.md, popcontext.md, dot-radix.md,
+// alias-masm.md, name-masm.md, end-masm.md, align-masm.md, even.md, org.md,
+// dot-fpo.md, dot-safeseh.md; BNF optionItem, contextDir, radixDir, endDir,
+// offsetDirType.
+// ---------------------------------------------------------------------------
+OptionDirective { kwOption OptionItem (sep OptionItem)* }
+OptionItem {
+  atCasemap ":" (atAll | atNone | xNotpublic) |
+  atDotname | atNodotname |
+  atEmulator | atNoemulator |
+  (atEpilogue | atPrologue) ":" (Identifier | atNone) |
+  atExpr16 | atExpr32 |
+  atLanguage ":" langType |
+  atLjmp | atNoljmp |
+  atM510 | atNom510 |
+  atNokeyword ":" TextLiteral |
+  atNosignextend |
+  opOffset ":" (kwGroup | kwSegment | atFlat) |
+  atOldmacros | atNooldmacros |
+  atOldstructs | atNooldstructs |
+  kwProc ":" visibility |
+  atReadonly | atNoreadonly |
+  atScoped | atNoscoped |
+  kwSegment ":" (atUse16 | atUse32 | atFlat) |
+  atSetif2 ":" (xTrue | xFalse) |
+  atAvxencoding ":" (xPreferFirst | xPreferVex | xPreferVex3 | xPreferEvex | xNoEvex)
+}
+ContextDirective { (kwPushcontext | kwPopcontext) contextItem ("," contextItem)* }
+contextItem { atAssumes | atRadix | atListing | atCpu | atAll }
+RadixDirective { dotRadix expression }
+AliasDirective { kwAlias TextLiteral "=" TextLiteral }
+NameDirective { kwName Identifier? }
+EndDirective { kwEnd expression? }
+AlignDirective { kwAlign (typeValue | expression)? }                 // align-masm.md; Irvine32.inc uses "ALIGN DWORD"
+EvenDirective { kwEven }
+OrgDirective { kwOrg expression }
+FpoDirective { dotFpo "(" expression ("," expression)* ")" }
+SafesehDirective { dotSafeseh Identifier }
+
+// x64 unwind directives: dot-allocstack.md .. dot-setframe.md (Unwind v1) and
+// dot-beginepilog.md .. dot-unsetframe.md (Unwind v3).
+UnwindDirective {
+  dotAllocstack expression |
+  dotEndprolog |
+  dotPushframe xCode? |
+  dotPushreg Register |
+  (dotSavereg | dotSavexmm128 | dotSetframe) Register "," expression |
+  dotBeginepilog |
+  dotEndepilog |
+  dotFreestack expression |
+  (dotPop2reg | dotPush2reg) Register "," Register |
+  dotPopframe (xCode | Number)? |
+  dotPopreg Register |
+  (dotRestorereg | dotRestorexmm128 | dotUnsetframe) Register "," expression
+}
+
+// comment-masm.md; BNF commentDir: COMMENT delimiter text ... text delimiter text ;;
+CommentDirective { kwComment BlockComment }
+
+// A dot-word the reference does not document (e.g. .8086). The BNF forbids
+// "." in identifiers, so a statement-initial dot-word can only be a directive.
+GenericDotDirective { DotWord (MacroArg? ("," MacroArg?)*) }
+
+// ---------------------------------------------------------------------------
+// Expressions. BNF expr / e01 .. e11 with the per-page additions noted in
+// design.md D1 and D5. Precedence markers, tightest first, are declared in the
+// @precedence block below.
+// ---------------------------------------------------------------------------
+
+// BNF type as a value: dataType | distance (structTag/unionTag/recordTag/typeId are identifiers)
+typeValue { DataType | distance }
+
+expression {
+  Identifier !prim |
+  PredefinedSymbol |
+  Number |
+  String |
+  LocationCounter |
+  Register |
+  StReg |
+  ParenthesizedExpression |
+  MemoryExpression |
+  FpuStack |
+  MacroFunctionCall |
+  FieldExpression |
+  IndexExpression |
+  SizeExpression |
+  PtrExpression |
+  SegmentOverride |
+  UnaryExpression |
+  BinaryExpression
+}
+
+ParenthesizedExpression { "(" expression ")" }                      // e11: ( expr )
+MemoryExpression { "[" expression "]" }                              // e11: [ expr ]
+FpuStack { StReg "(" expression ")" }                                // e11: ST ( expr )
+// e11: recordConst. Accepted as a whole operand / initializer / macro argument
+// rather than inside larger expressions, which keeps "id id <...>" a typed data
+// definition (see design.md D4).
+RecordConstant { Identifier !recConst "<" fieldList ">" | Identifier !recConst "{" fieldList "}" }
+MacroFunctionCall { (Identifier !call | MacroFunction) "(" (MacroArg? ("," MacroArg?)*) ")" } // macroCall form 2, @CatStr(...) etc.
+FieldExpression { expression !dot fieldWord }                        // e10: e10 . e11 (operator-dot.md)
+IndexExpression { expression !dot "[" expression "]" }               // e10: e10 [ expr ] (operator-brackets.md)
+SizeExpression { !size (opWidth | opMask | opLength | opLengthof | opSize | opSizeof) (typeValue | expression) } // e11: WIDTH/MASK/LENGTH/LENGTHOF id, SIZE/SIZEOF sizeArg
+PtrExpression { (expression | typeValue) !ptr (opPtr | opBcst) expression } // e09: e09 PTR e10 (+ BCST, instruction-format.md)
+SegmentOverride { expression !ptr ":" expression }                   // e09: e09 : e10 (operator-colon.md)
+UnaryExpression {
+  !offset (opOffset | opSeg | opLroffset | opImagerel | opSectionrel | opType | opThis) (typeValue | expression) | // e09 prefixes
+  !high (opHigh | opLow | opHighword | opLowword | opHigh32 | opLow32) expression |                              // e08
+  !sign ("+" | "-") expression |                                                                                  // e07 (unary sign; operator-subtract-2.md)
+  !not opNot expression |                                                                                         // e03
+  !short opShort expression |                                                                                     // expr: SHORT e05
+  !top (dotType | opOpattr) expression                                                                            // expr: .TYPE e01 | OPATTR e01
+}
+BinaryExpression {
+  expression !mul ("*" | "/" | opMod | opShl | opShr) (expression | typeValue) |   // e06: mulOp | shiftOp
+  expression !add ("+" | "-") (expression | typeValue) |                            // e05: addOp
+  expression !rel (opEq | opNe | opLt | opLe | opGt | opGe) (expression | typeValue) | // e04: relOp
+  expression !and opAnd (expression | typeValue) |                                  // e02
+  expression !or (opOr | opXor) (expression | typeValue)                            // e01: orOp
+}
+
+// A struct field access is any dot-word, including one that spells a directive
+// (a field named "data" or "type" is legal MASM).
+fieldWord {
+  DotWord | dotType |
+  dot386 | dot386p | dot387 | dot486 | dot486p | dot586 | dot586p | dot686 | dot686p | dot8087 | dot287 | dotNo87 | dotK3d | dotMmx | dotXmm |
+  dotAllocstack | dotEndprolog | dotPushframe | dotPushreg | dotSavereg | dotSavexmm128 | dotSetframe |
+  dotBeginepilog | dotEndepilog | dotFreestack | dotPop2reg | dotPopframe | dotPopreg | dotPush2reg | dotRestorereg | dotRestorexmm128 | dotUnsetframe |
+  dotAlpha | dotSeq | dotDosseg | dotCode | dotConst | dotData | dotDataQ | dotFardata | dotFardataQ | dotStack | dotModel | dotStartup | dotExit |
+  dotIf | dotElseif | dotElse | dotEndif | dotWhile | dotEndw | dotRepeat | dotUntil | dotUntilcxz | dotBreak | dotContinue |
+  dotErr | dotErr1 | dotErr2 | dotErrb | dotErrdef | dotErrdif | dotErrdifi | dotErre | dotErridn | dotErridni | dotErrnb | dotErrndef | dotErrnz |
+  dotCref | dotXcref | dotNocref | dotList | dotNolist | dotXlist | dotListall | dotListif | dotNolistif | dotLfcond | dotSfcond | dotTfcond |
+  dotListmacro | dotNolistmacro | dotListmacroall | dotLall | dotSall | dotXall | dotRadix | dotFpo | dotSafeseh
+}
+
+sep { "," eol? }
+
+// Tightest first. Expression levels follow BNF e10 (dot) .. e01 (or) with
+// SHORT between e05 and e04 (expr: SHORT e05) and .TYPE/OPATTR loosest
+// (expr: .TYPE e01 | OPATTR e01). recConst/prim/typeName order the readings of
+// a statement-initial "id id ..." (design.md D4): an operator or "(" after the
+// second identifier continues a macro-call argument (prim/call beat typeName),
+// "{" after an identifier operand is a record constant (recConst beats prim).
+// The last three are the runtime-condition chain (cExpr/aExpr/term).
+@precedence {
+  call,
+  dot @left,
+  size,
+  offset,
+  ptr @left,
+  high,
+  sign,
+  mul @left,
+  add @left,
+  short,
+  rel @left,
+  not,
+  and @left,
+  or @left,
+  top,
+  recConst,
+  prim,
+  typeName,
+  cnot,
+  cand @left,
+  cor @left
+}
+
+// ---------------------------------------------------------------------------
+// External tokenizers (tokens.js). Declared before @tokens so they take
+// precedence; each is contextual and only produces its token where the parser
+// can shift it.
+// ---------------------------------------------------------------------------
+@external tokens contextTokens from "./tokens.js" {
+  TextLiteral,   // < text > with nesting and ! escapes (operator-literal.md; BNF textLiteral/text)
+  BlockComment,  // COMMENT delimiter ... delimiter (comment-masm.md)
+  RawText,       // rest of line after ECHO/%OUT/TITLE/SUBTITLE/SUBTTL (BNF arbitraryText)
+  FileName       // INCLUDE/INCLUDELIB file specification (BNF fileSpec: fileCharList)
+}
+
+// Case-insensitive keyword classification (keywords.js + mnemonics.js).
+@external specialize { Identifier } specializeIdentifier from "./tokens.js" {
+  Mnemonic,
+  Prefix,
+  Register,
+  StReg[@name=Register],
+  DataType,
+  FlagName,
+  PredefinedSymbol,
+  MacroFunction[@name=PredefinedSymbol],
+  AnonLabel,
+  LocationCounter,
+  Uninitialized,
+  // directives
+  kwAlias[@name=Directive], kwAlign[@name=Directive], kwAssume[@name=Directive], kwCatstr[@name=Directive],
+  kwComm[@name=Directive], kwComment[@name=Directive], kwDosseg[@name=Directive], kwEcho[@name=Directive],
+  kwElse[@name=Directive], kwElseif[@name=Directive], kwElseif1[@name=Directive], kwElseif2[@name=Directive],
+  kwElseifb[@name=Directive], kwElseifdef[@name=Directive], kwElseifdif[@name=Directive], kwElseifdifi[@name=Directive],
+  kwElseife[@name=Directive], kwElseifidn[@name=Directive], kwElseifidni[@name=Directive], kwElseifnb[@name=Directive],
+  kwElseifndef[@name=Directive], kwEnd[@name=Directive], kwEndif[@name=Directive], kwEndm[@name=Directive],
+  kwEndp[@name=Directive], kwEnds[@name=Directive], kwEqu[@name=Directive], kwEven[@name=Directive],
+  kwExitm[@name=Directive], kwExtern[@name=Directive], kwExterndef[@name=Directive], kwExtrn[@name=Directive],
+  kwFor[@name=Directive], kwForc[@name=Directive], kwGoto[@name=Directive], kwGroup[@name=Directive],
+  kwIf[@name=Directive], kwIf1[@name=Directive], kwIf2[@name=Directive], kwIfb[@name=Directive],
+  kwIfdef[@name=Directive], kwIfdif[@name=Directive], kwIfdifi[@name=Directive], kwIfe[@name=Directive],
+  kwIfidn[@name=Directive], kwIfidni[@name=Directive], kwIfnb[@name=Directive], kwIfndef[@name=Directive],
+  kwInclude[@name=Directive], kwIncludelib[@name=Directive], kwInstr[@name=Directive], kwInvoke[@name=Directive],
+  kwIrp[@name=Directive], kwIrpc[@name=Directive], kwLabel[@name=Directive], kwLocal[@name=Directive],
+  kwMacro[@name=Directive], kwName[@name=Directive], kwOption[@name=Directive], kwOrg[@name=Directive],
+  kwPage[@name=Directive], kwPopcontext[@name=Directive], kwProc[@name=Directive], kwProto[@name=Directive],
+  kwPublic[@name=Directive], kwPurge[@name=Directive], kwPushcontext[@name=Directive], kwRecord[@name=Directive],
+  kwRepeat[@name=Directive], kwRept[@name=Directive], kwSegment[@name=Directive], kwSizestr[@name=Directive],
+  kwStruc[@name=Directive], kwStruct[@name=Directive], kwSubstr[@name=Directive], kwSubtitle[@name=Directive],
+  kwSubttl[@name=Directive], kwTextequ[@name=Directive], kwTitle[@name=Directive], kwTypedef[@name=Directive],
+  kwUnion[@name=Directive], kwWhile[@name=Directive],
+  // operator keywords
+  opAnd[@name=OperatorKeyword], opOr[@name=OperatorKeyword], opXor[@name=OperatorKeyword], opNot[@name=OperatorKeyword],
+  opShl[@name=OperatorKeyword], opShr[@name=OperatorKeyword], opMod[@name=OperatorKeyword],
+  opEq[@name=OperatorKeyword], opNe[@name=OperatorKeyword], opLt[@name=OperatorKeyword], opLe[@name=OperatorKeyword],
+  opGt[@name=OperatorKeyword], opGe[@name=OperatorKeyword],
+  opHigh[@name=OperatorKeyword], opLow[@name=OperatorKeyword], opHighword[@name=OperatorKeyword], opLowword[@name=OperatorKeyword],
+  opHigh32[@name=OperatorKeyword], opLow32[@name=OperatorKeyword],
+  opOffset[@name=OperatorKeyword], opSeg[@name=OperatorKeyword], opLroffset[@name=OperatorKeyword],
+  opImagerel[@name=OperatorKeyword], opSectionrel[@name=OperatorKeyword], opType[@name=OperatorKeyword], opThis[@name=OperatorKeyword],
+  opPtr[@name=OperatorKeyword], opShort[@name=OperatorKeyword], opOpattr[@name=OperatorKeyword],
+  opLength[@name=OperatorKeyword], opLengthof[@name=OperatorKeyword], opSize[@name=OperatorKeyword], opSizeof[@name=OperatorKeyword],
+  opWidth[@name=OperatorKeyword], opMask[@name=OperatorKeyword], opDup[@name=OperatorKeyword], opAddr[@name=OperatorKeyword],
+  opAbs[@name=OperatorKeyword], opBcst[@name=OperatorKeyword],
+  // attributes (reserved)
+  atC[@name=Attribute], atPascal[@name=Attribute], atFortran[@name=Attribute], atBasic[@name=Attribute],
+  atSyscall[@name=Attribute], atStdcall[@name=Attribute],
+  atNear[@name=Attribute], atFar[@name=Attribute], atNear16[@name=Attribute], atNear32[@name=Attribute],
+  atFar16[@name=Attribute], atFar32[@name=Attribute],
+  atPrivate[@name=Attribute], atExport[@name=Attribute],
+  atTiny[@name=Attribute], atSmall[@name=Attribute], atMedium[@name=Attribute], atCompact[@name=Attribute],
+  atLarge[@name=Attribute], atHuge[@name=Attribute], atFlat[@name=Attribute],
+  atNearstack[@name=Attribute], atFarstack[@name=Attribute],
+  atPara[@name=Attribute], atStack[@name=Attribute], atCommon[@name=Attribute], atMemory[@name=Attribute], atAt[@name=Attribute],
+  atReadonly[@name=Attribute], atNoreadonly[@name=Attribute], atUse16[@name=Attribute], atUse32[@name=Attribute],
+  atAssumes[@name=Attribute], atListing[@name=Attribute], atCpu[@name=Attribute], atRadix[@name=Attribute],
+  atAll[@name=Attribute], atNone[@name=Attribute],
+  atCasemap[@name=Attribute], atDotname[@name=Attribute], atNodotname[@name=Attribute], atEmulator[@name=Attribute],
+  atNoemulator[@name=Attribute], atEpilogue[@name=Attribute], atExpr16[@name=Attribute], atExpr32[@name=Attribute],
+  atLanguage[@name=Attribute], atLjmp[@name=Attribute], atNoljmp[@name=Attribute], atM510[@name=Attribute],
+  atNom510[@name=Attribute], atNokeyword[@name=Attribute], atNosignextend[@name=Attribute], atOldmacros[@name=Attribute],
+  atNooldmacros[@name=Attribute], atOldstructs[@name=Attribute], atNooldstructs[@name=Attribute], atPrologue[@name=Attribute],
+  atScoped[@name=Attribute], atNoscoped[@name=Attribute], atSetif2[@name=Attribute], atAvxencoding[@name=Attribute],
+  atReq[@name=Attribute], atVararg[@name=Attribute], atNonunique[@name=Attribute], atUses[@name=Attribute],
+  atNothing[@name=Attribute]
+}
+
+// Contextual attribute keywords: both the keyword and the identifier reading
+// are offered (GLR picks the one the grammar accepts).
+@external extend { Identifier } extendIdentifier from "./tokens.js" {
+  xTrue[@name=Attribute], xFalse[@name=Attribute], xError[@name=Attribute],
+  xCode[@name=Attribute], xFrame[@name=Attribute],
+  xInfo[@name=Attribute], xRead[@name=Attribute], xWrite[@name=Attribute], xExecute[@name=Attribute],
+  xShared[@name=Attribute], xNopage[@name=Attribute], xNocache[@name=Attribute], xDiscard[@name=Attribute],
+  xNotpublic[@name=Attribute],
+  xPreferFirst[@name=Attribute], xPreferVex[@name=Attribute], xPreferVex3[@name=Attribute], xPreferEvex[@name=Attribute], xNoEvex[@name=Attribute],
+  xZ[@name=Attribute], xSae[@name=Attribute], xRn[@name=Attribute], xRz[@name=Attribute], xRd[@name=Attribute], xRu[@name=Attribute]
+}
+
+// Dot-words: directives and the .TYPE operator. Unknown dot-words keep the
+// DotWord token (struct field access or an undocumented directive).
+@external specialize { DotWord } specializeDotWord from "./tokens.js" {
+  dot386[@name=DotDirective], dot386p[@name=DotDirective], dot387[@name=DotDirective], dot486[@name=DotDirective],
+  dot486p[@name=DotDirective], dot586[@name=DotDirective], dot586p[@name=DotDirective], dot686[@name=DotDirective],
+  dot686p[@name=DotDirective], dot8087[@name=DotDirective], dot287[@name=DotDirective], dotNo87[@name=DotDirective],
+  dotK3d[@name=DotDirective], dotMmx[@name=DotDirective], dotXmm[@name=DotDirective],
+  dotAllocstack[@name=DotDirective], dotEndprolog[@name=DotDirective], dotPushframe[@name=DotDirective],
+  dotPushreg[@name=DotDirective], dotSavereg[@name=DotDirective], dotSavexmm128[@name=DotDirective], dotSetframe[@name=DotDirective],
+  dotBeginepilog[@name=DotDirective], dotEndepilog[@name=DotDirective], dotFreestack[@name=DotDirective],
+  dotPop2reg[@name=DotDirective], dotPopframe[@name=DotDirective], dotPopreg[@name=DotDirective], dotPush2reg[@name=DotDirective],
+  dotRestorereg[@name=DotDirective], dotRestorexmm128[@name=DotDirective], dotUnsetframe[@name=DotDirective],
+  dotAlpha[@name=DotDirective], dotSeq[@name=DotDirective], dotDosseg[@name=DotDirective],
+  dotCode[@name=DotDirective], dotConst[@name=DotDirective], dotData[@name=DotDirective], dotDataQ[@name=DotDirective],
+  dotFardata[@name=DotDirective], dotFardataQ[@name=DotDirective], dotStack[@name=DotDirective], dotModel[@name=DotDirective],
+  dotStartup[@name=DotDirective], dotExit[@name=DotDirective],
+  dotIf[@name=DotDirective], dotElseif[@name=DotDirective], dotElse[@name=DotDirective], dotEndif[@name=DotDirective],
+  dotWhile[@name=DotDirective], dotEndw[@name=DotDirective], dotRepeat[@name=DotDirective], dotUntil[@name=DotDirective],
+  dotUntilcxz[@name=DotDirective], dotBreak[@name=DotDirective], dotContinue[@name=DotDirective],
+  dotErr[@name=DotDirective], dotErr1[@name=DotDirective], dotErr2[@name=DotDirective], dotErrb[@name=DotDirective],
+  dotErrdef[@name=DotDirective], dotErrdif[@name=DotDirective], dotErrdifi[@name=DotDirective], dotErre[@name=DotDirective],
+  dotErridn[@name=DotDirective], dotErridni[@name=DotDirective], dotErrnb[@name=DotDirective], dotErrndef[@name=DotDirective],
+  dotErrnz[@name=DotDirective],
+  dotCref[@name=DotDirective], dotXcref[@name=DotDirective], dotNocref[@name=DotDirective], dotList[@name=DotDirective],
+  dotNolist[@name=DotDirective], dotXlist[@name=DotDirective], dotListall[@name=DotDirective], dotListif[@name=DotDirective],
+  dotNolistif[@name=DotDirective], dotLfcond[@name=DotDirective], dotSfcond[@name=DotDirective], dotTfcond[@name=DotDirective],
+  dotListmacro[@name=DotDirective], dotNolistmacro[@name=DotDirective], dotListmacroall[@name=DotDirective],
+  dotLall[@name=DotDirective], dotSall[@name=DotDirective], dotXall[@name=DotDirective],
+  dotRadix[@name=DotDirective], dotFpo[@name=DotDirective], dotSafeseh[@name=DotDirective],
+  dotType[@name=OperatorKeyword]
+}
+
+// ---------------------------------------------------------------------------
+// Lexical layer (BNF terminals).
+// ---------------------------------------------------------------------------
+@tokens {
+  // BNF whiteSpaceCharacter: ASCII 8, 9, 11-13, 26, 32. Newline (10) is endOfLine.
+  space { $[ \t\r\u{8}\u{b}\u{c}\u{1a}]+ }
+  eol { "\n" }
+  // BNF comment: ";" text ;; (covers the ";;" macro comment, operator-semicolons.md)
+  LineComment { ";" ![\n]* }
+  // ml-fatal-error-a1009.md: physical lines concatenated with the line-continuation character "\"
+  lineContinuation { "\\" $[ \t\r]* "\n" }
+  // BNF alpha: A-Z a-z @ _ $ ?; id: alpha (alpha | decdigit)*
+  Identifier { $[a-zA-Z@_$?] $[a-zA-Z0-9@_$?]* }
+  // BNF constant: digits ⟦radixOverride⟧; digits: decdigit (decdigit | hexdigit)*; radixOverride: h o q t y
+  Number { @digit $[0-9a-fA-F]* $[hHoOqQtTyY]? }
+  // BNF floatNumber: decNumber "." ⟦decNumber⟧ ⟦exponent⟧ | digits "R" | digits "r" (sign handled by the grammar)
+  Float { @digit+ "." @digit* ($[eE] $[+\-]? @digit+)? | @digit $[0-9a-fA-F]* $[rR] }
+  // Dotted word: dot directives, .TYPE, and struct field access ("." field)
+  DotWord { "." $[a-zA-Z0-9_@$?]+ }
+  // BNF string: quote ⟦stext⟧ quote; stringChar: quote quote | any character except quote
+  String { '"' (!["\n] | '""')* '"' | "'" (!['\n] | "''")* "'" }
+  // percent-out.md: %OUT
+  percentOut[@name=Directive] { "%" $[oO] $[uU] $[tT] }
+
+  "(" ")" "[" "]" "{" "}" "," ":" "::" "=" "+" "-" "*" "/" "&" "&&" "||" "%" "!" "!=" "==" "<" "<=" ">" ">="
+
+  @precedence { Float, Number, DotWord, Identifier, percentOut, "%" }
+}

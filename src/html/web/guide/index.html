@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Run MASM Assembly Online with Irvine32 | Getting Started</title>
+  <meta name="description" content="Learn to compile, link and run MASM-compatible x86 assembly online. Use JWasm, JWlink and Irvine32 in the browser, with a working example and file-saving tips." />
+  <link rel="canonical" href="https://masm.isas.dev/guide/" />
+  <link rel="icon" href="/favicon.ico" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Run MASM Assembly Online with Irvine32" />
+  <meta property="og:description" content="A getting-started guide to the free MASM-compatible assembler, linker and 32-bit x86 runner." />
+  <meta property="og:url" content="https://masm.isas.dev/guide/" />
+  <meta property="og:image" content="https://masm.isas.dev/masm-icon-512w.png" />
+  <meta property="og:image:alt" content="WASM MASM x86 Editor icon" />
+  <meta name="twitter:card" content="summary" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 1rem; background: #c0c0c0; color: #111; font: 1rem/1.6 system-ui, sans-serif; }
+    main { max-width: 54rem; margin: auto; padding: clamp(1rem, 4vw, 2rem); background: white; border: 2px solid #808080; box-shadow: 2px 2px #000; overflow-wrap: anywhere; }
+    h1, h2 { line-height: 1.25; }
+    h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); }
+    h2 { margin-top: 2rem; font-size: 1.3rem; }
+    a { color: #000080; text-underline-offset: .15em; }
+    a:focus-visible { outline: 2px solid #000080; outline-offset: 3px; }
+    pre { padding: 1rem; background: #eee; border: 1px solid #808080; overflow-x: auto; }
+    code { font-family: Consolas, monospace; }
+    .launch { display: inline-block; padding: .5rem 1rem; background: #000080; color: white; font-weight: bold; }
+    li + li { margin-top: .5rem; }
+    footer { margin-top: 2rem; border-top: 1px solid #808080; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav aria-label="Main"><a href="/">Open the MASM editor</a></nav>
+    <h1>Online MASM compiler, linker and runner</h1>
+    <p><strong>WASM MASM x86 Editor</strong> is a free browser-based assembly editor.
+      Write MASM-compatible source, assemble it with <strong>JWasm</strong>, link it
+      with <strong>JWlink</strong>, and run the resulting <strong>32-bit x86 executable</strong>
+      in a BoxedWine terminal. Kip Irvine's <strong>Irvine32 library</strong> is included.</p>
+    <p><a class="launch" href="/">Launch the online MASM editor</a></p>
+
+    <h2>Compile, link and run your first program</h2>
+    <ol>
+      <li>Open the editor and wait for the terminal to finish loading. The first visit downloads the emulator and guest assets; later visits can reuse cached assets and a saved startup state.</li>
+      <li>Select an <code>.asm</code> file in the file drawer, or create one. Replace its contents with the example below.</li>
+      <li>Click the toolbar button labelled <strong>compile, link and run .asm file</strong>. It assembles, links and starts the selected program.</li>
+      <li>Read the output in the terminal. Assembler and linker errors also appear there. After a successful build, <strong>run compiled binary</strong> runs the executable again.</li>
+    </ol>
+    <h2>Irvine32 example</h2>
+    <p>This example prints a message using <code>WriteString</code> and <code>Crlf</code>:</p>
+    <pre aria-label="MASM hello world example" tabindex="0"><code>INCLUDE Irvine32.inc
+
+.data
+message BYTE "Hello from MASM!", 0
+
+.code
+main PROC
+    mov edx, OFFSET message
+    call WriteString
+    call Crlf
+    exit
+main ENDP
+END main</code></pre>
+    <p>Use <code>INCLUDE Irvine32.inc</code> for the bundled Irvine32 declarations.
+      Additional bundled includes are <code>Macros.inc</code>, <code>SmallWin.inc</code>,
+      <code>VirtualKeys.inc</code> and <code>GraphWin.inc</code>.</p>
+
+    <h2>Which assembler and architecture does it use?</h2>
+    <p>The tool uses JWasm and JWlink for MASM-compatible assembly and linking,
+      not Microsoft's proprietary MASM executables. Although the assembler supports
+      x86/x64 source, the browser's Wine execution environment is <strong>32-bit</strong>;
+      use 32-bit x86 programs with Irvine32. This is not a 64-bit Windows runner.</p>
+    <p>BoxedWine runs the Wine environment through WebAssembly. The editor and runtime
+      require JavaScript and WebAssembly in your browser; you do not need to install
+      an assembler or Wine locally. This guide itself works without JavaScript.</p>
+
+    <h2>Where are my files saved?</h2>
+    <p>Your files and settings are stored locally in your browser using IndexedDB and
+      local storage. They are not a cloud backup and do not automatically follow you
+      to another browser or device. Download copies of important files using the file
+      menu before clearing site data or resetting storage.</p>
+
+    <h2>Source code, desktop app and help</h2>
+    <p>Visit the <a href="https://github.com/istareatscreens/wasm-masm-x86-editor">project repository</a>,
+      <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/releases">desktop releases</a>,
+      or <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/issues">report an issue</a>.</p>
+    <p>Related projects: <a href="https://github.com/JWasm">JWasm and JWlink</a>,
+      <a href="https://www.boxedwine.org/">BoxedWine</a>, and
+      <a href="https://asmirvine.com/">Kip Irvine's assembly-language resources</a>.</p>
+    <footer><p>This project is not published by, affiliated with or endorsed by Microsoft.
+      <a href="/">Return to the online MASM editor</a>.</p></footer>
+  </main>
+</body>
+</html>

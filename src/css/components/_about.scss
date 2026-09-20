@@ -1,0 +1,150 @@
+.window.window__about {
+  position: fixed;
+  width: min(64rem, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  > .title-bar {
+    flex: none;
+    min-height: 22px;
+    gap: 8px;
+
+    .title-bar-text {
+      min-width: 0;
+      margin-right: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .title-bar-controls {
+      flex: none;
+    }
+  }
+
+  > .window-body {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .about-host {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    flex: 1; /* Stretch to fill available window-body space */
+    display: flex; /* Ensures the child surface can stretch fully */
+  }
+
+  .about-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    overflow-wrap: anywhere;
+
+    &__image {
+      width: 60px;
+      height: 60px;
+      flex: none;
+      object-fit: contain;
+    }
+    &__text {
+      min-width: 0;
+      text-align: left;
+    }
+  }
+
+  .about-links {
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    height: auto;
+    align-items: stretch;
+  }
+
+  .about-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    min-height: 36px;
+    max-height: none;
+    margin: 0;
+    padding: 6px;
+
+    > .btn__img {
+      width: 20px;
+      height: 20px;
+      flex: none;
+      margin: 0;
+      padding: 0;
+      object-fit: contain;
+    }
+    > span {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .about-content {
+      flex-direction: column;
+      gap: 8px;
+    }
+    .about-content__image {
+      width: 40px;
+      height: 40px;
+      align-self: center;
+    }
+  }
+
+  @media (max-width: 400px) {
+    > .window-body {
+      margin: 8px;
+    }
+    .about-links {
+      gap: 6px;
+    }
+    .about-link {
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 4px;
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 220px) {
+    .about-links {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .about-link {
+      flex-direction: row;
+    }
+  }
+
+  // On very short screens, scroll the whole body so text and actions both remain reachable.
+  @media (max-height: 240px) {
+    > .window-body {
+      overflow: auto;
+    }
+    .about-host,
+    .about-content {
+      flex: none;
+      overflow: visible;
+    }
+  }
+}

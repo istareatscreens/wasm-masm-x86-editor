@@ -29,6 +29,17 @@
     outline-offset: -4px;
   }
 
+  // grayed out while it cannot do anything ("run compiled binary" with no .exe,
+  // "compile" with a non-.asm file open)
+  &:disabled {
+    cursor: default;
+
+    .btn__img {
+      filter: grayscale(1);
+      opacity: 0.35;
+    }
+  }
+
   &::-moz-focus-inner {
     border: 0;
   }
@@ -37,6 +48,13 @@
     width: auto;
     height: 100%;
     padding-bottom: 0.05rem;
+
+    &--about-link {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      vertical-align: middle;
+    }
   }
 
   &--text {

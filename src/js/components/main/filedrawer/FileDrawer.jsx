@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import FilenameEditableListElement from "./FilenameEditableListElement.jsx";
+import { attachRetroScrollbars } from "../../common/retroScrollbars.js";
 
 import CreateFileWindow from "./CreateFileWindow.jsx";
 
@@ -24,11 +25,36 @@ const FileDrawer = function FileDrawer({
   lightMode,
 }) {
   const [filesSelected, setFilesSelected] = useState([]);
-  //checkbox logic
-  const [numberOfCheckboxesSelected, setNumberCheckboxesSelected] = useState(0);
+  const scrollHost = useRef(null);
+  const scrollSurface = useRef(null);
+  useEffect(() => {
+    const controls = attachRetroScrollbars(
+      scrollSurface.current,
+      scrollHost.current,
+      "Files",
+    );
+    return () => controls.destroy();
+  }, []);
+  //checkbox logic: the count is derived from the rows of the CURRENT view, never kept
+  //separately (a separate counter went stale after a checkbox-delete and made every
+  //later delete with no checkbox a no-op)
+  const numberOfCheckboxesSelected = filesSelected.filter(
+    (file) => file.isSelected,
+  ).length;
   const saveDebounceRef = useRef(false);
   const [showAsm, setShowAsm] = useState(true);
   const [showCreateFile, setShowCreateFile] = useState(false);
+  // Legacy-migration affordance: only show the "download legacy files" button
+  // if the user actually has files in browser localStorage.
+  const [showLegacyDownload, setShowLegacyDownload] = useState(false);
+
+  useEffect(() => {
+    setShowLegacyDownload(FileSystem.hasLegacyFiles());
+  }, [fileList]);
+
+  const handleDownloadLegacy = useCallback(() => {
+    FileSystem.downloadLegacyFiles();
+  }, []);
 
   //TODO: rename these to have ref prefix for consistancy
   const selectAllCheckbox = useRef(null);
@@ -45,8 +71,9 @@ const FileDrawer = function FileDrawer({
           id: id,
           filename: filename,
           isSelected: false,
-        }))
+        })),
     );
+    if (selectAllCheckbox.current) selectAllCheckbox.current.checked = false;
   }, [fileList, showAsm]);
 
   //File Upload functions
@@ -75,6 +102,7 @@ const FileDrawer = function FileDrawer({
     FileSystem.createDataFile(
       await Promise.all(fileList.map((getFile) => getFile())),
       () => {
+        refreshFileList(); // the uploaded files show in the drawer at once
         if (isCurrentSelectedFile) {
           switchFile(fileSelected);
           console.log({
@@ -85,7 +113,7 @@ const FileDrawer = function FileDrawer({
           fileUploadInput.current.value = "";
           rerenderEditor();
         }
-      }
+      },
     );
   };
 
@@ -100,139 +128,113 @@ const FileDrawer = function FileDrawer({
 
   //Checkbox logic
   const handleSelectAllCheckBox = (checked) => {
-    const filesSelectedUpdate = filesSelected.map((file) => {
-      file.isSelected = checked;
-      return file;
-    });
-
-    setNumberCheckboxesSelected(() => (checked ? filesSelected.length : 0));
-    setFilesSelected(filesSelectedUpdate);
+    setFilesSelected(
+      filesSelected.map((file) => ({ ...file, isSelected: checked })),
+    );
   };
 
   const fileIsChecked = (checked, file) => {
-    let numberChecked = filesSelected.length;
-    const updatedFilesSelected = filesSelected.map((cFile) => {
-      if (!cFile.isSelected) {
-        numberChecked--;
-      }
-      if (file.id == cFile.id) {
-        cFile.isSelected = checked;
-        if (checked) {
-          numberChecked++;
-        }
-      }
-      return cFile;
-    });
-
-    if (numberChecked == filesSelected.length && checked) {
-      selectAllCheckbox.current.checked = true;
-    } else {
-      selectAllCheckbox.current.checked = false;
+    const updatedFilesSelected = filesSelected.map((cFile) =>
+      file.id == cFile.id ? { ...cFile, isSelected: checked } : cFile,
+    );
+    const numberChecked = updatedFilesSelected.filter(
+      (cFile) => cFile.isSelected,
+    ).length;
+    if (selectAllCheckbox.current) {
+      selectAllCheckbox.current.checked =
+        numberChecked == updatedFilesSelected.length && checked;
     }
-
-    setNumberCheckboxesSelected(numberChecked);
     setFilesSelected(updatedFilesSelected);
   };
 
   const turnOffAllCheckboxes = () => {
     setFilesSelected(
-      filesSelected.map((file) => {
-        file.isSelected = false;
-        return file;
-      })
+      filesSelected.map((file) => ({ ...file, isSelected: false })),
     );
-    selectAllCheckbox.current.checked = false;
-    setNumberCheckboxesSelected(0);
+    if (selectAllCheckbox.current) selectAllCheckbox.current.checked = false;
   };
 
   //Save file
-  const saveFiles = useCallback((event) => {
-    // Prevent event propagation and default behavior
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    
-    // Debounce: prevent rapid clicks
-    if (saveDebounceRef.current) return;
-    
-    saveDebounceRef.current = true;
-    setTimeout(() => {
-      saveDebounceRef.current = false;
-    }, 500);
-
-    //handle case where Multiple files are checked
-    if (numberOfCheckboxesSelected > 1) {
-      // Filter to only selected files
-      const selectedFiles = filesSelected
-        .filter((file) => file.isSelected)
-        .map((file) => file.filename);
-      FileSystem.saveFiles(selectedFiles);
-    } else if (numberOfCheckboxesSelected === 1) {
-      //handle case where single file is checked
-      const singleFile = filesSelected.filter((file) => file.isSelected)[0].filename;
-      FileSystem.saveFile(singleFile);
-    } else {
-      //handle case where no file is checked
-      FileSystem.saveFile(fileSelected);
-    }
-  }, [numberOfCheckboxesSelected, filesSelected, fileSelected]);
-
-  //Delete files
-  //Handle multiselection deletion
-  const deleteFiles = () => {
-    return filesSelected.filter(({ filename, isSelected }) => {
-      if (isSelected) {
-        if (fileSelected == filename) {
-          return true;
-        } else {
-          FileSystem.queueFilesToDelete(filename);
-        }
+  const saveFiles = useCallback(
+    (event) => {
+      // Prevent event propagation and default behavior
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
       }
-      return false;
-    });
-  };
 
+      // Debounce: prevent rapid clicks
+      if (saveDebounceRef.current) return;
+
+      saveDebounceRef.current = true;
+      setTimeout(() => {
+        saveDebounceRef.current = false;
+      }, 500);
+
+      //handle case where Multiple files are checked
+      if (numberOfCheckboxesSelected > 1) {
+        // Filter to only selected files
+        const selectedFiles = filesSelected
+          .filter((file) => file.isSelected)
+          .map((file) => file.filename);
+        FileSystem.saveFiles(selectedFiles);
+      } else if (numberOfCheckboxesSelected === 1) {
+        //handle case where single file is checked
+        const singleFile = filesSelected.filter((file) => file.isSelected)[0]
+          .filename;
+        FileSystem.saveFile(singleFile);
+      } else {
+        //handle case where no file is checked
+        FileSystem.saveFile(fileSelected);
+      }
+    },
+    [numberOfCheckboxesSelected, filesSelected, fileSelected],
+  );
+
+  //Delete files. What gets deleted: the checked rows of the current view; with nothing
+  //checked, the file that is open (asm in the editor or a binary in the hex viewer) -
+  //whichever view it belongs to. When the open file goes, the editor moves to its
+  //nearest remaining neighbour in the view, else to the first remaining .asm (App
+  //creates test.asm when none is left). Storage + guest D: are updated together
+  //(FileSystem.deleteFiles -> bwDeleteFile), then the list is refreshed at once.
   const findFileByName = (cFilename) =>
     filesSelected.find(({ filename }) => cFilename == filename);
 
   const handleDeleteFile = () => {
-    const findFileByID = (cId) => filesSelected.find(({ id }) => cId == id);
-    if (numberOfCheckboxesSelected != 0 && !deleteFiles().length) {
-      if (!deleteFiles().length) {
-        //delete checked files
-        // if file selected to edit was not selected just refresh and finish
-        FileSystem.deleteFiles();
-        refreshFileList();
-        return;
-      }
+    const checked = filesSelected
+      .filter((file) => file.isSelected)
+      .map((file) => file.filename);
+    const targets = checked.length
+      ? checked
+      : fileSelected
+        ? [fileSelected]
+        : [];
+    if (!targets.length) return;
+    const deletingOpenFile = targets.includes(fileSelected);
+    let next = null;
+    if (deletingOpenFile) {
+      const idx = filesSelected.findIndex(
+        ({ filename }) => filename == fileSelected,
+      );
+      const keep = (file) => !targets.includes(file.filename);
+      const before = filesSelected
+        .slice(0, Math.max(idx, 0))
+        .reverse()
+        .find(keep);
+      const after = filesSelected.slice(idx + 1).find(keep);
+      next = (before || after || null) && (before || after).filename;
     }
-
     setEditorLock(true);
-    //Handle general case
-    if (
-      filesSelected.length > 1 && //there is a file to switch to
-      numberOfCheckboxesSelected != filesSelected.length //all files were not selected
-    ) {
-      const selectedFileID = findFileByName(fileSelected).id;
-      if (selectedFileID == 0) {
-        switchFile(findFileByID(selectedFileID + 1).filename);
-      } else {
-        switchFile(findFileByID(selectedFileID - 1).filename);
-      }
-
-      FileSystem.queueFilesToDelete(fileSelected);
-      FileSystem.deleteFiles();
-      refreshFileList(true);
-    } else {
-      //Handle deleting one file
-      FileSystem.queueFilesToDelete(fileSelected);
-      FileSystem.deleteFiles();
-      refreshFileList(true);
-    }
-
+    FileSystem.queueFilesToDelete(...targets);
+    FileSystem.deleteFiles();
     turnOffAllCheckboxes();
-    setEditorLock(false); //TODO: this probably doesnt work either fix it or remove it
+    if (deletingOpenFile) {
+      if (next) switchFile(next);
+      refreshFileList(!next); //no neighbour in this view: App picks/creates an .asm
+    } else {
+      refreshFileList();
+    }
+    setEditorLock(false);
     rerenderEditor();
   };
 
@@ -242,14 +244,7 @@ const FileDrawer = function FileDrawer({
     //check if filename exists
     if (!findFileByName(newFilename)) {
       const renamingSelected = filename == fileSelected; //check if file being renamed is one selected
-      FileSystem.renameFile(filename, newFilename);
-      writeCommandToCMD(`echo.>${newFilename}`); //using run command rather than writing to console for greater reliability
-      /*
-      setTimeout(() => {
-        postMessage("run-command", { data: `echo.>${newFilename}` });
-      }, 4000);
-      //
-      */
+      FileSystem.renameFile(filename, newFilename); // renames in the guest too (bwRenameFile), no keystrokes
       if (renamingSelected) {
         switchFile(newFilename);
       }
@@ -300,40 +295,47 @@ const FileDrawer = function FileDrawer({
         saveFiles={saveFiles}
         handleDeleteFile={handleDeleteFile}
         switchFileView={switchFileView}
+        showLegacyDownload={showLegacyDownload}
+        handleDownloadLegacy={handleDownloadLegacy}
       />
-      <ul
-        className={`file-drawer__list tree-view ${lightMode ? "" : "file-drawer__list--dark"
+      <div className="file-drawer-scroll retro-scroll-host" ref={scrollHost}>
+        <ul
+          ref={scrollSurface}
+          className={`file-drawer__list tree-view ${
+            lightMode ? "" : "file-drawer__list--dark"
           }`}
-      >
-        {filesSelected.length
-          ? filesSelected
-            //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
-            .map((file) => (
-              <li
-                key={file.id}
-                className={`file-drawer__list__group ${lightMode ? "" : "file-drawer__list__group--dark"
-                  } `}
-              >
-                <input
-                  label=""
-                  type="checkbox"
-                  checked={file.isSelected}
-                  onChange={(event) => {
-                    fileIsChecked(event.target.checked, file);
-                  }}
-                  className={"checkbox"}
-                />
-                <FilenameEditableListElement
-                  filename={file.filename}
-                  handleRename={handleRenameFile}
-                  switchFile={switchFile}
-                  isFileSelected={fileSelected == file.filename}
-                  lightMode={lightMode}
-                />
-              </li>
-            ))
-          : ""}
-      </ul>
+        >
+          {filesSelected.length
+            ? filesSelected
+                //.filter((file) => checkIfFileIsAsm(file.filename)) //remove all non assembly files
+                .map((file) => (
+                  <li
+                    key={file.id}
+                    className={`file-drawer__list__group ${
+                      lightMode ? "" : "file-drawer__list__group--dark"
+                    } `}
+                  >
+                    <input
+                      label=""
+                      type="checkbox"
+                      checked={file.isSelected}
+                      onChange={(event) => {
+                        fileIsChecked(event.target.checked, file);
+                      }}
+                      className={"checkbox"}
+                    />
+                    <FilenameEditableListElement
+                      filename={file.filename}
+                      handleRename={handleRenameFile}
+                      switchFile={switchFile}
+                      isFileSelected={fileSelected == file.filename}
+                      lightMode={lightMode}
+                    />
+                  </li>
+                ))
+            : ""}
+        </ul>
+      </div>
     </>
   );
 };

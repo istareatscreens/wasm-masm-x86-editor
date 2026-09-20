@@ -9,8 +9,8 @@ import acceptDisabled from "../../../../images/accept-disabled.png";
 
 import {
   getFileExtension,
-  debounce,
   checkFileExtension,
+  invalidFilenameReason,
 } from "../../../utility/utilityFunctions.ts";
 
 //TODO REFACTOR TO CREATE DIFFERENT FILE TYPES
@@ -28,32 +28,43 @@ function CreateFileWindow({ createFile, closeFileWindow, fileList }) {
     activateCreateButton.callback();
   };
 
+  // The name is trimmed (a stray trailing space is not an error) and must obey the
+  // Windows file-name rules (invalidFilenameReason); spaces inside are fine.
+  const proposedName = () => value.trim();
+  const problem = () => invalidFilenameReason(proposedName()) || (checkIfFilenameExists() ? "a file with that name already exists" : null);
+
   //debounce to check if file name is proper
   const activateCreateButton = useDebouncedCallback(() => {
-    setCannotCreate(value == "" || checkIfFilenameExists());
+    setCannotCreate(!!problem());
   }, 200);
 
   //If true then disable, if false dont disable
   //TODO: FIX THIS LOGIC
   const checkIfFilenameExists = () => {
+    const name = proposedName();
     return fileList.find(
       (file) =>
-        (getFileExtension(value)
+        (getFileExtension(name)
           ? file
           : file.substring(0, file.length - getFileExtension(file).length)) ==
-        value
+        name
     );
   };
 
   const handleKeyDown = (event) => {
-    if (event.key === "Enter" && !cannotCreate) {
+    // Evaluate synchronously: the debounced cannotCreate lags 200ms behind the
+    // last keystroke, which silently swallowed an Enter typed right after the name.
+    if (event.key === "Enter" && !problem()) {
       handleCreateFileButton();
       closeFileWindow();
     }
   };
 
   const handleCreateFileButton = () => {
-    createFile(checkFileExtension(value, ".asm") ? value : value + ".asm");
+    const name = proposedName();
+    if (problem()) return;
+    // (extension, filename): a name typed with its .asm keeps it, anything else gets one
+    createFile(checkFileExtension(".asm", name) ? name : name + ".asm");
   };
 
   return (
@@ -67,6 +78,7 @@ function CreateFileWindow({ createFile, closeFileWindow, fileList }) {
         type="text"
         className="input-box"
         value={value}
+        title={problem() || "file name (spaces are fine)"}
         onKeyDown={(event) => {
           handleKeyDown(event);
         }}
