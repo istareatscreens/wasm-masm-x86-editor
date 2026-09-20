@@ -1,0 +1,135 @@
+@use "../abstracts/variables";
+
+// Terminal notice banner (RetroNotice: hardlock / program crash / runtime notices).
+// A Windows 98 "information" strip that FLOATS over the top edge of the cmd window:
+// it is absolutely positioned inside .cmd-panel (position: relative, see layout), i.e.
+// out of the layout flow, so it never reflows or resizes the terminal and it follows
+// the terminal through every view layout. The strip is one or two text lines tall -
+// only the first few percent of the terminal are covered. Colours are the classic
+// tooltip/info surface: COLOR_INFOBK #ffffe1 on COLOR_INFOTEXT black with a 1 px
+// window-frame border; the icon is the Windows 98 warning triangle as pixel art.
+.freeze-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 250;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.8rem;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem 0.4rem 0.8rem;
+  background: #ffffe1;
+  color: #000000;
+  border: 1px solid variables.$window-frame;
+  border-top-width: 0;
+  font-size: 1.3rem;
+  line-height: 1.35;
+
+  // 16 px yellow warning triangle with a black "!" (IDI_WARNING look)
+  &__icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath d='M8 1 L15 14 L1 14 Z' fill='%23ffff00' stroke='%23000000' stroke-width='1' stroke-linejoin='miter'/%3E%3Crect x='7' y='5' width='2' height='5' fill='%23000000'/%3E%3Crect x='7' y='11' width='2' height='2' fill='%23000000'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    image-rendering: pixelated;
+  }
+
+  &__text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__title {
+    font-weight: bold;
+    margin-right: 0.6rem;
+  }
+
+  &__body,
+  &__msg,
+  &__hint,
+  &__safe {
+    display: inline;
+  }
+
+  &__hint,
+  &__safe {
+    margin-left: 0.3rem;
+  }
+
+  // a narrow terminal (drawer + editor open): smaller text, and the reassurance
+  // line goes (the reason + hint are what matters)
+  @container (max-width: 640px) {
+    font-size: 1.2rem;
+
+    &__safe {
+      display: none;
+    }
+  }
+
+  &__actions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  &__btn {
+    appearance: none;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 0;
+    background: variables.$surface;
+    color: #000;
+    box-shadow: variables.$border-raised-outer, variables.$border-raised-inner;
+    font-family: inherit;
+    width: 100%;
+    min-width: 6.5rem;
+    min-height: 26px;
+    padding: 5px 10px;
+    font-size: 1.2rem;
+    line-height: 1;
+    white-space: nowrap;
+
+    &:active {
+      box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
+    }
+
+    &:focus-visible {
+      outline: 1px dotted #000;
+      outline-offset: -5px;
+    }
+  }
+
+  &__close {
+    flex: none;
+    margin-left: 0.3rem;
+  }
+
+  @container (max-width: 480px) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.4rem;
+
+    &__actions {
+      grid-column: 2;
+      grid-row: 2;
+      grid-auto-columns: minmax(0, 1fr);
+      justify-self: stretch;
+      max-width: 100%;
+    }
+
+    &__btn {
+      min-width: 0;
+      white-space: normal;
+    }
+
+    &__close {
+      grid-column: 3;
+      grid-row: 1;
+    }
+  }
+}

@@ -1,0 +1,136 @@
+@use "../abstracts/variables";
+
+// Windows 95 scrollbars for the file drawer list and the CodeMirror editor
+// (retroScrollbars.js). The vertical rail is ALWAYS present in the 16 px gutter it
+// occupies: with nothing to scroll it is the classic disabled scrollbar (embossed
+// arrows, checkered track, no thumb) - never a bare gray strip. The horizontal rail
+// exists only while there is a horizontal range, the corner only with both rails.
+.retro-scroll-host {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+
+  // the gutter the vertical rail sits in (stable width: no wrapping feedback on resize)
+  &--ready { padding-right: 16px; }
+  &--horizontal { padding-bottom: 16px; }
+}
+
+.retro-scroll-surface {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; width: 0; height: 0; }
+}
+
+.retro-scrollbar {
+  position: absolute;
+  display: flex;
+  background: variables.$surface;
+  z-index: 5;
+  user-select: none;
+  touch-action: none;
+  box-sizing: border-box;
+  color: #000;
+
+  &[hidden], &__corner[hidden] { display: none; }
+  &:focus-visible { outline: 1px dotted #000; outline-offset: -3px; }
+  &--vertical { right: 0; top: 0; bottom: 0; width: 16px; flex-direction: column; }
+  &--horizontal { left: 0; bottom: 0; right: 16px; height: 16px; }
+  .retro-scroll-host--horizontal > &--vertical { bottom: 16px; }
+
+  &__track {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    background: url("./scrollbar-background.svg");
+  }
+
+  &__thumb, &__arrow {
+    background-color: variables.$surface;
+    box-shadow: variables.$border-raised-outer, variables.$border-raised-inner;
+    border: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  &__thumb { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  &__thumb[hidden] { display: none; }
+  &__arrow {
+    appearance: none;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    position: relative;
+    color: #000;
+
+    // the glyph (::after) and, for the disabled state, its 1 px white copy offset
+    // down-right underneath it (::before) - the Windows 95 embossed disabled arrow
+    &::before, &::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 4px;
+      width: 0;
+      height: 0;
+      border: 4px solid transparent;
+    }
+    &::before { display: none; transform: translate(1px, 1px); }
+    &[data-direction="up"]::after, &[data-direction="up"]::before { border-top: 0; border-bottom-color: currentColor; top: 6px; }
+    &[data-direction="down"]::after, &[data-direction="down"]::before { border-bottom: 0; border-top-color: currentColor; top: 6px; }
+    &[data-direction="left"]::after, &[data-direction="left"]::before { border-left: 0; border-right-color: currentColor; left: 6px; }
+    &[data-direction="right"]::after, &[data-direction="right"]::before { border-right: 0; border-left-color: currentColor; left: 6px; }
+    &:disabled {
+      color: variables.$button-shadow;
+      cursor: default;
+      &::before { display: block; }
+      &[data-direction="up"]::before { border-bottom-color: variables.$button-highlight; }
+      &[data-direction="down"]::before { border-top-color: variables.$button-highlight; }
+      &[data-direction="left"]::before { border-right-color: variables.$button-highlight; }
+      &[data-direction="right"]::before { border-left-color: variables.$button-highlight; }
+    }
+    &.is-pressed:not(:disabled) { box-shadow: variables.$border-sunken-outer; }
+    &.is-pressed:not(:disabled)::after { transform: translate(1px, 1px); }
+  }
+
+  &--disabled { cursor: default; }
+
+  &__corner { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; background: variables.$surface; }
+}
+
+// The drawer list's scroll host. It starts 2 px above its grid row so the field's
+// sunken top edge (gray line over black line) coincides with the banner's lower
+// bevel (the same two lines): the white area begins right under the banner, exactly
+// like the editor - one ridge, not two.
+.file-drawer-scroll {
+  grid-area: file_drawer;
+  margin: -2px 0.2rem 0.2rem;
+  // The field frame encloses the list AND its rails. Keep controls inside its
+  // two-pixel bevel, including the top edge shared with the banner.
+  padding: 2px;
+  box-shadow: variables.$border-field;
+
+  &.retro-scroll-host--ready { padding-right: 18px; }
+  &.retro-scroll-host--horizontal { padding-bottom: 18px; }
+  > .retro-scrollbar--vertical { top: 2px; right: 2px; bottom: 2px; }
+  &.retro-scroll-host--horizontal > .retro-scrollbar--vertical { bottom: 18px; }
+  > .retro-scrollbar--horizontal { left: 2px; right: 18px; bottom: 2px; }
+  > .retro-scrollbar__corner { right: 2px; bottom: 2px; }
+
+  > .file-drawer__list {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: calc(0.5rem - 2px);
+    box-shadow: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .retro-scroll-host--ready { padding: 0; }
+  .retro-scroll-host--horizontal { padding: 0; }
+  .file-drawer-scroll.retro-scroll-host { padding: 2px; }
+  .retro-scroll-surface { scrollbar-width: auto; }
+  .retro-scroll-surface::-webkit-scrollbar { display: revert; width: revert; height: revert; }
+  .retro-scrollbar, .retro-scrollbar__corner { display: none; }
+}

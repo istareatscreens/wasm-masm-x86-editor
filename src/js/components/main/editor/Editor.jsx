@@ -6,7 +6,7 @@ import { getFileExtension } from "../../../utility/utilityFunctions";
 // Lazy load the HexViewer component
 const HexViewer = lazy(() => import("./HexViewer.jsx"));
 
-const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fontSize, selectedFont, disabled, lightMode }) {
+const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fontSize, selectedFont, disabled, lightMode, vimMode }) {
   const [code, setCode] = useState("");
   const [isHexViewer, setIsHexViewer] = useState(false);
 
@@ -45,6 +45,7 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
           filename={filename}
           onChange={setCode}
           value={code}
+          vimMode={vimMode}
         />
       )}
     </>

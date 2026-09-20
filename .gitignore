@@ -5,14 +5,15 @@ lib
 public
 build
 dist
-out
+/out
 *.tgz
 #Ignore Ide files
 .vscode
 debug.log
 .vs
-#Ignore text files (used for notes)
+#Ignore text files (used for notes) - except OpenSpec evidence
 *.txt
+!openspec/**/*.txt
 *.txt.swp
 *.notes.swp
 #Ignore performance testing file
@@ -25,7 +26,20 @@ nyc
 *.lcov
 Mac
 .DS_Store
-Boxedwine
+
+/Boxedwine/
+/masm-lezer-grammar/
+
+#AI tool folders
+.claude/
+.codex/
+.gemini/
+openspec/
+
+#Backups, copies and probe output
+*.bk
+*.old
+/*.log
 
 #Access token
 electron-builder.yml
