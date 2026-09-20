@@ -82,8 +82,8 @@ const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'mo
       )}
       <div style={{
         height: '100%',
-        fontSize: `${fontSize}px`,
-        fontFamily: selectedFont,
+        fontSize: `${Number(fontSize) || 16}px`,
+        fontFamily: (selectedFont && (selectedFont.fontFamily || selectedFont.text)) || 'monospace',
         ...theme,
         margin: 0,
         padding: 0

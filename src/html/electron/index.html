@@ -51,7 +51,7 @@
     ipcRenderer.send("app_version");
     ipcRenderer.on("app_version", (event, arg) => {
       ipcRenderer.removeAllListeners("app_version");
-      version.innerText = "Version " + arg.version;
+      if (version) version.innerText = "Version " + arg.version; // no #version element on this page
     });
     //Notificaiton
     const notification = document.getElementById("notification");
