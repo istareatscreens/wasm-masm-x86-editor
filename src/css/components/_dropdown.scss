@@ -1,44 +1,115 @@
 @use "../abstracts/variables";
 
-.select-box {
-  //custom
-  width: min-content;
-  height: calc(#{variables.$banner-height} - 0.5rem); //2.5rem
-  margin-left: 0.2rem;
-  color: #000;
-  scrollbar-color: black grey;
+// The dropdown typography from 98.css, bundled for web and offline Electron.
+// See src/fonts/98css-LICENSE.md for the font's attribution and license.
+@font-face {
+  font-family: "Pixelated MS Sans Serif";
+  src: url("./ms_sans_serif.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
 
-  //theme
-  padding: 0.3rem 0.4rem;
-  border: none;
-  box-shadow: variables.$border-field;
-  background-color: variables.$button-highlight;
+.select-box {
+  display: inline-grid;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100vw - 0.8rem);
+  flex-shrink: 0;
+  height: calc(#{variables.$banner-height} - 0.5rem);
+  margin-left: 0.2rem;
+  padding: 0.3rem 3.2rem 0.3rem 0.4rem;
   box-sizing: border-box;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
+  border: none;
   border-radius: 0;
+  box-shadow: variables.$border-field;
   appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  position: relative;
-  padding-right: 3.2rem;
+  color: #000;
+  background-color: variables.$button-highlight;
   background-image: url("./button-down.svg");
-  background-size: 2rem;
-  -webkit-font-smoothing: none;
+  background-size: 2rem calc(100% - 0.4rem);
   background-position: top 0.2rem right 0.2rem;
   background-repeat: no-repeat;
-  border-radius: 0;
+  font-family: "Pixelated MS Sans Serif", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: normal;
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+  -webkit-font-smoothing: none;
+
+  &__value, &__sizer {
+    grid-area: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  &__value { text-overflow: ellipsis; }
+
+  &__sizer {
+    display: grid;
+    visibility: hidden;
+    pointer-events: none;
+    > span { grid-area: 1 / 1; }
+  }
+
   &:focus {
     outline: none;
     color: variables.$button-highlight;
     background-color: variables.$dialog-blue;
-    & option {
-      color: #000;
-      background-color: #fff;
+  }
+
+  &:active, &[aria-expanded="true"] {
+    background-image: url("./button-down-active.svg");
+  }
+
+  &:disabled { color: variables.$button-shadow; }
+}
+
+// Portaled to body so the dialog transform and editor/terminal can't clip it.
+.dropdown-popup {
+  position: fixed;
+  z-index: 10000;
+  box-sizing: border-box;
+  padding: 2px;
+  background: variables.$button-highlight;
+  color: #000;
+  box-shadow: variables.$border-field;
+  font: 11px "Pixelated MS Sans Serif", Arial, sans-serif;
+  -webkit-font-smoothing: none;
+  user-select: none;
+
+  &__scroll-host { height: 100%; }
+
+  &__list {
+    position: relative;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+
+  &__option {
+    box-sizing: border-box;
+    height: 20px;
+    line-height: 20px;
+    padding: 0 4px;
+    white-space: nowrap;
+    cursor: default;
+
+    &.is-active {
+      background: variables.$dialog-blue;
+      color: variables.$button-highlight;
     }
-    &:active {
-      background-image: url("./button-down-active.svg");
-    }
+  }
+}
+
+@media (forced-colors: active) {
+  .select-box, .dropdown-popup { border: 1px solid ButtonText; }
+  .select-box:focus, .dropdown-popup__option.is-active {
+    forced-color-adjust: none;
+    color: HighlightText;
+    background-color: Highlight;
   }
 }

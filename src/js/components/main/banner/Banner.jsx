@@ -117,9 +117,6 @@ const Banner = function Banner({
   const checkIfAsm = () => {
     return !checkFileExtension(".asm", filename);
   };
-  const handleFontChange = (event) => {
-    setSelectedFont(fontList[event.target.selectedIndex]);
-  };
 
   //TODO: Move props to objects
   return (
@@ -193,13 +190,11 @@ const Banner = function Banner({
             className="input-box input-box--font"
           />
           <Dropdown
-            handleChange={(event) => {
-              handleFontChange(event);
-            }}
+            aria-label="Editor font"
+            onChange={setSelectedFont}
             classNameDropdown={""}
             options={fontList}
             selected={selectedFont}
-            value={selectedFont}
           />
           <ThemeControlGroup
             setThemeSettingsOpened={setThemeSettingsOpened}
