@@ -354,17 +354,23 @@
         if (!el) {
           el = document.createElement("div"); el.id = "bw-resize-hold";
           el.style.cssText = "display:none;position:absolute;left:0;top:0;width:100vw;height:100vh;background:#000;z-index:5;pointer-events:none;overflow:hidden";
-          var img = document.createElement("img"); img.style.cssText = "position:absolute;left:0;top:0;display:block";
-          el.appendChild(img); document.body.appendChild(el);
+          var copy = document.createElement("canvas"); copy.style.cssText = "position:absolute;left:0;top:0;display:block";
+          el.appendChild(copy); document.body.appendChild(el);
         }
         return el;
       }
       function showHold() {
         try {
-          var c = document.getElementById("canvas");
-          if (!c || !c.width || !c.height || !window.BW_INPUT_OPEN) return; // nothing worth freezing before the console is up
-          var el = holdEl(), img = el.firstChild;
-          if (el.style.display !== "block") { img.src = c.toDataURL("image/png"); img.width = c.width; img.height = c.height; el.style.display = "block"; holdSince = Date.now(); }
+          var frame = window.bwConsoleFrame();
+          if (!frame || !window.BW_INPUT_OPEN) return; // nothing worth freezing before the console is up
+          var el = holdEl(), copy = el.firstChild;
+          if (el.style.display !== "block") {
+            copy.width = frame.width; copy.height = frame.height;
+            // Firefox privacy protection can replace canvas extraction with noise.
+            // Paint our own frame bytes without encoding/decoding a PNG.
+            copy.getContext("2d").putImageData(frame, 0, 0);
+            el.style.display = "block"; holdSince = Date.now();
+          }
           // hard safety: whatever happens, the frozen frame never outlives HOLD_MAX_MS
           if (holdSafety) clearTimeout(holdSafety);
           holdSafety = setTimeout(hideHold, HOLD_MAX_MS + 500);
@@ -377,22 +383,13 @@
         if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
         if (holdSafety) { clearTimeout(holdSafety); holdSafety = null; }
       }
-      // the console window fills the screen again: window-frame pixels (light gray /
-      // dark gray) at the middle of the right edge and the bottom edge
-      function consoleFillsScreen(c) {
-        try {
-          var cv = document.createElement("canvas"); cv.width = 4; cv.height = 4; var x = cv.getContext("2d");
-          var isFrame = function (X, Y) { x.drawImage(c, X, Y, 1, 1, 0, 0, 1, 1); var d = x.getImageData(0, 0, 1, 1).data; return (d[0] === 212 && d[1] === 208 && d[2] === 200) || (d[0] === 128 && d[1] === 128 && d[2] === 128) || (d[0] === 64 && d[1] === 64 && d[2] === 64); };
-          return isFrame(c.width - 2, (c.height / 2) | 0) && isFrame((c.width / 2) | 0, c.height - 2);
-        } catch (e) { return true; }
-      }
       function watchHold(key, g) {
         if (holdTimer) clearInterval(holdTimer);
         holdTimer = setInterval(function () {
           var c = document.getElementById("canvas"), size = "";
           try { size = String(Module.bwGetScreenSize()); } catch (e) {}
           var elapsed = Date.now() - holdSince;
-          if (size === key && c && c.width === g.width && c.height === g.height && consoleFillsScreen(c)) { hideHold(); return; }
+          if (size === key && c && c.width === g.width && c.height === g.height && window.bwConsoleFillsScreen()) { hideHold(); return; }
           if (elapsed >= HOLD_MAX_MS) {
             hideHold();
             if (size !== key && !retried) { // the request was lost (never applied): once more
@@ -483,21 +480,49 @@
     }
   </script>
   <script>
-    // Shared "is the console visibly rendered" probe: lit-pixel count of the canvas
-    // downscaled to 64x48 (-1 if the canvas has no size yet). Used by the
-    // fully-loaded event below AND by the boot/restore watchdog (bw-snapshot.js).
+    // SDL exposes the ImageData it has just presented in BOTH shipped runtimes.
+    // Inspect these app-owned bytes, never a canvas extraction: Firefox privacy
+    // protection can deny/randomize getImageData and toDataURL. That noise used
+    // to pass the boot gate on blank/Wine-loading frames and became colored
+    // stripes in the resize hold. No canvas permission is needed here.
     (function () {
-      var probe = document.createElement("canvas"); probe.width = 64; probe.height = 48;
-      var ctx = probe.getContext("2d", { willReadFrequently: true });
-      window.bwConsoleLit = function () {
+      window.bwConsoleFrame = function () {
         try {
           var c = document.getElementById("canvas");
-          if (!c || !c.width) return -1;
-          ctx.drawImage(c, 0, 0, 64, 48);
-          var d = ctx.getImageData(0, 0, 64, 48).data, lit = 0;
-          for (var i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 20) lit++;
-          return lit;
-        } catch (e) { return -1; }
+          var sdl = typeof Module !== "undefined" && Module.SDL2, frame = sdl && sdl.image;
+          if (c && sdl.ctxCanvas === c && frame && frame.width > 0 && frame.height > 0 &&
+              frame.width === c.width && frame.height === c.height &&
+              frame.data && frame.data.length === frame.width * frame.height * 4) return frame;
+        } catch (e) {}
+        return null;
+      };
+      window.bwConsoleFillsScreen = function () {
+        var frame = window.bwConsoleFrame();
+        if (!frame || frame.width < 2 || frame.height < 2) return false;
+        var d = frame.data;
+        var isFrame = function (x, y) {
+          var i = (y * frame.width + x) * 4;
+          return d[i + 3] === 255 && ((d[i] === 212 && d[i + 1] === 208 && d[i + 2] === 200) ||
+            (d[i] === 128 && d[i + 1] === 128 && d[i + 2] === 128) ||
+            (d[i] === 64 && d[i + 1] === 64 && d[i + 2] === 64));
+        };
+        return isFrame(frame.width - 2, (frame.height / 2) | 0) &&
+          isFrame((frame.width / 2) | 0, frame.height - 2);
+      };
+      // Shared by the console-lit milestone and boot/restore watchdog. Require
+      // the console border first: Wine's startup dialog is lit but not ready.
+      window.bwConsoleLit = function () {
+        var frame = window.bwConsoleFrame();
+        if (!frame) return -1;
+        if (!window.bwConsoleFillsScreen()) return 0;
+        var d = frame.data, lit = 0;
+        for (var y = 0; y < 48; y++) {
+          for (var x = 0; x < 64; x++) {
+            var i = (Math.floor(y * frame.height / 48) * frame.width + Math.floor(x * frame.width / 64)) * 4;
+            if (d[i + 3] && d[i] + d[i + 1] + d[i + 2] > 20) lit++;
+          }
+        }
+        return lit;
       };
     })();
     // Presentation: the canvas fills the iframe. The emulated screen IS the panel's size
