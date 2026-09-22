@@ -1,5 +1,5 @@
 .bw-root,
-canvas,
+#canvas,
 .emscripten-overlay {
   width: 100vw;
   height: 100vh;
@@ -15,7 +15,7 @@ canvas,
 // a flash/tear while the console scrolls. Promoting the canvas to its own GPU
 // compositor layer makes the browser composite it vsync-synced and flicker-free.
 // Safe + universal (no-op where already composited); does not change the image.
-canvas {
+#canvas {
   transform: translateZ(0);
   backface-visibility: hidden;
   will-change: transform;

@@ -11,6 +11,7 @@
     "build:grammar": "node Boxedwine/scripts/build-grammar.mjs",
     "build:assets": "node scripts/chunk-guest.cjs",
     "test:assets": "node --test scripts/chunk-guest.test.cjs",
+    "test:presentation": "node --test scripts/boxedwine-presentation.test.cjs",
     "check:public": "node Boxedwine/scripts/check-public.mjs",
     "preview": "node Boxedwine/scripts/serve-public.mjs",
     "build": "gulp",
