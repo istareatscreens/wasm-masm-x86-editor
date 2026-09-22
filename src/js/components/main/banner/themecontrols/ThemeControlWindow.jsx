@@ -26,23 +26,21 @@ function ThemeControlWindow({
         <div className="window-body--element">
           <img className="image--dropdown-icon" src={sun} />
           <Dropdown
+            aria-label="Day theme"
             options={themeList}
             selected={selectedDayTheme}
             classNameDropdown={""}
-            handleChange={(event) =>
-              setSelectedDayTheme(themeList[event.target.selectedIndex])
-            }
+            onChange={setSelectedDayTheme}
           />
         </div>
         <div className="window-body--element">
           <img src={moon} className="image--dropdown-icon" />
           <Dropdown
+            aria-label="Night theme"
             options={themeList}
             selected={selectedNightTheme}
             classNameDropdown={""}
-            handleChange={(event) =>
-              setSelectedNightTheme(themeList[event.target.selectedIndex])
-            }
+            onChange={setSelectedNightTheme}
           />
         </div>
         <Button

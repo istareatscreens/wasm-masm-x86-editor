@@ -1,56 +1,327 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Run MASM Assembly Online with Irvine32 | Getting Started</title>
-  <meta name="description" content="Learn to compile, link and run MASM-compatible x86 assembly online. Use JWasm, JWlink and Irvine32 in the browser, with a working example and file-saving tips." />
+  <title>MASM x86 Editor User Guide | Toolbar and Irvine32 Example</title>
+  <meta name="description"
+    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <link rel="canonical" href="https://masm.isas.dev/guide/" />
   <link rel="icon" href="/favicon.ico" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Run MASM Assembly Online with Irvine32" />
-  <meta property="og:description" content="A getting-started guide to the free MASM-compatible assembler, linker and 32-bit x86 runner." />
+  <meta property="og:title" content="MASM x86 Editor User Guide | Toolbar and Irvine32 Example" />
+  <meta property="og:description"
+    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <meta property="og:url" content="https://masm.isas.dev/guide/" />
   <meta property="og:image" content="https://masm.isas.dev/masm-icon-512w.png" />
   <meta property="og:image:alt" content="WASM MASM x86 Editor icon" />
   <meta name="twitter:card" content="summary" />
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 1rem; background: #c0c0c0; color: #111; font: 1rem/1.6 system-ui, sans-serif; }
-    main { max-width: 54rem; margin: auto; padding: clamp(1rem, 4vw, 2rem); background: white; border: 2px solid #808080; box-shadow: 2px 2px #000; overflow-wrap: anywhere; }
-    h1, h2 { line-height: 1.25; }
-    h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); }
-    h2 { margin-top: 2rem; font-size: 1.3rem; }
-    a { color: #000080; text-underline-offset: .15em; }
-    a:focus-visible { outline: 2px solid #000080; outline-offset: 3px; }
-    pre { padding: 1rem; background: #eee; border: 1px solid #808080; overflow-x: auto; }
-    code { font-family: Consolas, monospace; }
-    .launch { display: inline-block; padding: .5rem 1rem; background: #000080; color: white; font-weight: bold; }
-    li + li { margin-top: .5rem; }
-    footer { margin-top: 2rem; border-top: 1px solid #808080; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-padding-top: 1rem;
+    }
+
+    body {
+      margin: 0;
+      padding: 1rem;
+      background: #c0c0c0;
+      color: #111;
+      font: 1rem/1.6 system-ui, sans-serif;
+    }
+
+    main {
+      max-width: 58rem;
+      margin: auto;
+      padding: clamp(1rem, 4vw, 2rem);
+      background: white;
+      border: 2px solid #808080;
+      box-shadow: 2px 2px #000;
+      overflow-wrap: anywhere;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.25;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 2.2rem);
+    }
+
+    h2 {
+      margin-top: 2.5rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid #c0c0c0;
+      font-size: 1.4rem;
+    }
+
+    h3 {
+      margin-top: 1.75rem;
+      font-size: 1.1rem;
+    }
+
+    a {
+      color: #000080;
+      text-underline-offset: .15em;
+    }
+
+    :focus-visible {
+      outline: 2px solid #000080;
+      outline-offset: 3px;
+    }
+
+    pre {
+      padding: 1rem;
+      background: #eee;
+      border: 1px solid #808080;
+      overflow-x: auto;
+    }
+
+    code,
+    kbd {
+      font-family: Consolas, monospace;
+    }
+
+    kbd {
+      padding: .05em .3em;
+      background: #eee;
+      border: 1px solid #808080;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+
+    .launch {
+      display: inline-block;
+      padding: .5rem 1rem;
+      background: #000080;
+      color: white;
+      font-weight: bold;
+    }
+
+    .contents {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #eee;
+      border: 1px solid #808080;
+    }
+
+    .contents p {
+      margin: 0;
+    }
+
+    .contents ol {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .5rem 2rem;
+      margin-bottom: 0;
+      padding-left: 1.5rem;
+    }
+
+    li+li {
+      margin-top: .5rem;
+    }
+
+    .contents li {
+      margin-top: 0;
+    }
+
+    .note {
+      padding: .75rem 1rem;
+      background: #eee;
+      border-left: 4px solid #000080;
+    }
+
+    table {
+      width: 100%;
+      margin: 1rem 0;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: .95rem;
+    }
+
+    caption {
+      margin-bottom: .5rem;
+      text-align: left;
+    }
+
+    th,
+    td {
+      padding: .75rem;
+      border: 1px solid #aaa;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    thead th {
+      background: #000080;
+      color: white;
+    }
+
+    th:first-child {
+      width: 36%;
+    }
+
+    tbody th {
+      background: #f3f3f3;
+      font-weight: 600;
+    }
+
+    .control {
+      display: flex;
+      align-items: flex-start;
+      gap: .65rem;
+    }
+
+    .icon {
+      display: inline-flex;
+      flex: 0 0 32px;
+      width: 32px;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      background: #c0c0c0;
+      border: 2px solid;
+      border-color: white #808080 #808080 white;
+      box-shadow: 1px 1px #000;
+      vertical-align: middle;
+    }
+
+    .icon img {
+      display: block;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .checkbox {
+      display: block;
+      width: 15px;
+      height: 15px;
+      background: white;
+      border: 1px solid #808080;
+    }
+
+    dt {
+      margin-top: 1.25rem;
+      font-weight: bold;
+    }
+
+    dd {
+      margin: .4rem 0 0;
+    }
+
+    footer {
+      margin-top: 2rem;
+      border-top: 1px solid #808080;
+      font-size: .9rem;
+    }
+
+    @media (max-width: 36rem) {
+      body {
+        padding: .5rem;
+      }
+
+      .contents ol {
+        grid-template-columns: 1fr;
+      }
+
+      th,
+      td {
+        padding: .5rem;
+      }
+
+      th:first-child {
+        width: 38%;
+      }
+
+      .control {
+        flex-direction: column;
+        gap: .5rem;
+      }
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: white;
+      }
+
+      main {
+        max-width: none;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .launch {
+        display: none;
+      }
+
+      h2,
+      h3 {
+        break-after: avoid;
+      }
+
+      tr,
+      pre {
+        break-inside: avoid;
+      }
+    }
   </style>
 </head>
+
 <body>
-  <main>
+  <main id="top">
     <nav aria-label="Main"><a href="/">Open the MASM editor</a></nav>
-    <h1>Online MASM compiler, linker and runner</h1>
-    <p><strong>WASM MASM x86 Editor</strong> is a free browser-based assembly editor.
-      Write MASM-compatible source, assemble it with <strong>JWasm</strong>, link it
-      with <strong>JWlink</strong>, and run the resulting <strong>32-bit x86 executable</strong>
-      in a BoxedWine terminal. Kip Irvine's <strong>Irvine32 library</strong> is included.</p>
-    <p><a class="launch" href="/">Launch the online MASM editor</a></p>
+    <header>
+      <h1>WASM MASM x86 Editor user guide</h1>
+      <p>Write, compile, link and run MASM (Microsoft Macro Assembler) assembly online with <strong>WASM MASM x86
+          Editor</strong>.
+        The editor uses JWasm to assemble source code, JWlink to create executables, and BoxedWine
+        to run 32-bit x86 programs. The <strong>Irvine32 library</strong> is included.</p>
+      <p>This manual covers the browser editor, its toolbar controls and the steps to build and back up a program.
+        Use a browser with JavaScript and WebAssembly enabled; no local assembler installation is required.</p>
+      <p><a class="launch" href="/">Launch the MASM editor</a></p>
+    </header>
 
-    <h2>Compile, link and run your first program</h2>
-    <ol>
-      <li>Open the editor and wait for the terminal to finish loading. The first visit downloads the emulator and guest assets; later visits can reuse cached assets and a saved startup state.</li>
-      <li>Select an <code>.asm</code> file in the file drawer, or create one. Replace its contents with the example below.</li>
-      <li>Click the toolbar button labelled <strong>compile, link and run .asm file</strong>. It assembles, links and starts the selected program.</li>
-      <li>Read the output in the terminal. Assembler and linker errors also appear there. After a successful build, <strong>run compiled binary</strong> runs the executable again.</li>
-    </ol>
-    <h2>Irvine32 example</h2>
-    <p>This example prints a message using <code>WriteString</code> and <code>Crlf</code>:</p>
-    <pre aria-label="MASM hello world example" tabindex="0"><code>INCLUDE Irvine32.inc
+    <nav class="contents" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ol>
+        <li><a href="#first-program">Compile and run your first program</a></li>
+        <li><a href="#toolbar">Toolbar button reference</a></li>
+        <li><a href="#files">Manage and back up files</a></li>
+        <li><a href="#troubleshooting">Troubleshoot builds and the terminal</a></li>
+        <li><a href="#compatibility">Assembler and library compatibility</a></li>
+        <li><a href="#help">Support and resources</a></li>
+      </ol>
+    </nav>
 
+    <section aria-labelledby="first-program">
+      <h2 id="first-program">Compile and run your first program</h2>
+      <ol>
+        <li><strong>Open the editor.</strong> Wait for the terminal to load the command prompt.</li>
+        <li><strong>Create a source file.</strong> In the file explorer, select the yellow page icon
+          (<strong>Create new assembly (.asm) text file</strong>). Enter <code>hello.asm</code>
+          and press <kbd>Enter</kbd>.</li>
+        <li><strong>Enter the code.</strong> Paste the <a href="#irvine32-example">Irvine32 example below</a>
+          into the editor. Pause briefly after editing to allow automatic saving.</li>
+        <li><strong>Build the program.</strong> Select <strong>Compile, link and run .asm file</strong>,
+          the first button in the main toolbar. It assembles the open source file, links the object file
+          and starts the executable.</li>
+        <li><strong>Check the terminal.</strong> A successful run prints <code>Hello from MASM!</code>.
+          Build errors appear in the same terminal. If your program requests input, click inside
+          the terminal before typing.</li>
+      </ol>
+      <p>After changing source code, use <strong>Compile, link and run .asm file</strong> again.
+        <strong>Run compiled binary</strong> runs the existing executable without rebuilding it.
+      </p>
+
+      <h3 id="irvine32-example">Irvine32 example: print a message</h3>
+      <pre aria-label="MASM source for hello.asm" tabindex="0"><code>INCLUDE Irvine32.inc
 .data
 message BYTE "Hello from MASM!", 0
 
@@ -62,34 +333,292 @@ main PROC
     exit
 main ENDP
 END main</code></pre>
-    <p>Use <code>INCLUDE Irvine32.inc</code> for the bundled Irvine32 declarations.
-      Additional bundled includes are <code>Macros.inc</code>, <code>SmallWin.inc</code>,
-      <code>VirtualKeys.inc</code> and <code>GraphWin.inc</code>.</p>
+      <p><code>message</code> contains a null-terminated string. <code>mov edx, OFFSET message</code>
+        passes its address to <code>WriteString</code>. <code>Crlf</code> adds a line break,
+        and <code>exit</code> ends the program.</p>
+      <p><strong>Expected output</strong></p>
+      <pre aria-label="Expected program output" tabindex="0"><code>Hello from MASM!</code></pre>
+    </section>
 
-    <h2>Which assembler and architecture does it use?</h2>
-    <p>The tool uses JWasm and JWlink for MASM-compatible assembly and linking,
-      not Microsoft's proprietary MASM executables. Although the assembler supports
-      x86/x64 source, the browser's Wine execution environment is <strong>32-bit</strong>;
-      use 32-bit x86 programs with Irvine32. This is not a 64-bit Windows runner.</p>
-    <p>BoxedWine runs the Wine environment through WebAssembly. The editor and runtime
-      require JavaScript and WebAssembly in your browser; you do not need to install
-      an assembler or Wine locally. This guide itself works without JavaScript.</p>
+    <section aria-labelledby="toolbar">
+      <h2 id="toolbar">Toolbar button reference</h2>
+      <p> Controls are listed from left to right within each group and exist at the top banner of the page.</p>
 
-    <h2>Where are my files saved?</h2>
-    <p>Your files and settings are stored locally in your browser using IndexedDB and
-      local storage. They are not a cloud backup and do not automatically follow you
-      to another browser or device. Download copies of important files using the file
-      menu before clearing site data or resetting storage.</p>
+      <h3 id="build-controls">Build and terminal controls</h3>
+      <table>
+        <caption>Main toolbar: compile, run, stop and reset.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Control</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/buildFile.png" width="22"
+                    height="22" alt="" /></span><span>Compile, link and run .asm file</span></span></th>
+            <td>Builds and runs the open <code>.asm</code> file. Select an assembly source file from the file drawer to
+              enable this button.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/runBinary.png" width="19"
+                    height="19" alt="" /></span><span>Run compiled binary</span></span></th>
+            <td>Runs the <code>.exe</code> associated with the open <code>.asm</code> file. A compiled executable must
+              exist. Source edits are not included until you rebuild.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/cmdCancel.png" width="24"
+                    height="24" alt="" /></span><span>Cancel the running command (Ctrl+C)</span></span></th>
+            <td>Sends <kbd>Ctrl</kbd> + <kbd>C</kbd> to interrupt the running program or command while keeping the
+              terminal session open.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/cmdReset.png" width="24"
+                    height="24" alt="" /></span><span>Reset command prompt</span></span></th>
+            <td>Restarts the terminal environment and ends the current session. Files in the file explorer are preserved
+              and restored to the terminal.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/cacheReset.png" width="24"
+                    height="24" alt="" /></span><span>Hard reset</span></span></th>
+            <td>Opens the reset dialog. Confirming clears the saved terminal state, runtime cache and terminal settings,
+              then reloads the page. Files are kept unless you select <strong>Also delete all my files</strong>. See <a
+                href="#reset-terminal">Reset a terminal that does not respond</a>.</td>
+          </tr>
+        </tbody>
+      </table>
 
-    <h2>Source code, desktop app and help</h2>
-    <p>Visit the <a href="https://github.com/istareatscreens/wasm-masm-x86-editor">project repository</a>,
-      <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/releases">desktop releases</a>,
-      or <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/issues">report an issue</a>.</p>
-    <p>Related projects: <a href="https://github.com/JWasm">JWasm and JWlink</a>,
-      <a href="https://www.boxedwine.org/">BoxedWine</a>, and
-      <a href="https://asmirvine.com/">Kip Irvine's assembly-language resources</a>.</p>
-    <footer><p>This project is not published by, affiliated with or endorsed by Microsoft.
-      <a href="/">Return to the online MASM editor</a>.</p></footer>
+      <h3 id="view-controls">Appearance and workspace controls</h3>
+      <table>
+        <caption>Main toolbar: appearance, editing mode and panel visibility.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Control</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/moon.png" width="24" height="24"
+                    alt="" /></span><span>Light / dark mode</span></span></th>
+            <td>Switches between light and dark appearance. The moon is dark mode and sun is light mode.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/themeMenu.png" width="24"
+                    height="24" alt="" /></span><span>Theme settings</span></span></th>
+            <td>Opens the theme options. Choose a separate editor color theme for light mode and dark mode.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/vim.svg" width="24" height="24"
+                    alt="" /></span><span>Enable / disable Vim mode</span></span></th>
+            <td>Toggles Vim key bindings in the source editor. With Vim enabled, press <kbd>i</kbd> to enter Insert mode
+              and <kbd>Esc</kbd> to return to Normal mode (consider remaping your escape key to capslock).
+              <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> keys are
+              used to move the in Visual mode. A tutorial is available at <a href="https://openvim.com/" target="_blank"
+                rel="noopener noreferrer">https://openvim.com/</a>. Vim plugins exist for all major
+              IDEs and the vim/vi/nvim program is available in most terminal environments (linux / Mac OS X) and
+              is a very powerful tool for text editing.
+            </td>
+          </tr>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/zen.png" width="24" height="24"
+                    alt="" /></span><span>Turn zen mode on / off</span></span></th>
+            <td>Shows only the editor by hiding the terminal and file explorer. Turning zen mode off shows all three
+              panels.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/editor.png" width="24" height="24"
+                    alt="" /></span><span>Show / hide editor</span></span></th>
+            <td>Toggles the source editor panel.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/cmd.png" width="24" height="24"
+                    alt="" /></span><span>Show / hide command prompt</span></span></th>
+            <td>Toggles the terminal panel. Hiding it does not stop a running program.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/filedrawer.png" width="24"
+                    height="24" alt="" /></span><span>Show / hide file explorer</span></span></th>
+            <td>Toggles the file list and its file management toolbar.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/fullscreen.png" width="24"
+                    height="24" alt="" /></span><span>Toggle full screen</span></span></th>
+            <td>Enters or leaves browser full screen. You can also press <kbd>Esc</kbd> to leave full screen.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/about.png" width="24" height="24"
+                    alt="" /></span><span>Application info</span></span></th>
+            <td>Opens information window about the project.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 id="file-controls">File explorer controls</h3>
+      <table>
+        <caption>File toolbar: select, create, import, download and delete.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Control</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon" aria-hidden="true"><span
+                    class="checkbox"></span></span><span>Select all</span></span></th>
+            <td>Checks or clears every file in the current file view. Use the checkboxes beside individual filenames to
+              select a smaller group.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/newFile.png" width="15" height="15"
+                    alt="" /></span><span>Create new assembly (.asm) text file</span></span></th>
+            <td>Opens the Create file dialog. Enter a filename and press <kbd>Enter</kbd>. The editor adds
+              <code>.asm</code> if needed.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/uploadFile.png" width="16"
+                    height="16" alt="" /></span><span>Add file(s) to project</span></span></th>
+            <td>Imports one or more files from your device into the browser project.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/saveFile.png" width="16"
+                    height="16" alt="" /></span><span>Save selected file(s)</span></span></th>
+            <td>Downloads the checked files to your device. One file downloads individually; multiple files download as
+              a ZIP archive. With no boxes checked, downloads the open file.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/deleteFile.png" width="24"
+                    height="24" alt="" /></span><span>Delete selected file(s)</span></span></th>
+            <td>Immediately removes the checked files from the project and terminal. With no boxes checked, deletes the
+              open file. Download a backup before deleting files you may need.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/files.png" width="24" height="24"
+                    alt="" /></span><span>Switch file type view</span></span></th>
+            <td>Switches the list between <code>.asm</code> source files and all other files, including generated
+              <code>.obj</code> and <code>.exe</code> files.
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/saveFile.png" width="16"
+                    height="16" alt="" /></span><span>Download legacy files</span></span></th>
+            <td>The extra floppy disk button appears only when files from an older version remain in browser storage. It
+              downloads those files as a ZIP backup.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="files">
+      <h2 id="files">Manage and back up files</h2>
+      <h3>Open and rename files</h3>
+      <p>Click a filename to open it. Checking its box selects it for download or deletion;
+        it does not open it. Double-click a filename to rename it, then press <kbd>Enter</kbd>.
+        Keep the <code>.asm</code> extension on assembly source files.</p>
+      <p>To find build outputs or imported files with other extensions, use <strong>Switch file type view</strong>.
+        Switching views clears the checkbox selection, so select files again before downloading or deleting.</p>
+
+      <h3>Automatic saving and local storage</h3>
+      <p>Source edits save automatically in this browser after a short pause in typing.
+        Allow that pause before switching files, building, downloading or closing the page.
+        Files are stored in IndexedDB; editor preferences are stored in local storage.</p>
+      <p class="note"><strong>Keep a downloaded backup.</strong> Browser storage stays with this browser
+        and device. It does not sync to an account, and clearing site data removes it.
+        The floppy disk button downloads a copy to your device.</p>
+
+      <h3>Download and restore a project</h3>
+      <ol>
+        <li>In the source file view, check the files you need, or use <strong>Select all</strong>.</li>
+        <li>Select <strong>Save selected file(s)</strong> to download them. Multiple checked files
+          are packaged in a ZIP archive.</li>
+        <li>Switch file type view and repeat for any other files you need to keep.</li>
+        <li>To restore a backup, extract the ZIP on your device first, then use
+          <strong>Add file(s) to project</strong> to import the extracted files.
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="troubleshooting">
+      <h2 id="troubleshooting">Troubleshoot builds and the terminal</h2>
+      <dl>
+        <dt>The compile or run button is disabled</dt>
+        <dd>Open an <code>.asm</code> file by clicking its name. To enable <strong>Run compiled binary</strong>,
+          first compile successfully so the matching <code>.exe</code> exists.</dd>
+
+        <dt>The assembler or linker reports an error</dt>
+        <dd>Read the first error in the terminal and check the referenced source line or symbol.
+          Correct the source, then compile again. For the example above, keep
+          <code>INCLUDE Irvine32.inc</code> and <code>END main</code> as shown.
+        </dd>
+
+        <dt>The program runs an older version of the code</dt>
+        <dd>Wait briefly after your last edit, then use <strong>Compile, link and run .asm file</strong>.
+          <strong>Run compiled binary</strong> does not rebuild the executable.
+        </dd>
+
+        <dt>Typing does not reach the program or editor</dt>
+        <dd>Click inside the terminal to enter program input, or inside the editor to edit source.
+          If Vim mode is enabled, press <kbd>i</kbd> to insert text or turn Vim mode off.</dd>
+
+        <dt>A panel is missing</dt>
+        <dd>Use its <strong>Show / hide</strong> toolbar control. If zen mode is active,
+          turn it off to restore the editor, terminal and file explorer.</dd>
+      </dl>
+
+      <h3 id="reset-terminal">Reset a terminal that does not respond</h3>
+      <ol>
+        <li>Select <strong>Cancel the running command (Ctrl+C)</strong> to interrupt the program.</li>
+        <li>If the terminal still does not respond, select <strong>Reset command prompt</strong>
+          and wait for the terminal to restart.</li>
+        <li>If restarting does not resolve the problem, open <strong>Hard reset</strong>.
+          Leave <strong>Also delete all my files</strong> unchecked, wait for the confirmation
+          countdown and select <strong>Hard Reset</strong>.</li>
+      </ol>
+      <p>A hard reset rebuilds the terminal environment and may take longer than a normal startup.
+        Files in the file explorer are restored automatically.</p>
+      <p class="note"><strong>Deleting files during a hard reset cannot be undone.</strong>
+        Select <strong>Also delete all my files</strong> only if you intend to erase the project
+        and any files left from an older version. Download a backup first.</p>
+    </section>
+
+    <section aria-labelledby="compatibility">
+      <h2 id="compatibility">Assembler and library compatibility</h2>
+      <p>The build tools are <strong>JWasm and JWlink</strong>, which support MASM-compatible syntax.
+        The editor does not use Microsoft's MASM executables. The browser runtime is a
+        <strong>32-bit Wine environment</strong> running through BoxedWine and WebAssembly.
+        Use 32-bit x86 programs with Irvine32; 64-bit Windows executables cannot run here.
+      </p>
+      <p><code>INCLUDE Irvine32.inc</code> loads the bundled Irvine32 declarations.
+        The bundled build command handles the library paths and linking for the example above.
+        Other included headers are <code>Macros.inc</code>, <code>SmallWin.inc</code>,
+        <code>VirtualKeys.inc</code> and <code>GraphWin.inc</code>.
+      </p>
+    </section>
+
+    <section aria-labelledby="help">
+      <h2 id="help">Support and resources</h2>
+      <p>For a reproducible problem, <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/issues">report an
+          issue</a>
+        with your browser version, the steps you followed, the relevant source code and the terminal error.
+        The <a href="https://github.com/istareatscreens/wasm-masm-x86-editor">project repository</a>
+        contains the source code; <a href="https://github.com/istareatscreens/wasm-masm-x86-editor/releases">desktop
+          releases</a>
+        are available separately.</p>
+      <p>For tool and library documentation, see <a href="https://github.com/JWasm">JWasm and JWlink</a>,
+        <a href="https://www.boxedwine.org/">BoxedWine</a> and
+        <a href="https://asmirvine.com/">Kip Irvine's assembly-language resources</a>.
+      </p>
+    </section>
+
+    <footer>
+      <p><a href="#top">Back to top</a> &middot; <a href="/">Open the MASM editor</a></p>
+      <p>This project is not published by, affiliated with or endorsed by Microsoft.</p>
+    </footer>
   </main>
 </body>
+
 </html>

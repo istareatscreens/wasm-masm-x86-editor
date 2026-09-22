@@ -298,11 +298,23 @@ function copyHtml() {
 }
 
 
-function copyGuideTask() {
+function copyGuideHtmlTask() {
   return src(htmlPath + "web/guide/**/*.html", { base: htmlPath + "web" })
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(dest(output));
 }
+
+function copyGuideIconsTask() {
+  // Reuse the application's toolbar icons in the static user manual.
+  return src([
+    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,about,newFile,uploadFile,saveFile,deleteFile,files}.png",
+    "src/images/vim.svg",
+  ], BINARY)
+    .pipe(svgoTransform())
+    .pipe(dest(output + "guide/icons/"));
+}
+
+const copyGuideTask = parallel(copyGuideHtmlTask, copyGuideIconsTask);
 
 function imgTask() {
   // favicon (copied verbatim) + the SVG icons used by the SCSS (svgo-minified)
