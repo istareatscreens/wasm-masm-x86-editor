@@ -15,23 +15,16 @@ const file = require('gulp-file');
 const fsp = require("fs/promises");
 const { Transform } = require("stream");
 const { optimize: svgoOptimize } = require("svgo");
-const { chunkGuest } = require("./scripts/chunk-guest.cjs");
+const { chunkGuest, guestChunkVersions } = require("./scripts/chunk-guest.cjs");
 
-// gulp 5 decodes every src() stream as UTF-8 (and strips BOMs) unless told not
-// to, which silently corrupts binaries. Every task that copies non-text assets
-// (wasm, guest zips, fonts, ico/icns/png) must pass BINARY.
+// gulp 5 decodes src() streams as UTF-8 unless told not to: binary assets need BINARY.
 const BINARY = { encoding: false };
 
-// Empty an output directory but keep it (same effect `del("dir/**/*")` had).
 function cleanDir(dir) {
   return fsp.rm(dir, { recursive: true, force: true }).then(() => fsp.mkdir(dir, { recursive: true }));
 }
 
-// Minify .svg files in the stream with svgo (pure JS — replaces gulp-imagemin,
-// whose gifsicle/mozjpeg/optipng download platform binaries at install time and
-// never touched this input anyway). Options mirror the previous imagemin-svgo
-// config: preset-default keeps removeViewBox on; cleanupIds stays off.
-// Non-SVG files (favicon.ico) pass through untouched.
+// Minify .svg files with svgo; other files pass through untouched.
 function svgoTransform() {
   return new Transform({
     objectMode: true,
@@ -65,36 +58,29 @@ const jsBoxedPath = "src/js/boxedwine/**/*.js";
 const electronOutput = "build/";
 const electronJS = "src/electron/*.js";
 
-// BW_BUILD_ID: identity of the deployed emulator stack, injected into
-// boxedwine.html (placeholder "__BW_BUILD_ID__"). It keys the instant-startup
-// snapshot, the boot-asset cache (Cache API) and the per-build runtime-failure
-// record, so a new deploy can never restore an old snapshot into a new wasm,
-// serve a stale glue/wasm pair from cache, or stay pinned to a stale failure.
-// Hash of: both wasm binaries, the shell + snapshot scripts, and the guest /
-// toolchain zip names+sizes (content hash of 112MB every build is not worth it —
-// the zip filename changes whenever the guest content is regenerated).
+// BW_BUILD_ID: hash of the emulator stack, injected into boxedwine.html. It keys the
+// snapshot, the asset cache, the runtime-failure record and the glue/wasm URLs.
 function computeBwBuildId() {
   const crypto = require("crypto");
   const fs = require("fs");
   const h = crypto.createHash("sha256");
   const files = [
     "src/wasm/boxedwine.wasm", "src/wasm/boxedwine-mt.wasm",
+    "src/js/boxedwine/boxedwine.js", "src/js/boxedwine/boxedwine-mt.js",
     "src/js/boxedwine/boxedwine-shell.js", "src/js/boxedwine/bw-snapshot.js",
     "src/html/boxedwine.html", // launch config (resolution, program, drives) lives here
   ];
   for (const f of files) {
     try {
       h.update(f);
-      // text inputs are hashed with LF endings so a CRLF checkout (Windows,
-      // core.autocrlf) and an LF checkout (Linux CI) yield the same id
+      // LF-normalised so CRLF and LF checkouts give the same id
       const raw = fs.readFileSync(f);
       h.update(/\.wasm$/.test(f) ? raw : raw.toString("utf8").replace(/\r\n/g, "\n"));
     } catch (e) { h.update(f + ":missing"); }
   }
   try {
     for (const z of fs.readdirSync("src/bw-assets").filter((n) => n.endsWith(".zip")).sort()) {
-      // size + the zip's tail (central directory: every entry's CRC), so an
-      // in-place edit of one guest file (same size) still changes the id
+      // size + the central directory (every entry's CRC)
       const p = "src/bw-assets/" + z, size = fs.statSync(p).size, tail = Math.min(size, 2 * 1024 * 1024);
       const fd = fs.openSync(p, "r"), buf = Buffer.alloc(tail);
       fs.readSync(fd, buf, 0, tail, size - tail); fs.closeSync(fd);
@@ -104,8 +90,6 @@ function computeBwBuildId() {
   return h.digest("hex").slice(0, 16);
 }
 function injectBwBuildId() {
-  const { Transform } = require("stream");
-  // recomputed per task run so `gulp watch` picks up a redeployed wasm/guest
   const bwBuildId = computeBwBuildId();
   console.log("BW_BUILD_ID " + bwBuildId);
   return new Transform({
@@ -118,22 +102,33 @@ function injectBwBuildId() {
     },
   });
 }
+// BW_GUEST_CHUNKS: {"<guest zip>": "<chunks-manifest version>"}; {} for Electron (whole zips).
+function injectGuestChunks({ electron = false } = {}) {
+  const PLACEHOLDER = "/*__BW_GUEST_CHUNKS__*/null";
+  return new Transform({
+    objectMode: true,
+    transform(vinyl, enc, cb) {
+      if (!vinyl.isBuffer() || !/boxedwine\.html$/.test(vinyl.path)) return cb(null, vinyl);
+      (electron ? Promise.resolve({}) : guestChunkVersions()).then((chunks) => {
+        const text = vinyl.contents.toString();
+        if (text.split(PLACEHOLDER).length !== 2) throw new Error("boxedwine.html must contain " + PLACEHOLDER + " exactly once");
+        console.log("BW_GUEST_CHUNKS " + JSON.stringify(chunks));
+        vinyl.contents = Buffer.from(text.replace(PLACEHOLDER, () => JSON.stringify(chunks)));
+        cb(null, vinyl);
+      }).catch((e) => cb(e));
+    },
+  });
+}
 
-// The three webpack tasks start from webpack-stream directly: the entries live in
-// webpack.common.js, so a leading src() glob was only ever a trigger — and under
-// gulp 5 (streamx) piping src() into webpack-stream (classic `through`) fails with
-// "StreamError: Writable stream closed" on every run after the first (gulp watch).
+// The webpack tasks start from webpack-stream directly: piping src() into it fails
+// under gulp 5 on every watch run after the first.
 //Electron
 function jsTaskMainElectron() {
   return src([electronJS]).pipe(dest(electronOutput));
 }
 
-// The desktop app icon is src/images/masm-icon-512w.{ico,png}, copied as build/icon.ico
-// and build/icon.png: what package.json's electron-builder "build" section names
-// (buildResources = build/; the mac .icns is generated from the 512 px PNG) and what
-// electron-main.js gives the BrowserWindow.
+// build/icon.{ico,png}: the electron-builder icons and the BrowserWindow icon.
 function iconTaskElectron() {
-  const { Transform } = require("stream");
   const asIcon = new Transform({
     objectMode: true,
     transform(file, _enc, cb) { file.basename = "icon" + file.extname; cb(null, file); },
@@ -153,10 +148,6 @@ function cleanTaskElectron() {
 }
 
 function jsBoxedTaskElectron() {
-  // Copy new boxedwine files separately (do not concat)
-  // boxedwine.js / boxedwine-mt.js are the emulator glue built from the vendor tree
-  // in Boxedwine/ (see README "Building Boxedwine"); jszip.min.js is still needed
-  // for Boxedwine.jsx zip functionality
   return src([
     "src/js/boxedwine/boxedwine.js",
     "src/js/boxedwine/boxedwine-shell.js",
@@ -175,18 +166,16 @@ function wasmTaskElectron() {
 function copyHtmlElectron() {
   return src([htmlPath + "boxedwine.html", htmlPath + "electron/index.html"])
     .pipe(injectBwBuildId())
+    .pipe(injectGuestChunks({ electron: true }))
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(gulp.dest(electronOutput));
 }
 
-// Electron gets the same pre-booted guest + toolchain as the web build
-// (boxedwine.html points the shell at latest26/<guest>.zip and assembler-dp0.zip).
 function assetsTaskElectron() {
   return src("src/bw-assets/*.zip", BINARY).pipe(gulp.dest(electronOutput + "latest26/"));
 }
 
 function imgTaskElectron() {
-  // favicon (copied verbatim) + the SVG icons used by the SCSS (svgo-minified)
   return src([imagePath + ".ico", "src/css/images/*"], BINARY)
     .pipe(svgoTransform())
     .on('error', function(err) {
@@ -244,7 +233,6 @@ function copyHeadersTask() {
   return src("_headers").pipe(dest(output));
 }
 
-// Runtime URLs and the manifest contract are unchanged; only this guest is split.
 function guestAssetsTask() {
   return chunkGuest();
 }
@@ -267,12 +255,7 @@ function fontTask() {
 }
 
 function jsBoxedTask() {
-  // Copy new boxedwine files separately (do not concat)
-  // boxedwine.js / boxedwine-mt.js are the emulator glue built from the vendor tree
-  // in Boxedwine/ (see README "Building Boxedwine"); jszip.min.js is still needed
-  // for Boxedwine.jsx zip functionality
-  // bw-chunk-sw.js is the web-only service worker that reassembles the chunked
-  // guest image (see guestAssetsTask); it must live at the site root.
+  // bw-chunk-sw.js (web only) must be served from the site root
   return src([
     "src/js/boxedwine/boxedwine.js",
     "src/js/boxedwine/boxedwine-shell.js",
@@ -293,6 +276,7 @@ function wasmTask() {
 function copyHtml() {
   return src([htmlPath + "boxedwine.html", htmlPath + "web/index.html", htmlPath + "web/404.html"])
     .pipe(injectBwBuildId())
+    .pipe(injectGuestChunks())
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(gulp.dest("public"));
 }
@@ -317,7 +301,6 @@ function copyGuideIconsTask() {
 const copyGuideTask = parallel(copyGuideHtmlTask, copyGuideIconsTask);
 
 function imgTask() {
-  // favicon (copied verbatim) + the SVG icons used by the SCSS (svgo-minified)
   return src([imagePath + ".ico", "src/css/images/*", "src/images/masm-icon-512w.png"], BINARY)
     .pipe(svgoTransform())
     .on('error', function(err) {
@@ -342,10 +325,7 @@ function watchTask() {
   browserSync.init({
     server: {
       baseDir: "./public/",
-      // Cross-origin isolation so the multi-threaded build (SharedArrayBuffer)
-      // can be selected with ?bw=mt. The single-threaded default (instant startup)
-      // works with or without these headers; all app subresources are same-origin
-      // so COEP:require-corp does not block them.
+      // cross-origin isolation for the multi-threaded build (?bw=mt)
       middleware: [
         function (req, res, next) {
           res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
@@ -394,9 +374,7 @@ exports.electron = series(
 );
 //BUILD Web Production
 exports.default = series(
-  // clean FIRST so it never races the asset/html tasks (a parallel clean would
-  // delete files other tasks are writing, and made the sitemap task lstat a
-  // half-deleted html file and abort the whole build).
+  // clean FIRST so it cannot race the copy tasks
   cleanTask,
   parallel(
     jsTaskProd,

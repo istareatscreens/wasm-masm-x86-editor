@@ -355,16 +355,8 @@
     		return contents;
         }
         function loadFile(pathPrefix, filename, callback) {
-            // Boot assets go through the build-id-keyed Cache API layer (bw-cache.js)
-            // when present: a repeat visit serves the 112MB guest zip from disk
-            // instead of the network. Falls back to plain fetch transparently.
-            //
-            // masm-editor: a failed download used to log "Unable to load" and never call
-            // back, leaving the loading screen up forever (a load during a deploy that is
-            // rewriting the chunk files, a flaky connection, a transient 404/5xx). Retry
-            // with backoff (5 attempts, ~30 s), say so on the loading screen, and after
-            // the last failure tell the parent app (it shows the "Terminal failed to
-            // start" notice with the reason) instead of hanging silently.
+            // masm-editor: through the boot-asset cache (bw-cache.js) when present; a failed
+            // download is retried with backoff, then reported to the parent app.
             var RETRY_MS = [1000, 2000, 4000, 8000, 15000];
             var attempt = 0;
             var stage = function (t) { if (window.bwBootStage) window.bwBootStage(t); };
@@ -374,7 +366,7 @@
                 try { window.parent.postMessage(JSON.stringify({ eventName: "emulator-slow", data: { data: { runtime: window.BW_USE_MT ? "mt" : "st", reason: "could not download " + filename + ": " + why } } }), "/"); } catch (e) {}
             };
             var tryLoad = function () {
-                var doFetch = (window.BWCache && window.BWCache.fetch) ? window.BWCache.fetch : fetch;
+                var bw = window.BWCache;
                 var onError = function (why) {
                     if (attempt >= RETRY_MS.length) { fail(why); return; }
                     var wait = RETRY_MS[attempt++];
@@ -382,15 +374,19 @@
                     stage("Download of " + filename + " failed (" + why + "), retrying " + attempt + "/" + RETRY_MS.length);
                     setTimeout(tryLoad, wait);
                 };
+                var init = { method: 'GET', cache: attempt ? 'reload' : 'default' };
                 var p;
-                try { p = Promise.resolve(doFetch(pathPrefix + filename, { method: 'GET', cache: attempt ? 'reload' : 'default' })); }
-                catch (e) { onError(String(e)); return; }
-                p.then(function (response) {
-                    if (!response || response.status !== 200) { onError("HTTP " + (response ? response.status : "no response")); return; }
-                    return response.arrayBuffer().then(function (buffer) {
-                        if (!buffer || !buffer.byteLength) { onError("empty response"); return; }
-                        callback(new Uint8Array(buffer));
+                try {
+                    if (bw && bw.fetchBuffer) p = Promise.resolve(bw.fetchBuffer(pathPrefix + filename, init));
+                    else p = Promise.resolve((bw && bw.fetch ? bw.fetch : fetch)(pathPrefix + filename, init)).then(function (response) {
+                        if (!response || response.status !== 200) return { status: response ? response.status : 0, buffer: null };
+                        return response.arrayBuffer().then(function (buffer) { return { status: 200, buffer: buffer }; });
                     });
+                } catch (e) { onError(String(e)); return; }
+                p.then(function (r) {
+                    if (!r || r.status !== 200) { onError("HTTP " + (r && r.status ? r.status : "no response")); return; }
+                    if (!r.buffer || !r.buffer.byteLength) { onError("empty response"); return; }
+                    callback(new Uint8Array(r.buffer));
                 }).catch(function (e) { onError(String(e && e.message || e)); });
             };
             tryLoad();
@@ -443,22 +439,14 @@
     		console.log("Use Storage mode: "+Config.storageMode);
 			FS.mkdir(ROOT);
 			FS.mkdir(Config.d_drive);
-			// masm-editor: /root and /d_drive are plain MEMFS. Nothing the
-			// guest writes persists by itself: the user's files live in the parent app's
-			// IndexedDB and are reconciled into D: on every start, and the factory-state
-			// snapshot carries the /root overlay captured with the heap. (The IDBFS
-			// mounts of earlier builds persisted both trees per origin, while the guest's
-			// directory listings are cached in the heap once — a restored heap then
-			// disagreed with the native FS: orphans and ghosts.) The legacy IDBFS stores
-			// are imported once and deleted below.
+			// masm-editor: /root and /d_drive are plain MEMFS (the user's files live in the
+			// parent app; the snapshot carries /root). Older builds' IDBFS stores are
+			// imported once and deleted.
 			bwMigrateLegacyStores(callback);
 		}
-        // One-time migration of the legacy IDBFS stores ("/d_drive" = user files the
-        // guest wrote in earlier builds, "/root" = Wine prefix writes). Every file in
-        // the legacy /d_drive store is handed to the parent app (window.BW_LEGACY_GUEST_FILES,
-        // imported into the drawer by Boxedwine.jsx/App.jsx unless the drawer already has
-        // the name) BEFORE both databases are deleted, so nothing is dropped unseen.
-        // Fallback-safe: any failure just leaves the databases for the next load.
+        // One-time migration: the files of the legacy "/d_drive" store go to the parent app
+        // (window.BW_LEGACY_GUEST_FILES) before both legacy databases are deleted. Any
+        // failure leaves them for the next load.
         function bwMigrateLegacyStores(done) {
             var KEY = window.BW_STORAGE_KEY || "bw-storage-v", VER = window.BW_STORAGE_VERSION || "2";
             var prev = null;
@@ -512,9 +500,6 @@
             });
         }
         // masm-editor: the file systems are ready -> the emulator starts at once
-        // (the stock shell's Start button, sound / pointer-lock / console toggles and
-        // upload / download UI do not exist here: the console is launched with
-        // wineconsole cmd and files reach D: through the direct API).
         function buildBrowserFileSystem() {
             start();
         }
@@ -533,74 +518,44 @@
                 Module['arguments'].push(params[i]);
             }
 
-            // Instant startup: if a valid version-matched memory snapshot exists,
-            // restore it instead of cold-booting Wine (~2.8s vs ~14s). initialSetup
-            // (preRun) has already mounted the same zips, so FD reconnect resolves.
-            // Fallback-safe: absent/invalid snapshot -> normal cold boot + capture.
-            //
-            // Works for BOTH ST and MT (MT also supports snapshot: it restores by
-            // recreating its guest pthreads and captures via a stop-the-world barrier).
-            // boxedwine.html set Module.noInitialRun=true ONLY when a snapshot marker
-            // exists (restore intended). On a cold boot noInitialRun is unset and
-            // emscripten auto-boots main — the ONLY reliable way to start MT under
-            // PROXY_TO_PTHREAD (manually calling callMain after noInitialRun deadlocks
-            // thread 0 in the MT proxy_main). So we NEVER call callMain: cold boot is
-            // emscripten's auto-main, restore is doRestore (bwResumeFromSnapshot).
+            // Instant startup (ST and MT): restore the snapshot when boxedwine.html set
+            // noInitialRun, else cold-boot through emscripten's auto-main and capture.
+            // Never call callMain: it deadlocks MT under PROXY_TO_PTHREAD.
             var proceed = function () {
                 var snap = window.BWSnapshot;
                 var fireReady = function (how, info) { if (window.bwFireReady) window.bwFireReady(how, info); };
                 var stage = function (t) { if (window.bwBootStage) window.bwBootStage(t); };
                 if (snap) {
                     if (Module.noInitialRun) {
-                        // RESTORE path: boxedwine.html found a snapshot marker and
-                        // suppressed auto-main. Drive the restore in postRun (runtime
-                        // initialised, HEAPU8 available). No callMain — doRestore uses
-                        // bwResumeFromSnapshot, whose emscripten_set_main_loop returns
-                        // via the 'unwind' and never blocks thread 0.
+                        // restore in postRun (runtime initialised, HEAPU8 available)
                         (Module.postRun = Module.postRun || []).push(function () {
                             if (snap.willRestore()) {
                                 stage("Restoring the terminal");
-                                // Watchdog: a restore that resumes but never executes
-                                // the guest (blank canvas) is discarded + reloaded into
-                                // a cold boot within 8s.
-                                // doRestore repopulates /root from the captured overlay,
-                                // streams the gunzipped heap into the live heap (async)
-                                // then resumes; on failure it discards + reloads.
+                                // doRestore and the watchdog both discard + reload into a
+                                // cold boot on failure
                                 Promise.resolve(snap.doRestore(Module)).then(function (ok) {
                                     if (!ok) return;
-                                    // the environment is ready once the restore is verified
-                                    // usable (the image is the factory state: no capture here)
                                     snap.watchRestore(Module).then(function (verified) {
                                         if (verified) fireReady("restore", null);
                                     });
                                 });
                             } else {
-                                // Stale marker: auto-main was suppressed but there is no
-                                // valid snapshot (version change / corruption). Discard
-                                // the marker and reload into a clean cold boot (auto-
-                                // main). Rare and self-healing.
+                                // stale marker (no valid snapshot): reload into a cold boot
                                 snap.discard().then(function () {
                                     try { location.reload(); } catch (_) {}
                                 });
                             }
                         });
                     } else {
-                        // COLD path: no marker, so emscripten auto-boots main normally
-                        // (the ONLY reliable way to start MT under PROXY_TO_PTHREAD).
-                        // Never call callMain.
+                        // cold boot: emscripten auto-boots main
                         snap.markColdBoot();
                         stage("Booting Windows console (first visit)");
-                        // Boot watchdog: MT that never becomes usable (90s) records a
-                        // per-build failure and reloads into ST; ST warns + notifies.
-                        // The returned promise resolves when the console IS usable.
                         snap.watchBoot(Module).then(function () {
-                            // The FACTORY state is captured now — console
-                            // usable + idle, loading screen still up, input gate closed,
-                            // no user file on D: yet. Only the atomic copy is awaited;
-                            // the gzip + IndexedDB write continue in the background.
+                            // capture the factory state (input gate closed, no user file on
+                            // D: yet); only the atomic copy is awaited
                             if (!snap.canCapture()) { fireReady("cold-nocapture", null); return; }
                             stage("Saving instant-start state");
-                            snap.captureWhenIdle(Module, 500, 20000, {
+                            snap.captureWhenIdle(Module, 250, 20000, {
                                 inputOpenBefore: window.BW_INPUT_OPEN === true,
                                 pendingInput: (function () { try { return Module.getPendingInputCount ? Module.getPendingInputCount() : -1; } catch (e) { return -1; } })(),
                             }).then(function (r) {
@@ -625,6 +580,8 @@
         }
         var initialSetup = function(){
             console.log("running initial setup");
+            // restore: fault the fresh heap in while the zips load
+            if (Module.noInitialRun && window.BWSnapshot && window.BWSnapshot.prefault) window.BWSnapshot.prefault(Module);
             setConfiguration();
             if (Config.emEnvProps.length > 0) {
             	Config.emEnvProps.forEach(function(prop){
@@ -637,10 +594,11 @@
     	        	buildAppFileSystem(() => {
     	            	if (window.bwBootStage) window.bwBootStage("Loading system image");
     	            	loadFile(Config.locateRootBaseUrl, Config.rootZipFile, (rootZipfileBytes) => {
-    	            	    createFile("/", Config.rootZipFile, rootZipfileBytes);
-    	            	    // masm-editor: size the guest console to this iframe (writes the
-    	            	    // [Console] registry into the /root overlay before the emulator starts)
-    	            	    if (typeof window.bwPatchGuestConsole === "function") {
+    	            	    // MEMFS adopts the buffer (no 60MB copy); nothing writes to it afterwards
+    	            	    createFile("/", Config.rootZipFile, rootZipfileBytes, true);
+    	            	    // masm-editor: size the guest console to this iframe (cold boot only:
+    	            	    // a restore brings its own /root and is resized to the panel later)
+    	            	    if (typeof window.bwPatchGuestConsole === "function" && !Module.noInitialRun) {
     	            	        window.bwPatchGuestConsole(rootZipfileBytes, buildBrowserFileSystem);
     	            	    } else {
                         	    buildBrowserFileSystem();
@@ -752,18 +710,10 @@
             if (window.BW_DEBUG_LOG) console.log("Emulator params:" + params);
             return params;
         }
-      // A program the user ran was ended by Wine. Two line shapes reach
-      // the emulator log in this guest (both hooks below, stdout and stderr):
-      //  1. "wine: Unhandled page fault on write access to 00000000 at address 0040100C
-      //     (thread 0118), starting debugger..." - access violation, division by zero,
-      //     illegal/privileged instruction, ... (kernelbase format_exception_msg); no
-      //     debugger is configured (reference/guest-crash-policy.py) so the program
-      //     ends at once.
-      //  2. "0138:err:virtual:virtual_setup_exception stack overflow 852 bytes in thread
-      //     0138 addr 0x7b03d54c stack ..." - a stack overflow: the unhandled-exception
-      //     path itself runs out of the last stack page and ntdll aborts the thread
-      //     (wine-6.0 dlls/ntdll/unix/virtual.c); nothing else is printed for it.
-      // The app shows the reason + a hint keyed by `kind` in a retro notice.
+      // A program the user ran was ended by Wine: "wine: Unhandled <exception>, starting
+      // debugger..." (no debugger is configured), or for a stack overflow only
+      // "<tid>:err:virtual:virtual_setup_exception stack overflow ...". The app shows the
+      // reason and a hint keyed by `kind`.
       function bwProgramCrashed(text) {
         var m = /^wine: (Unhandled [^,]*?)(?:, starting debugger\.\.\.)?\s*$/.exec(text);
         var reason = m && m[1], kind = "other";
@@ -786,10 +736,8 @@
         arguments: [],
         postRun: [],
         print: (function() {
-          // Guest stdout is high-volume (Wine emits many fixme: lines). Only mirror
-          // to the browser console when explicitly debugging (window.BW_DEBUG_LOG /
-          // ?bwlog=1); the last BW_GUEST_LOG_MAX lines are kept in window.BW_GUEST_LOG
-          // for the harness (--bwlog) instead of an unbounded hidden textarea.
+          // guest stdout reaches the browser console only with ?bwlog=1; the last MAX
+          // lines are kept in window.BW_GUEST_LOG
           var MAX = 2000, log = window.BW_GUEST_LOG = [];
           return function(text) {
             text = Array.prototype.slice.call(arguments).join(' ');
@@ -820,8 +768,7 @@
           return canvas;
         })(),
         setStatus: function(text) {
-          // emscripten reports "Downloading..."/"Preparing... (n/m)" here; the app shows
-          // its own loading screen (bwBootStage), so this is only kept for debugging
+          // the app shows its own loading screen; logged for debugging only
           if (window.BW_DEBUG_LOG && text) console.log("[emscripten] " + text);
         },
         totalDependencies: 0,
@@ -838,9 +785,10 @@
           if (text) Module.printErr('[post-exception status] ' + text);
         };
       };
-function createFile(dir, name, buf) {
+// canOwn: MEMFS adopts buf instead of copying it (the caller must not modify it afterwards)
+function createFile(dir, name, buf, canOwn) {
     try {
-        FS.createDataFile(dir, name, buf, true, true);
+        FS.createDataFile(dir, name, buf, true, true, !!canOwn);
         console.log("File created:" + dir + "/" + name);
     } catch(e) {
         console.log("Unable to create file:" + dir + "/" + name + "  error:" + e);

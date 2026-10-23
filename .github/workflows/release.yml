@@ -1,21 +1,3 @@
-# Build the Electron desktop app for Windows, macOS (x64 + arm64) and Linux on
-# GitHub-hosted runners and publish the installers on the Releases page.
-#
-#   push to master/main -> the three builds run and the rolling "nightly"
-#                          pre-release is updated with the new installers (its
-#                          tag is force-moved to the commit). Pre-releases are
-#                          ignored by electron-updater, so installed apps keep
-#                          updating from tagged releases only.
-#   push a tag v<x.y.z>  -> a normal release "v<x.y.z>" marked as latest. Bump
-#                          "version" in package.json first: the artifact names
-#                          and the latest*.yml update manifests embed it.
-#   "Run workflow"       -> dry run: builds everything and uploads the installers
-#                          as workflow artifacts, publishes nothing.
-#
-# Requirements the workflow cannot satisfy by itself: the Electron build copies
-# guest-assets/*.zip, src/wasm/*.wasm and the Boxedwine glue under
-# src/js/boxedwine into build/ - those files must be committed for CI to produce
-# a complete app. macOS builds are unsigned (no signing secrets are configured).
 name: Release desktop app
 
 on:
@@ -52,7 +34,6 @@ jobs:
             name: linux
             args: --linux
     env:
-      # never look for a code-signing identity on the macOS runner
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - name: Checkout

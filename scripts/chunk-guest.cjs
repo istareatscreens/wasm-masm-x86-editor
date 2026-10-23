@@ -6,9 +6,23 @@ const GUEST_NAME = "TinyCore15Wine6.0-preboot-fw-trim.zip";
 const FILE_LIMIT = 25 * 1024 * 1024;
 const CHUNK_SIZE = 24 * 1024 * 1024;
 const projectRoot = path.resolve(__dirname, "..");
+const defaultSourceDir = path.join(projectRoot, "src", "bw-assets");
+
+function guestIdentity(data) {
+  const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
+  const version = createHash("sha256").update(`${GUEST_NAME}:${hash}`).digest("hex").slice(0, 8);
+  return { hash, version };
+}
+
+// Injected into boxedwine.html as window.BW_GUEST_CHUNKS.
+async function guestChunkVersions({ sourceDir = defaultSourceDir } = {}) {
+  const data = await fs.readFile(path.join(sourceDir, GUEST_NAME));
+  if (!data.length) throw new Error(`${GUEST_NAME} is empty`);
+  return { [GUEST_NAME]: guestIdentity(data).version };
+}
 
 async function chunkGuest({
-  sourceDir = path.join(projectRoot, "src", "bw-assets"),
+  sourceDir = defaultSourceDir,
   outputDir = path.join(projectRoot, "public", "latest26"),
 } = {}) {
   if (path.resolve(sourceDir) === path.resolve(outputDir)) {
@@ -27,7 +41,7 @@ async function chunkGuest({
   for (const name of names.filter((name) => name !== GUEST_NAME)) {
     await fs.copyFile(path.join(sourceDir, name), path.join(outputDir, name));
   }
-  const hash = createHash("sha256").update(data).digest("hex").slice(0, 8);
+  const { hash, version } = guestIdentity(data);
   const chunks = [];
   for (let offset = 0, i = 0; offset < data.length; offset += CHUNK_SIZE, i++) {
     const name = `${GUEST_NAME}.${hash}.part${i}`;
@@ -35,7 +49,7 @@ async function chunkGuest({
     chunks.push(name);
   }
   const manifest = {
-    version: createHash("sha256").update(`${GUEST_NAME}:${hash}`).digest("hex").slice(0, 8),
+    version,
     chunkSize: CHUNK_SIZE,
     files: { [GUEST_NAME]: { totalSize: data.length, hash, chunks } },
   };
@@ -51,7 +65,7 @@ async function chunkGuest({
   return manifest;
 }
 
-module.exports = { chunkGuest, GUEST_NAME, FILE_LIMIT, CHUNK_SIZE };
+module.exports = { chunkGuest, guestChunkVersions, GUEST_NAME, FILE_LIMIT, CHUNK_SIZE };
 
 if (require.main === module) {
   chunkGuest().catch((error) => {

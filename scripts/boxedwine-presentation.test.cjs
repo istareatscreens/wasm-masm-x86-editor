@@ -31,7 +31,7 @@ function setup() {
     console: { log() {}, warn() {} },
     Date, Math,
     Module: { SDL2: { ctxCanvas: canvas }, bwGetScreenSize: () => `${canvas.width}x${canvas.height}`, bwResizeScreen(w, h) { context.requested = [w, h]; } },
-    BW_INPUT_OPEN: true, innerWidth: 320, innerHeight: 240,
+    BW_INPUT_OPEN: true, BW_READY_AT: 1, innerWidth: 320, innerHeight: 240,
     BW_CONSOLE_GEOMETRY: { width: 320, height: 240 },
     bwGeometryFor: (width, height) => ({ width, height }),
     addEventListener: (name, fn) => events.set(name, fn),
@@ -105,6 +105,25 @@ test('resize holds copy real pixels at their original size and clear on a comple
   frame([0, 0, 0], true);
   for (const callback of intervals.values()) callback();
   assert.equal(hold.style.display, 'none');
+});
+
+test('a resize before the environment is ready waits for the post-ready sync', () => {
+  const { context: c, frame, elements, events, timeouts } = setup();
+  // still booting: the console is not verified, the input gate is closed
+  delete c.BW_READY_AT;
+  c.BW_INPUT_OPEN = false;
+  frame([0, 0, 0], true);
+  c.innerWidth = 640;
+  events.get('resize')();
+  assert.equal(elements.get('bw-resize-hold'), undefined, 'nothing frozen before ready');
+  assert.equal(c.requested, undefined, 'the emulated screen keeps its boot size');
+  assert.equal(timeouts.size, 0, 'no sync scheduled before ready');
+  // fully loaded: one sync fits the screen to the panel as it is now
+  c.BW_READY_AT = 1;
+  c.BW_INPUT_OPEN = true;
+  events.get('boxedwine-fully-loaded')();
+  for (const callback of Array.from(timeouts.values())) callback();
+  assert.deepEqual(Array.from(c.requested), [640, 240]);
 });
 
 test('resize safety deadline releases a hold even if the guest does not repaint', () => {
