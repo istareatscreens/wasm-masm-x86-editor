@@ -5,20 +5,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="boxedwine authors" content="James Bryant, Kevin O'Dwyer" />
-  <!-- No static <link rel=preload> for the guest zip / wasm: a preload always hits
-       the network (bypassing the build-keyed Cache API layer) and the old one
-       fetched the ST wasm even when MT was selected. The boot assets are
-       prefetched from JS (BWCache.prefetch) as soon as the runtime is chosen. -->
   <meta name="robots" content="noindex, nofollow">
   <title>Document</title>
   <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
 <body class="boxedwine-body" style="background:#000">
-  <!-- The emulator's screen. The stock shell's start button, upload/download UI,
-       sound / pointer-lock / console toggles and loading widgets are gone: the console
-       starts by itself, files reach D: through the direct API, and the app shows its
-       own loading screen (bwBootStage). -->
   <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
   <div id="bw-root"></div>
@@ -26,27 +18,19 @@
 
   <script src="jszip.min.js"></script>
   <script>
-    // Chunk-assembly service worker (web build only). Cloudflare Pages rejects files
-    // over 25 MiB, so gulp ships the guest image as latest26/<name>.<hash>.partN
-    // chunks; bw-chunk-sw.js pre-assembles them into the Cache API at install and
-    // answers the boot path's request for the original latest26/<name> URL.
-    // window.__swReady resolves once the worker controls this page (immediately on
-    // a repeat visit, after install+claim on the first, and right away when service
-    // workers are unavailable: Electron file://, unsupported browsers, a failed
-    // registration). bw-cache.js awaits it before its first network fetch and can
-    // assemble the chunks in-page if the worker never took over.
+    // Chunk-assembly service worker (web only): Cloudflare Pages rejects files over
+    // 25 MiB, so the guest image ships in chunks that bw-chunk-sw.js reassembles.
+    // __swReady resolves once the worker controls the page (at once without one).
     window.__swReady = new Promise(function (resolve) {
       var done = false;
       var finish = function (why) { if (done) return; done = true; console.log("[sw] " + why); resolve(); };
       if (!("serviceWorker" in navigator) || location.protocol === "file:") { finish("service workers unavailable - direct fetch"); return; }
-      // never hold the boot hostage: if the worker has not taken control after a
-      // generous window (first-visit assembly of ~60 MB on a slow link), continue -
-      // bw-cache.js falls back to in-page assembly for anything the network 404s.
+      // never block the boot: bw-cache.js can assemble the chunks in-page
       var guard = setTimeout(function () { finish("worker not in control after 120s - continuing"); }, 120000);
       navigator.serviceWorker.register("bw-chunk-sw.js").then(function (reg) {
         var onControl = function () { clearTimeout(guard); finish("worker in control"); };
         if (reg.installing || reg.waiting) {
-          // update or first install in progress: wait for the NEW worker to take over
+          // first install or update: wait for the new worker
           navigator.serviceWorker.addEventListener("controllerchange", onControl);
           return;
         }
@@ -57,52 +41,32 @@
       });
     });
   </script>
-  <!-- Boot-asset cache (Cache API keyed by BW_BUILD_ID). Must load before the shell
-       (loadFile) and the runtime loader below. Waits for window.__swReady, skips
-       double-storing worker-assembled responses, assembles chunks in-page as a
-       fallback. Plain fetch when caches is unavailable (Electron file://, LAN http). -->
-  <script src="bw-cache.js?v=2"></script>
-  <!-- Instant-startup snapshot layer (must load before the shell so the shell
-       can consult window.BWSnapshot at boot). Fallback-safe: no-ops to cold boot. -->
-  <script src="bw-snapshot.js?v=5"></script>
+  <!-- Boot-asset cache and instant-startup snapshot layer: both load before the shell. -->
+  <script src="bw-cache.js?v=3"></script>
+  <script src="bw-snapshot.js?v=7"></script>
   <!-- Stock danoon2 26R1 shell + instant-startup boot hook. -->
-  <script src="boxedwine-shell.js?v=38"></script>
+  <script src="boxedwine-shell.js?v=39"></script>
   <script>
-    // --- App launch config: validated 26R1 + pre-booted TinyCore15/Wine6.0 ---
-    // Toolchain (assembler-dp0.zip) mounts read-only at C:\files; user files +
-    // build outputs live on the writable D: drive; working dir = D:. The
-    // drive-agnostic assemble.bat (%~dp0) makes the toolchain reachable from C:
-    // while cwd is D:. Files are placed on D: directly via Module.bwWriteFile
-    // (no echo). See reference/masm-e2e-verified.md.
-    // Mirror the (high-volume) guest stdout to the browser console only when
-    // explicitly debugging; keeps the production console clean. Enable with ?bwlog=1.
+    // App launch config: the toolchain (assembler-dp0.zip) mounts read-only at C:\files;
+    // user files and build outputs live on D:, the working directory.
+    // ?bwlog=1 mirrors the guest's stdout to the browser console.
     window.BW_DEBUG_LOG = /[?&]bwlog=1/.test(location.search);
-    // ?bwtrace=1 (debug, with ?bwlog=1): arm the emulator's present trace from the
-    // very first present so boot/restore paint sequences can be analysed.
+    // ?bwtrace=1 (debug): arm the emulator's present trace from the first present
     if (/[?&]bwtrace=1/.test(location.search)) {
       (Module.preRun = Module.preRun || []).push(function () {
         (Module.postRun = Module.postRun || []).unshift(function () { try { Module.bwSetPresentTrace(true); } catch (e) {} });
       });
     }
 
-    // Boot-stage channel for the loading screen (index-bw.jsx <LoadingScreen>):
-    // each boot phase (emulator load, snapshot restore / system-image download,
-    // console boot) reports a short human label here; the React screen shows it
-    // under its progress bar until the console is visible. Safe before React
-    // mounts (the last value is kept in BW_BOOT_STAGE and read at mount).
+    // Boot-stage label for the loading screen (LoadingScreen.jsx reads BW_BOOT_STAGE at mount).
     window.bwBootStage = function (text) {
       window.BW_BOOT_STAGE = text;
       try { window.dispatchEvent(new CustomEvent("bw-boot-stage", { detail: text })); } catch (e) {}
     };
     window.bwBootStage("Loading emulator");
 
-    // Input gate. The terminal accepts input only once the environment
-    // is READY: cold boot -> factory-state capture done; restore -> verified; then
-    // the parent has reconciled the drawer into D:. Until then the loading screen is
-    // up and every keyboard event is dropped here, in the capture phase on window,
-    // registered BEFORE the emulator glue loads — so it runs ahead of SDL's own
-    // listeners whatever target/phase they use (capture listeners on window run
-    // first, and among capture listeners on window registration order wins).
+    // Input gate: keyboard events are dropped until the environment is ready. These capture
+    // listeners on window are registered before the glue loads, so they run ahead of SDL's.
     // Direct-API input (bwApp.*) is queued by Boxedwine.jsx until the gate opens.
     window.BW_INPUT_OPEN = false;
     (function () {
@@ -116,10 +80,8 @@
       console.log("[bw] terminal ready for input (" + why + ")"); // boot milestone
       try { window.dispatchEvent(new CustomEvent("boxedwine-input-open", { detail: { why: why } })); } catch (e) {}
     };
-    // "boxedwine-fully-loaded" = the ENVIRONMENT is ready (not merely "the console
-    // rendered", which is boxedwine-console-lit below): fired once by the shell after
-    // the factory capture (cold) or the verified restore. Consumers: Boxedwine.jsx
-    // (reconcile + input gate + loading screen), bwSyncScreenToPanel, the harness.
+    // "boxedwine-fully-loaded": the environment is ready (fired by the shell after the
+    // factory capture on a cold boot, or after the verified restore).
     window.bwFireReady = function (how, info) {
       if (window.BW_READY_AT) return;
       var t = performance.now();
@@ -129,11 +91,7 @@
       try { window.dispatchEvent(new CustomEvent("boxedwine-fully-loaded", { detail: { timestamp: t, totalLoadTime: t, how: how, info: info || null } })); } catch (e) {}
     };
 
-    // Production console hygiene: the stock danoon2 shell echoes ~30 verbose config
-    // lines ("setting auto run to: true", …) on every boot. In production (no
-    // ?bwlog=1) drop just those noisy config-echo lines so the console stays clean;
-    // boot-progress milestones (Loaded/Mounted/Launching/Starting/Using…) and ALL
-    // warnings/errors still pass through. ?bwlog=1 keeps everything.
+    // Without ?bwlog=1, drop the stock shell's config-echo lines from the console.
     if (!window.BW_DEBUG_LOG) {
       var _bwRawLog = console.log.bind(console);
       var _bwNoisy = /^(not )?setting |must be in quoted string|^setting EMSCRIPTEN|ENV propert|ddrawOverride|^Pointer lock|^Unable to lock pointer|^Use Storage mode|unable to sync folder/;
@@ -143,53 +101,17 @@
       };
     }
 
-    // Scroll-flash diagnostics (debug only, ?bwlog=1). The flash was root-caused as a
-    // compositing artifact of the emulator's main-thread 2D putImageData present
-    // cadence beating against display vsync — invisible to headless pixel capture but
-    // visible as IRREGULAR present timing. Instrument the present path: record every
-    // putImageData timestamp + the rAF cadence so a browser test can quantify the
-    // jitter during a scroll (window.__bwFlash). Patches the prototype BEFORE SDL2
-    // creates the 2D context. Zero cost in production (guarded off).
-    if (window.BW_DEBUG_LOG) {
-      (function () {
-        var proto = window.CanvasRenderingContext2D && window.CanvasRenderingContext2D.prototype;
-        if (!proto || !proto.putImageData) return;
-        window.__bwFlash = { put: [], raf: [], w: 0, h: 0 };
-        var origPut = proto.putImageData;
-        proto.putImageData = function (img) {
-          if (window.__bwFlash.put.length < 8000) window.__bwFlash.put.push(Math.round(performance.now() * 10) / 10);
-          if (img && img.width) { window.__bwFlash.w = img.width; window.__bwFlash.h = img.height; }
-          return origPut.apply(this, arguments);
-        };
-        var origRaf = window.requestAnimationFrame.bind(window);
-        (function tick(t) { if (window.__bwFlash.raf.length < 8000) window.__bwFlash.raf.push(Math.round(t * 10) / 10); origRaf(tick); })(performance.now());
-        console.log("[bw-flash] present + rAF instrumentation armed (debug)");
-      })();
-    }
-
-    // Build identity. gulp replaces the placeholder with a hash of the deployed
-    // wasm pair + guest zip + shell/snapshot script versions (copyHtml), so every
-    // deploy gets a new id. Used to key the snapshot, the asset cache and the
-    // per-build runtime-failure record. Stays a fixed string in a raw src/ copy.
+    // Build identity (gulp: hash of the emulator stack); keys the snapshot, the caches and
+    // the runtime-failure record.
     window.BW_BUILD_ID = "__BW_BUILD_ID__";
+    // {"<guest zip>": "<chunk manifest version>"} injected by gulp; null in a raw src/ copy.
+    window.BW_GUEST_CHUNKS = /*__BW_GUEST_CHUNKS__*/null;
 
-    // Runtime selection POLICY — reliability first.
-    //   1. ?bw=mt|st override (testing; never persisted; clears a failure record)
-    //   2. per-build failure record: if MT failed its boot/restore watchdog under
-    //      THIS build id, use ST (a new deploy retries MT once)
-    //   3. bw-runtime-pref localStorage ("mt"|"st") — explicit preference
-    //   4. default: ST. The MT gate (headed Chrome + Firefox: cold, restore, MASM
-    //      after restore, 20x restore soak) PASSED on 2026-09-16 (build 31), so MT
-    //      is fully usable and instant-restore is armed for it — but it measured
-    //      SLOWER than ST for this app's workloads on the same machine (assemble
-    //      4.5s vs 2.8s, console listing 10.9s vs 5.4s, typing echo 44ms vs 18ms,
-    //      cls 40ms vs 17ms; reference/perf-headed.json): the interpreter's shared-
-    //      memory locking and the -sASSERTIONS=1 glue cost more than parallelism
-    //      buys for cmd/conhost/wineserver ping-pong. MT_DEFAULT_ENABLED is the
-    //      one constant to flip if that changes; ?bw=mt / bw-runtime-pref select
-    //      it today.
+    // Runtime selection: 1. ?bw=mt|st (testing; clears a failure record); 2. ST when MT
+    // failed its watchdog under this build; 3. localStorage "bw-runtime-pref"; 4. ST
+    // (MT works, but measured slower than ST for this app's workloads).
     (function () {
-      var MT_DEFAULT_ENABLED = false; // MT gate passed; kept off on measured performance (see above)
+      var MT_DEFAULT_ENABLED = false;
       var canMT = self.crossOriginIsolated === true && typeof SharedArrayBuffer !== "undefined";
       var m = /[?&]bw=(mt|st)/.exec(location.search);
       var pref = null, fail = null;
@@ -214,15 +136,15 @@
       window.BW_RUNTIME_DOWNGRADED = /^mt-failed/.test(why) ? fail : null;
       console.log("[bw] runtime " + choice + " (" + why + ") build " + window.BW_BUILD_ID); // boot milestone
     })();
+    // The glue and wasm URLs carry the build id: they must always be a matching pair, and
+    // the CDN lets browsers cache .js for hours but not .wasm.
+    window.BW_GLUE_V = "?v=" + window.BW_BUILD_ID;
+    window.BW_WASM_URL = (window.BW_USE_MT ? "boxedwine-mt.wasm" : "boxedwine.wasm") + window.BW_GLUE_V;
+    window.BW_GLUE_URL = (window.BW_USE_MT ? "boxedwine-mt.js" : "boxedwine.js") + window.BW_GLUE_V;
 
-    // Guest storage (schema 2): /root and /d_drive are plain MEMFS —
-    // nothing the guest writes persists on its own. What persists is (a) the
-    // user's files in the PARENT app's IndexedDB, reconciled into D: on every start,
-    // and (b) the factory-state snapshot (heap + /root overlay captured at the same
-    // instant). The IDBFS overlays of earlier builds ("/root", "/d_drive" IndexedDB
-    // databases) are imported once (any /d_drive file not in the drawer goes to the
-    // drawer) and deleted by the shell's initBrowserFilesystem; BW_STORAGE_KEY marks
-    // that this happened. (BW_OVERLAY_READY, the per-build /root reset, is gone.)
+    // Guest storage (schema 2): /root and /d_drive are MEMFS; the user's files persist in
+    // the parent app and are reconciled into D: on start. BW_STORAGE_KEY marks the one-time
+    // import of older builds' IDBFS overlays.
     window.BW_STORAGE_KEY = "bw-storage-v";
     window.BW_STORAGE_VERSION = "2";
 
@@ -235,34 +157,13 @@
     getProgramArgs = function () { return ["cmd"]; };
     getAppZipFile = function () { return "assembler-dp0.zip"; };
     getEnvProp = function () { return "WINEDLLOVERRIDES=mscoree=d;mshtml=d"; };
-    // ?bwwinedebug=<channels> (debug only, cold boot): extra guest environment for Wine's
-    // own tracing (e.g. +console,+key); the lines reach the browser console with ?bwlog=1.
+    // ?bwwinedebug=<channels> (debug, cold boot): WINEDEBUG for the guest
     (function () { var m = /[?&]bwwinedebug=([^&]+)/.exec(location.search); if (m) window.BW_EXTRA_ENV = ["WINEDEBUG=" + decodeURIComponent(m[1])]; })();
-    // Screen geometry = the terminal panel itself, EXACTLY, in CSS pixels: the emulated
-    // screen is the panel's size, the console window fills that screen with as many
-    // whole cells as fit (like a native terminal window on a screen), and the canvas is
-    // shown at 100vw x 100vh, which is therefore 1:1 - console text is never scaled.
-    // Cells: Liberation Mono at FontSize 22 = 11x22 px (the ORIGINAL app's console font
-    // and text size), 24 px of frame+scrollbar horizontally and 27 px of caption+frame
-    // vertically; the strip beyond the last whole cell (< 11 / < 22 px) is console
-    // background inside the window. The console fills the screen (bwPatchGuestConsole
-    // writes the matching [Console] rows/cols + font into the guest registry before Wine
-    // starts; the guest's conhost fits its window to the screen), and the screen FOLLOWS
-    // the panel afterwards: on resize, bwSyncScreenToPanel() asks the emulator to change
-    // the screen size (bwResizeScreen -> XServer::changeScreen + ConfigureNotify on the
-    // console window -> Wine SetWindowPos -> conhost WM_SIZE -> new rows/cols, the text
-    // re-wraps; the guest's conhost is patched so the buffer width follows the window
-    // both ways and, since v15, so the window can be as small as the panel makes it -
-    // upstream's 20x20-cell minimum forced a screen taller than a short panel, which
-    // was then squashed into the panel: the "stretched console text" at 1280x720 /
-    // 1366x768 / the half-width layout / Electron's default window, measured
-    // 2026-09-19). A restored snapshot of any size is resized to the current panel on
-    // resume. The text is ALWAYS Liberation Mono at 22 px = 11x22 px cells (the original
-    // app's console text; user decision 2026-09-17: the terminal keeps displaying
-    // exactly as it was - a smaller panel means fewer cells, never smaller/blurrier text).
-    // Programs written for a bigger console (e.g. Visual Studio's 120x30 default) need
-    // a wide terminal panel (editor hidden / zen / full screen) or must adapt to the
-    // console size themselves (Irvine32 GetMaxXY) - see reference/console-compat.md.
+    // Screen geometry = the terminal panel in CSS pixels (the canvas is 100vw x 100vh, so
+    // 1:1). The console fills it with whole 11x22 px cells (Liberation Mono 22 px, the
+    // original console font) inside a 24 px wide / 27 px high frame: bwPatchGuestConsole
+    // writes rows/cols into the guest registry before Wine starts, and bwSyncScreenToPanel
+    // resizes the screen when the panel changes.
     var BW_CELL_W = 11, BW_CELL_H = 22, BW_FRAME_W = 8 + 16, BW_FRAME_H = 27, BW_BUF_ROWS = 500;
     var BW_MIN_COLS = 8, BW_MIN_ROWS = 2; // conhost v15 minimum (window.c WM_SIZE)
     window.BW_CELL = { w: BW_CELL_W, h: BW_CELL_H };
@@ -280,12 +181,21 @@
       console.log("[bw] console " + window.BW_CONSOLE_GEOMETRY.cols + "x" + window.BW_CONSOLE_GEOMETRY.rows + " cells (" + BW_CELL_W + "x" + BW_CELL_H + " px) for a " + w + "x" + h + " panel"); // boot milestone
     })();
     getResolution = function () { return window.BW_CONSOLE_GEOMETRY.width + "x" + window.BW_CONSOLE_GEOMETRY.height; };
-    // Called by the shell after the guest zip is in MEMFS and the /root overlay is
-    // synced, before the emulator starts. Patches [Console] FaceName/FontSize/
-    // WindowSize/ScreenBufferSize in the overlay's user.reg (Wine's live copy if it
-    // exists, else the zip's). Fallback-safe: any failure leaves the zip's baked
-    // registry (68x26 at the same font).
+    // Called by the shell before the emulator starts on a cold boot. Patches [Console]
+    // FaceName/FontSize/WindowSize/ScreenBufferSize in the overlay's user.reg (Wine's live
+    // copy if it exists, else the zip's); any failure leaves the zip's registry (68x26).
     window.bwPatchGuestConsole = function (zipBytes, done) {
+      // the panel may have changed since the page started (Electron attaches its menu
+      // after load): boot at its current size
+      (function () {
+        var w = window.innerWidth, h = window.innerHeight, cur = window.BW_CONSOLE_GEOMETRY;
+        if (!(w > 100 && h > 100)) return;
+        var now = window.bwGeometryFor(w, h);
+        if (now.width === cur.width && now.height === cur.height) return;
+        window.BW_CONSOLE_GEOMETRY = now;
+        try { Config.resolution = getResolution(); } catch (e) {}
+        console.log("[bw] console " + now.cols + "x" + now.rows + " cells for a " + w + "x" + h + " panel (the panel changed since the page started)"); // boot milestone
+      })();
       var g = window.BW_CONSOLE_GEOMETRY, REG = "/root/home/username/.wine/user.reg";
       var hex8 = function (v) { return ("00000000" + (v >>> 0).toString(16)).slice(-8); };
       var finish = function () { try { done(); } catch (e) {} };
@@ -325,24 +235,13 @@
           .then(apply, function (e) { console.warn("[bw] console geometry patch skipped: " + e); finish(); });
       } catch (e) { finish(); }
     };
-    // Live resize: keep the emulated screen equal to the panel (debounced; the
-    // emulator applies it on its own loop). Also run once the console is up so a
-    // restored snapshot (any size) and a panel that changed during boot converge.
-    //
-    // A resize is a sequence the user should not watch: the canvas (100vw x 100vh)
-    // is stretched to the new panel at once, then the emulator switches the screen
-    // (the old console window sits in a corner of it), then the guest helper resizes
-    // the console window and conhost repaints - three different "snaps". So the last
-    // frame is FROZEN over the canvas at its true size (black around it) from the
-    // resize event until the screen has the requested size and the console window
-    // fills it again (frame pixels at the right/bottom edges), at most HOLD_MAX_MS.
-    // If the screen never reached the requested size (a lost request), the request
-    // is issued again once - the console can no longer be left at the wrong size.
+    // Live resize: keep the emulated screen equal to the panel (debounced). Until the guest
+    // has re-fitted the console, the last frame is shown frozen at its true size (at most
+    // HOLD_MAX_MS); a request that was never applied is issued once more.
     (function () {
       var timer = null, lastKey = window.BW_CONSOLE_GEOMETRY.width + "x" + window.BW_CONSOLE_GEOMETRY.height; // boot size
       var DEBOUNCE_MS = 100, HOLD_MAX_MS = 4000, holdTimer = null, holdSince = 0, pending = null, retried = false, holdSafety = null;
-      // the geometry key the current panel size asks for ("" when the panel is not a
-      // real size - a 0x0 iframe during a layout pass, a hidden panel)
+      // the geometry key the panel asks for ("" for a 0x0 or hidden panel)
       function panelKey() {
         var w = window.innerWidth, h = window.innerHeight;
         if (!(w > 100 && h > 100)) return "";
@@ -371,7 +270,7 @@
             copy.getContext("2d").putImageData(frame, 0, 0);
             el.style.display = "block"; holdSince = Date.now();
           }
-          // hard safety: whatever happens, the frozen frame never outlives HOLD_MAX_MS
+          // the frozen frame never outlives HOLD_MAX_MS
           if (holdSafety) clearTimeout(holdSafety);
           holdSafety = setTimeout(hideHold, HOLD_MAX_MS + 500);
         } catch (e) { hideHold(); }
@@ -416,55 +315,39 @@
           if (holdSince) watchHold(key, g); // (only when a frame is frozen; before the console is up there is nothing to hide)
         } catch (e) { hideHold(); }
       };
-      // the frame is frozen ONLY when the panel now asks for a different screen (a
-      // resize event with the same geometry - a transient 0x0 during a layout pass, a
-      // page screenshot, a sub-cell change - must never cover the live console)
-      window.addEventListener("resize", function () { var k = panelKey(); if (k && k !== lastKey) showHold(); clearTimeout(timer); timer = setTimeout(window.bwSyncScreenToPanel, DEBOUNCE_MS); });
-      // after a RESTORE the screen is the snapshot's size, not this boot's geometry:
-      // force one sync (any panel change during boot is covered too)
+      // Freeze the frame only when the panel asks for a different screen. Before the
+      // environment is ready the screen keeps its boot size (a screen shrunk before conhost
+      // fitted its window is never filled); the sync after "fully loaded" catches up.
+      window.addEventListener("resize", function () { if (!window.BW_READY_AT) return; var k = panelKey(); if (k && k !== lastKey) showHold(); clearTimeout(timer); timer = setTimeout(window.bwSyncScreenToPanel, DEBOUNCE_MS); });
+      // once ready: fit a restored screen (the snapshot's size) or a panel that changed
       window.addEventListener("boxedwine-fully-loaded", function () { lastKey = ""; setTimeout(window.bwSyncScreenToPanel, 300); });
     })();
     getDisableHideCursor = function () { return true; };
 
-    // Start the big boot assets NOW (cache-first via BWCache), in parallel with the
-    // glue/wasm load; the shell's loadFile() picks up these in-flight responses.
+    // Start the boot downloads now; the shell and the loader below pick up the responses.
     if (window.BWCache) {
       window.BWCache.prefetch(Config.locateRootBaseUrl + DEFAULT_ROOT_ZIP_FILE, { method: "GET" });
       window.BWCache.prefetch(Config.locateAppBaseUrl + getAppZipFile(), { method: "GET" });
+      window.BWCache.prefetch(window.BW_GLUE_URL, { credentials: "same-origin" });
+      window.BWCache.prefetch(window.BW_WASM_URL, { credentials: "same-origin" });
     }
 
-    // Begin instant-startup snapshot detection (ST AND MT). MT captures a coherent
-    // 512MB image via a stop-the-world barrier (bwBeginSnapshotPause) and restores by
-    // recreating its guest pthreads (bwResumeFromSnapshot). The version identity
-    // captures everything that affects the booted guest state — including the runtime
-    // (mt/st) and the actual wasm hash — so a wasm/config/runtime change automatically
-    // invalidates any stale snapshot and an ST image is never restored into MT.
-    // MT snapshot restore is ARMED: the MT gate passed 2026-09-16 (Chrome: cold,
-    // restore, MASM after restore x2, 20x restore soak median 3.5s; Firefox: 4/4 +
-    // 5x soak median 1.8s — reference/mt-gate.md). ?bwmtsnap=0 disables it for tests.
+    // Instant-startup snapshot (ST and MT). The identity covers everything that shapes the
+    // booted guest, so a change invalidates the stored snapshot. ?bwmtsnap=0 disables MT restore.
     window.BW_MT_SNAPSHOT_ENABLED = !/[?&]bwmtsnap=0/.test(location.search);
     try { if (localStorage.getItem("bw-mtsnap") === "0") window.BW_MT_SNAPSHOT_ENABLED = false; } catch (e) {}
     if (window.BWSnapshot && !/[?&]bwnosnap=1/.test(location.search)) {
       var _bwWasm = window.BW_USE_MT ? "boxedwine-mt.wasm" : "boxedwine.wasm";
-      // (the screen size is NOT part of the identity: a restored snapshot is resized
-      // to the current panel on resume - bwSyncScreenToPanel)
-      // (the screen size is NOT part of the identity: a restored snapshot is resized
-      // to the current panel on resume - bwSyncScreenToPanel)
+      // the screen size is not part of it: a restored screen is resized to the panel
       var _bwId = [(window.BW_USE_MT ? "mt" : "st"), DEFAULT_ROOT_ZIP_FILE, getAppZipFile(),
                    getExecutable(), getProgramArgs().join(","), "livescreen",
                    Config.WorkingDir].join("|");
       var _bwMarker = "bwsnapmark|" + _bwId;
       var _bwSnapAllowed = !window.BW_USE_MT || window.BW_MT_SNAPSHOT_ENABLED;
-      // Suppress emscripten's automatic main() ONLY when a snapshot marker exists —
-      // i.e. we intend to RESTORE. Deciding this synchronously (localStorage) is
-      // essential: cold boot MUST use emscripten's auto-main; manually calling
-      // callMain after noInitialRun deadlocks thread 0 under PROXY_TO_PTHREAD (the
-      // MT proxy_main blocks thread 0 until main returns, which it never does). On a
-      // cold boot we leave auto-main ON and only arm the capture. The async begin()
-      // below still validates the full snapshot; a stale marker with no valid image
-      // makes the shell discard + reload into a clean cold boot. After a restore the
-      // watchdog (BWSnapshot.watchRestore) requires a usable console within 8s or
-      // discards + reloads — a restore can never end in a blank terminal.
+      // Suppress emscripten's automatic main() only when a snapshot marker exists, decided
+      // synchronously: a cold boot must use auto-main (calling callMain after noInitialRun
+      // deadlocks MT under PROXY_TO_PTHREAD). begin() still validates the snapshot; a stale
+      // marker makes the shell discard it and reload into a cold boot.
       var _bwHasSnap = false;
       try { _bwHasSnap = localStorage.getItem(_bwMarker) === "1"; } catch (e) {}
       if (_bwHasSnap && !_bwSnapAllowed) {
@@ -525,14 +408,8 @@
         return lit;
       };
     })();
-    // Presentation: the canvas fills the iframe. The emulated screen IS the panel's size
-    // (bwGeometryFor, and bwSyncScreenToPanel on every resize), so this is a 1:1 mapping
-    // and the console text is never scaled; the only moment screen and panel differ is
-    // the ~0.4 s between a resize and the guest's re-fit, which the resize hold below
-    // covers with the last frame at its true size. Inline !important styles so they win
-    // over the stylesheet and anything SDL sets; re-applied on resize and whenever the
-    // emulator changes the canvas size. SDL scales pointer coordinates by the element's
-    // CSS box, so mouse mapping stays exact.
+    // Presentation: the canvas fills the iframe (1:1, the screen is the panel's size). Inline
+    // !important styles win over anything SDL sets; SDL maps the pointer through the CSS box.
     (function () {
       var canvas = document.getElementById("canvas");
       window.bwFitCanvas = function () {
@@ -548,10 +425,7 @@
       }
       window.bwFitCanvas();
     })();
-    // "boxedwine-console-lit": the console first renders (canvas non-blank for 2
-    // consecutive samples). Internal milestone — the app-level ready event
-    // ("boxedwine-fully-loaded") is fired by the shell once the environment is ready
-    // (see bwFireReady above).
+    // "boxedwine-console-lit": the console first renders (2 consecutive lit samples).
     (function () {
       var t0 = performance.now(), hits = 0;
       var timer = setInterval(function () {
@@ -568,22 +442,14 @@
   </script>
   <script src="index-bw.js"></script>
   <script>
-    // Load the selected emscripten runtime (ST or MT). Both glues look for
-    // "boxedwine.wasm"; remap to the MT wasm when MT is selected. Every artifact
-    // is fetched at most ONCE per load and comes from the build-keyed Cache API on
-    // repeat visits:
-    //  - wasm: Module.instantiateWasm fetches the SELECTED wasm through BWCache
-    //    (streaming compile when the MIME type allows, ArrayBuffer fallback);
-    //  - glue: fetched once through BWCache and executed from a Blob; the same Blob
-    //    is handed to the MT pthread workers via Module.mainScriptUrlOrBlob, so the
-    //    ~40 workers no longer each re-download the 583KB glue (41 fetches / 24MB
-    //    measured before).
-    // Fallback-safe: any failure falls back to a plain <script src> (and MT to ST).
+    // Load the selected runtime through BWCache: the wasm via instantiateWasm, the glue from
+    // a Blob (MT also hands it to its pthread workers). Any failure falls back to a plain
+    // <script src>, and MT to ST.
     (function () {
       var mt = window.BW_USE_MT === true;
-      var GLUE_V = "?v=32";
-      var wasmUrl = mt ? "boxedwine-mt.wasm" : "boxedwine.wasm";
-      var glueUrl = (mt ? "boxedwine-mt.js" : "boxedwine.js") + GLUE_V;
+      var GLUE_V = window.BW_GLUE_V;
+      var wasmUrl = window.BW_WASM_URL;
+      var glueUrl = window.BW_GLUE_URL;
       var cf = function (u) { return window.BWCache ? window.BWCache.fetch(u, { credentials: "same-origin" }) : fetch(u, { credentials: "same-origin" }); };
       try {
         var prev = Module.locateFile;
@@ -591,8 +457,7 @@
           if (/boxedwine\.wasm$/.test(path)) return wasmUrl;
           return prev ? prev(path, prefix) : (prefix || "") + path;
         };
-        // Main-thread wasm instantiation through the cache layer. (MT workers use
-        // the glue's own hook, which instantiates the module posted by this thread.)
+        // main-thread instantiation (MT workers use the module posted by this thread)
         Module.instantiateWasm = function (imports, receiveInstance) {
           window.bwBootStage("Compiling emulator");
           var done = function (r) { window.BW_WASM_INSTANTIATED = true; receiveInstance(r.instance, r.module); };
@@ -608,14 +473,12 @@
           }).then(done).catch(function (e) {
             console.error("[bw] wasm instantiation failed", e);
             window.BW_WASM_FAILED = String(e);
-            // Fail over NOW (no need to wait for the 45s guard): MT => record the
-            // per-build failure and reload into ST; ST => tell the parent.
+            // fail over now: MT reloads into ST, ST tells the parent
             if (window.BWSnapshot) window.BWSnapshot.onWasmFailed(String(e));
           });
           return {}; // exports arrive via receiveInstance
         };
       } catch (e) { mt = false; }
-      if (window.BWCache) window.BWCache.prefetch(wasmUrl, { credentials: "same-origin" });
 
       var loadViaScriptTag = function (src) {
         var s = document.createElement("script");
@@ -623,7 +486,7 @@
         s.src = src;
         s.onerror = function () {
           if (mt) { // MT glue failed -> fall back to ST so the app still runs
-            mt = false; wasmUrl = "boxedwine.wasm";
+            mt = false; wasmUrl = "boxedwine.wasm" + GLUE_V;
             var f = document.createElement("script"); f.async = true; f.src = "boxedwine.js" + GLUE_V;
             document.body.appendChild(f);
           }
@@ -646,9 +509,7 @@
         if (mt) { try { Module.mainScriptUrlOrBlob = glueUrl; } catch (_) {} }
         loadViaScriptTag(glueUrl);
       });
-      // Tell the parent app when this load is a watchdog-driven downgrade (MT failed
-      // under this build id => ST) so it can show a dismissable retro notice. The
-      // parent also reads window.BW_RUNTIME_DOWNGRADED directly on iframe load.
+      // tell the parent when MT failed under this build and this load fell back to ST
       if (window.BW_RUNTIME_DOWNGRADED) {
         window.addEventListener("load", function () {
           try { window.parent.postMessage(JSON.stringify({ eventName: "runtime-downgraded", data: { data: window.BW_RUNTIME_DOWNGRADED } }), "/"); } catch (e) {}
