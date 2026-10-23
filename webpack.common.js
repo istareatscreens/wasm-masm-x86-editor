@@ -19,8 +19,6 @@ module.exports = {
         exclude: /node_modules/,
       },
       {
-        // webpack 5 asset modules replace file-loader: images imported from
-        // src/js are emitted next to the bundles under a hashed filename.
         test: /\.(png|jpe?g|svg|gif)$/i,
         type: "asset/resource",
       },

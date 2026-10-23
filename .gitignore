@@ -12,9 +12,8 @@ notes
 .vscode
 debug.log
 .vs
-#Ignore text files (used for notes) - except OpenSpec evidence
+#Ignore text files (used for notes)
 *.txt
-!openspec/**/*.txt
 *.txt.swp
 *.notes.swp
 #Ignore performance testing file

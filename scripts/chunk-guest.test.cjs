@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
-const { chunkGuest, GUEST_NAME, CHUNK_SIZE, FILE_LIMIT } = require("./chunk-guest.cjs");
+const { chunkGuest, guestChunkVersions, GUEST_NAME, CHUNK_SIZE, FILE_LIMIT } = require("./chunk-guest.cjs");
 
 async function fixture(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "masm-chunk-test-"));
@@ -46,6 +46,18 @@ test("only the named guest is chunked; bytes and legacy manifest identity are pr
   assert.notEqual(next.version, manifest.version);
   for (const name of entry.chunks) await assert.rejects(fs.stat(path.join(dirs.outputDir, name)), { code: "ENOENT" });
   assert.equal(next.files[GUEST_NAME].chunks.length, 1);
+});
+
+test("the version injected into boxedwine.html (BW_GUEST_CHUNKS) is the manifest's", async (t) => {
+  const dirs = await fixture(t);
+  await fs.writeFile(path.join(dirs.sourceDir, GUEST_NAME), Buffer.alloc(CHUNK_SIZE + 5, 0x3c));
+  const manifest = await chunkGuest(dirs);
+  assert.deepEqual(await guestChunkVersions(dirs), { [GUEST_NAME]: manifest.version });
+  await fs.writeFile(path.join(dirs.sourceDir, GUEST_NAME), Buffer.from("other guest"));
+  const next = await chunkGuest(dirs);
+  assert.deepEqual(await guestChunkVersions(dirs), { [GUEST_NAME]: next.version });
+  await fs.writeFile(path.join(dirs.sourceDir, GUEST_NAME), Buffer.alloc(0));
+  await assert.rejects(guestChunkVersions(dirs), /is empty/);
 });
 
 test("other assets at the Pages limit are copied whole; larger ones fail explicitly", async (t) => {
