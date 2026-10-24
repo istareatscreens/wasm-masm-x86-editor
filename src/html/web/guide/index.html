@@ -542,13 +542,49 @@ END main</code></pre>
       </ol>
     </section>
 
+
+    <section aria-labelledby="Copy">
+      <h2 id="compatibility">Copy Console Text</h2>
+      <p>To copy text from the console highlight it with your mouse by click dragging over it and
+         type: 
+         <kbd>Ctrl</kbd> + <kbd>shift</kbd> + <kbd>C</kbd> 
+         or 
+         <kbd>cmd</kbd> + <kbd>shift</kbd> + <kbd>C</kbd> to copy it to your clipboard
+      </p>
+    </section>
+
+    <section aria-labelledby="copy">
+      <h2 id="copy">Copy Terminal Text</h2>
+      <h3>Open and rename files</h3>
+      <p>Click a filename to open it. Checking its box selects it for download or deletion;
+        it does not open it. Double-click a filename to rename it, then press <kbd>Enter</kbd>.
+        Keep the <code>.asm</code> extension on assembly source files.</p>
+      <p>To find build outputs or imported files with other extensions, use <strong>Switch file type view</strong>.
+        Switching views clears the checkbox selection, so select files again before downloading or deleting.</p>
+
+      <h3>Automatic saving and local storage</h3>
+      <p>Source edits save automatically in this browser after a short pause in typing.
+        Allow that pause before switching files, building, downloading or closing the page.
+        Files are stored in IndexedDB; editor preferences are stored in local storage.</p>
+      <p class="note"><strong>Keep a downloaded backup.</strong> Browser storage stays with this browser
+        and device. It does not sync to an account, and clearing site data removes it.
+        The floppy disk button downloads a copy to your device.</p>
+
+      <h3>Download and restore a project</h3>
+      <ol>
+        <li>In the source file view, check the files you need, or use <strong>Select all</strong>.</li>
+        <li>Select <strong>Save selected file(s)</strong> to download them. Multiple checked files
+          are packaged in a ZIP archive.</li>
+        <li>Switch file type view and repeat for any other files you need to keep.</li>
+        <li>To restore a backup, extract the ZIP on your device first, then use
+          <strong>Add file(s) to project</strong> to import the extracted files.
+        </li>
+      </ol>
+    </section>
+
     <section aria-labelledby="troubleshooting">
       <h2 id="troubleshooting">Troubleshoot builds and the terminal</h2>
       <dl>
-        <dt>The compile or run button is disabled</dt>
-        <dd>Open an <code>.asm</code> file by clicking its name. To enable <strong>Run compiled binary</strong>,
-          first compile successfully so the matching <code>.exe</code> exists.</dd>
-
         <dt>The assembler or linker reports an error</dt>
         <dd>Read the first error in the terminal and check the referenced source line or symbol.
           Correct the source, then compile again. For the example above, keep
