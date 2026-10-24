@@ -14,6 +14,11 @@ function guestIdentity(data) {
   return { hash, version };
 }
 
+// The placeholder gulp replaces in boxedwine.html with the value below. Whitespace between the
+// comment and `null` is tolerated: a formatter run over the page put a space there once and the
+// exact-string match this replaced failed the deploy build.
+const GUEST_CHUNKS_PLACEHOLDER = /\/\*__BW_GUEST_CHUNKS__\*\/\s*null/g;
+
 // Injected into boxedwine.html as window.BW_GUEST_CHUNKS.
 async function guestChunkVersions({ sourceDir = defaultSourceDir } = {}) {
   const data = await fs.readFile(path.join(sourceDir, GUEST_NAME));
@@ -65,7 +70,7 @@ async function chunkGuest({
   return manifest;
 }
 
-module.exports = { chunkGuest, guestChunkVersions, GUEST_NAME, FILE_LIMIT, CHUNK_SIZE };
+module.exports = { chunkGuest, guestChunkVersions, GUEST_CHUNKS_PLACEHOLDER, GUEST_NAME, FILE_LIMIT, CHUNK_SIZE };
 
 if (require.main === module) {
   chunkGuest().catch((error) => {

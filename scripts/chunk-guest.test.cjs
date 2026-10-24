@@ -4,7 +4,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
-const { chunkGuest, guestChunkVersions, GUEST_NAME, CHUNK_SIZE, FILE_LIMIT } = require("./chunk-guest.cjs");
+const { chunkGuest, guestChunkVersions, GUEST_CHUNKS_PLACEHOLDER, GUEST_NAME, CHUNK_SIZE, FILE_LIMIT } = require("./chunk-guest.cjs");
 
 async function fixture(t) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "masm-chunk-test-"));
@@ -58,6 +58,15 @@ test("the version injected into boxedwine.html (BW_GUEST_CHUNKS) is the manifest
   assert.deepEqual(await guestChunkVersions(dirs), { [GUEST_NAME]: next.version });
   await fs.writeFile(path.join(dirs.sourceDir, GUEST_NAME), Buffer.alloc(0));
   await assert.rejects(guestChunkVersions(dirs), /is empty/);
+});
+
+// The build replaces this pattern in the page; a formatter run over boxedwine.html may space it
+// out or wrap it, which must stay injectable (an exact-string match once failed the deploy).
+test("boxedwine.html carries the BW_GUEST_CHUNKS placeholder the build injects into", async () => {
+  const html = await fs.readFile(path.resolve(__dirname, "../src/html/boxedwine.html"), "utf8");
+  assert.equal((html.match(GUEST_CHUNKS_PLACEHOLDER) || []).length, 1);
+  for (const spaced of ["/*__BW_GUEST_CHUNKS__*/null", "/*__BW_GUEST_CHUNKS__*/ null", "/*__BW_GUEST_CHUNKS__*/\n        null"])
+    assert.equal((spaced.match(GUEST_CHUNKS_PLACEHOLDER) || []).length, 1, spaced);
 });
 
 test("other assets at the Pages limit are copied whole; larger ones fail explicitly", async (t) => {

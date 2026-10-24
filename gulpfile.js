@@ -15,7 +15,7 @@ const file = require('gulp-file');
 const fsp = require("fs/promises");
 const { Transform } = require("stream");
 const { optimize: svgoOptimize } = require("svgo");
-const { chunkGuest, guestChunkVersions } = require("./scripts/chunk-guest.cjs");
+const { chunkGuest, guestChunkVersions, GUEST_CHUNKS_PLACEHOLDER } = require("./scripts/chunk-guest.cjs");
 
 // gulp 5 decodes src() streams as UTF-8 unless told not to: binary assets need BINARY.
 const BINARY = { encoding: false };
@@ -104,16 +104,17 @@ function injectBwBuildId() {
 }
 // BW_GUEST_CHUNKS: {"<guest zip>": "<chunks-manifest version>"}; {} for Electron (whole zips).
 function injectGuestChunks({ electron = false } = {}) {
-  const PLACEHOLDER = "/*__BW_GUEST_CHUNKS__*/null";
   return new Transform({
     objectMode: true,
     transform(vinyl, enc, cb) {
       if (!vinyl.isBuffer() || !/boxedwine\.html$/.test(vinyl.path)) return cb(null, vinyl);
       (electron ? Promise.resolve({}) : guestChunkVersions()).then((chunks) => {
         const text = vinyl.contents.toString();
-        if (text.split(PLACEHOLDER).length !== 2) throw new Error("boxedwine.html must contain " + PLACEHOLDER + " exactly once");
+        const found = text.match(GUEST_CHUNKS_PLACEHOLDER);
+        if (!found || found.length !== 1)
+          throw new Error("boxedwine.html must contain /*__BW_GUEST_CHUNKS__*/null (whitespace between them is allowed) exactly once, found " + (found ? found.length : 0));
         console.log("BW_GUEST_CHUNKS " + JSON.stringify(chunks));
-        vinyl.contents = Buffer.from(text.replace(PLACEHOLDER, () => JSON.stringify(chunks)));
+        vinyl.contents = Buffer.from(text.replace(GUEST_CHUNKS_PLACEHOLDER, () => JSON.stringify(chunks)));
         cb(null, vinyl);
       }).catch((e) => cb(e));
     },
