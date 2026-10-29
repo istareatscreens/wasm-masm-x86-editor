@@ -1,0 +1,272 @@
+@use "../abstracts/variables";
+
+// The file drawer's Windows 98 Explorer tree. Geometry (INDENT, connector columns, 20-px
+// rows) is set in filedrawer/tree/FileTreeRow.jsx; the field, font and colours come from
+// .file-drawer__list (components/list) and the scroll host (components/retro-scrollbar).
+.file-tree {
+  &__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 20px;
+    white-space: nowrap;
+    outline: none;
+    user-select: none;
+    // a touch drag starts with a long press (hooks/usePointerDrag.js); a swipe scrolls
+    touch-action: pan-y;
+
+    &--cut .file-tree__icon,
+    &--cut .file-tree__label {
+      opacity: 0.5;
+    }
+  }
+
+  // the checkbox column, left of the tree like the old list's
+  &__gutter {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 100%;
+  }
+
+  &__check {
+    margin: 0;
+  }
+
+  &__indent {
+    position: relative;
+    flex: none;
+    height: 100%;
+  }
+
+  // 1-px dotted connectors (rows are 20 px: the dots stay in phase from row to row)
+  &__line {
+    position: absolute;
+    pointer-events: none;
+
+    &--through,
+    &--up,
+    &--down {
+      width: 0;
+      border-left: 1px dotted variables.$button-shadow;
+    }
+
+    &--through {
+      top: 0;
+      bottom: 0;
+    }
+
+    &--up {
+      top: 0;
+      height: 10px;
+    }
+
+    &--down {
+      top: 10px;
+      bottom: 0;
+    }
+
+    &--across {
+      top: 10px;
+      width: 10px;
+      height: 0;
+      border-top: 1px dotted variables.$button-shadow;
+    }
+  }
+
+  &__toggle-slot {
+    position: absolute;
+    top: 6px;
+    width: 9px;
+    height: 9px;
+  }
+
+  // the 9-px +/- box: a 5-px minus, plus a 5-px bar while collapsed
+  &__toggle {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+    width: 9px;
+    height: 9px;
+    border: 1px solid variables.$button-shadow;
+    background: variables.$button-highlight;
+    cursor: pointer;
+
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      background: #000;
+    }
+
+    &::before {
+      left: 1px;
+      top: 3px;
+      width: 5px;
+      height: 1px;
+    }
+
+    &::after {
+      left: 3px;
+      top: 1px;
+      width: 1px;
+      height: 5px;
+    }
+
+    &--open::after {
+      display: none;
+    }
+  }
+
+  &__icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+
+  // only the label is highlighted, as in Explorer: light blue while the tree is not
+  // focused, navy with white text while it is
+  &__label {
+    margin-left: 3px;
+    padding: 0 2px;
+    line-height: 16px;
+
+    &--open {
+      font-weight: bold;
+    }
+
+    &--selected {
+      background-color: variables.$selected-blue;
+    }
+  }
+
+  &:focus-within &__label--selected,
+  &__row--drop &__label {
+    background-color: variables.$dialog-blue;
+    color: variables.$button-highlight;
+  }
+
+  // Explorer's dotted focus rectangle on the keyboard row; the list itself holds the
+  // focus while the focused row is scrolled out of the rendered window
+  &__row:focus-visible &__label {
+    outline: 1px dotted currentColor;
+    outline-offset: -1px;
+  }
+
+  &:focus-visible {
+    outline: 1px dotted variables.$black-color;
+    outline-offset: -3px;
+  }
+
+  &--dark:focus-visible {
+    outline-color: silver;
+  }
+
+  &__rename {
+    width: auto;
+    min-width: 10rem;
+    height: 18px;
+    margin-left: 3px;
+    padding: 0 2px;
+    line-height: 16px;
+
+    &--invalid {
+      color: #a00000;
+    }
+  }
+
+  &--dark {
+    .file-tree__label {
+      color: silver;
+    }
+
+    .file-tree__label--selected {
+      color: black;
+    }
+
+    .file-tree__toggle {
+      background: black;
+
+      &::before,
+      &::after {
+        background: silver;
+      }
+    }
+  }
+
+  &:focus-within.file-tree--dark .file-tree__label--selected,
+  &--dark .file-tree__row--drop .file-tree__label {
+    color: variables.$button-highlight;
+  }
+
+  // what follows the pointer while dragging (portal on body)
+  &__ghost {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 2px;
+    font-size: 1.4rem;
+    color: variables.$black-color;
+    opacity: 0.75;
+    pointer-events: none;
+    white-space: nowrap;
+
+    &--dark {
+      color: silver;
+    }
+  }
+}
+
+html.file-tree-dragging,
+html.file-tree-dragging * {
+  cursor: default !important;
+}
+
+html.file-tree-no-drop,
+html.file-tree-no-drop * {
+  cursor: no-drop !important;
+}
+
+// Win98 context menu (portal on body)
+.tree-menu {
+  position: fixed;
+  z-index: 1001;
+  min-width: 14rem;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+  font-size: 1.4rem;
+  background: variables.$surface;
+  box-shadow: variables.$border-window-outer, variables.$border-window-inner;
+  outline: none;
+
+  &__item {
+    padding: 0 2rem;
+    line-height: 2rem;
+    white-space: nowrap;
+    cursor: default;
+
+    &--active {
+      background: variables.$dialog-blue;
+      color: variables.$button-highlight;
+    }
+
+    &--disabled {
+      color: variables.$button-shadow;
+      text-shadow: 1px 1px variables.$button-highlight;
+    }
+  }
+
+  &__separator {
+    height: 0;
+    margin: 3px 1px;
+    border-top: 1px solid variables.$button-shadow;
+    border-bottom: 1px solid variables.$button-highlight;
+  }
+}

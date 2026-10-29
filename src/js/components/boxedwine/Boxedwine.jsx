@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createMessageListner } from "../../utility/utilityFunctions.ts";
+import { outputPath } from "../main/utility/filesystem/paths";
 import LoadingScreen from "./LoadingScreen.jsx";
 
 // The emulator canvas is a static element in boxedwine.html (the stock 26R1
@@ -8,17 +9,25 @@ import LoadingScreen from "./LoadingScreen.jsx";
 // no synthetic KeyboardEvents, no echo file hacks) and the click overlay.
 const D_DRIVE = "/mnt/drive_d/"; // guest D:\  (writable workspace, write path via bwWriteFile)
 const NATIVE_D = "/d_drive/"; // same drive, native emscripten path for readback via Module.FS
+// The toolchain archive boxedwine.html mounts at C:\files (getAppZipFile): the shell
+// writes it to this page's file system before the mount, and a restore keeps it.
+const TOOLCHAIN_ZIP = "/assembler-dp0.zip";
 // Build artifacts to read back into the app after an assemble (skip any not produced).
 const OUTPUT_EXTS = [".obj", ".exe", ".lst", ".map"];
-// Guest -> drawer import: files the guest creates on D: that the drawer
+// Guest -> drawer import: files and folders the guest creates on D: that the drawer
 // does not have are offered to the parent every IMPORT_EVERY_MS (and after each build
-// readback); larger files are reported once and left in the session.
+// readback); larger files are reported once and left in the session. The walk is
+// bounded (IMPORT_MAX_DEPTH levels, IMPORT_MAX_ENTRIES entries per scan).
 const IMPORT_EVERY_MS = 5000;
 const IMPORT_MAX_BYTES = 4 * 1024 * 1024;
+const IMPORT_MAX_DEPTH = 16;
+const IMPORT_MAX_ENTRIES = 4096;
 // Harness sentinel files (`__bw_*`) are never imported.
 const isSentinel = (name) => /^__bw_/i.test(name);
 // Files the parent treats as text (same rule as its reconciliation).
 const isTextName = (name) => /\.(asm|inc|txt|text|bat|lst|map)$/i.test(name);
+
+const quoteForCmd = (text) => (/[\s&()^;,=|<>]/.test(text) ? '"' + text + '"' : text);
 
 // Encode a Uint8Array to base64 without blowing the call stack on large buffers.
 const uint8ToBase64 = (u8) => {
@@ -42,7 +51,8 @@ const postToParent = (eventName, payload) => {
   } catch (e) {}
 };
 
-// After an assemble, the guest produces .obj/.exe(/.lst) on D: asynchronously.
+// After an assemble, the guest produces .obj/.exe(/.lst) in the source's bin folder on
+// D: asynchronously.
 // Poll (via Module.FS on the native path) until the linker's .exe appears — it's
 // the LAST artifact (asm->obj->exe) — then read every produced artifact, base64
 // them, and post to the parent so it can store them (drawer non-.asm view + hex
@@ -113,6 +123,8 @@ function Boxedwine() {
       "rename-file",
       "build-file",
       "delete-file",
+      "make-dir",
+      "remove-dir",
       "reset",
       "reconcile-files",
       "interrupt",
@@ -132,6 +144,8 @@ function Boxedwine() {
       "rename-file",
       "build-file",
       "delete-file",
+      "make-dir",
+      "remove-dir",
       "reconcile-files",
       "interrupt",
       "boxedwine-fully-loaded",
@@ -239,14 +253,16 @@ function Boxedwine() {
   const guestStat = (filename) => {
     try {
       const st = Module.FS.stat(NATIVE_D + filename);
-      return { exists: true, size: st.size };
+      return { exists: true, size: st.size, dir: Module.FS.isDir(st.mode) };
     } catch (e) {
-      return { exists: false, size: -1 };
+      return { exists: false, size: -1, dir: false };
     }
   };
   const verifyGuest = (op, filename, expect) => {
     const st = guestStat(filename);
     let ok = expect.present ? st.exists : !st.exists;
+    if (ok && expect.present && typeof expect.dir === "boolean" && st.dir !== expect.dir)
+      ok = false;
     if (
       ok &&
       expect.present &&
@@ -376,20 +392,27 @@ function Boxedwine() {
 
   // Atomically sync a .asm to D: then assemble->link->run it (no write/run race,
   // no echo). Toolchain is read-only at C:\files (drive-agnostic %~dp0 batch);
-  // cwd is D: so outputs land next to the source. The readback runs here in the
-  // iframe where Module.FS is local.
-  const doBuild = (filename, content) => {
+  // the cwd is the source's folder and the outputs land in its bin folder. The readback
+  // runs here in the iframe where Module.FS is local. content: the stored bytes as
+  // base64 when isBase64 (the guest gets exactly those), else text.
+  const doBuild = (filename, content, isBase64) => {
     if (!filename) return;
     gated(() =>
       whenModuleReady(["bwWriteFile", "sendText"], () => {
-        const name = filename.replace(/\.asm$/i, "");
+        const slash = filename.lastIndexOf("/");
+        const folder = slash < 0 ? "" : filename.slice(0, slash);
+        const base = filename.slice(slash + 1).replace(/\.asm$/i, "");
+        const name = outputPath(filename, ""); // drawer path of the outputs, minus ext
         importState.drawer.add(filename);
-        const rc = Module.bwWriteFile(D_DRIVE + filename, content || "");
+        if (folder && typeof Module.bwMakeDir === "function") Module.bwMakeDir(D_DRIVE + folder);
+        const rc = isBase64
+          ? writeGuestFile(filename, content, true).rc
+          : Module.bwWriteFile(D_DRIVE + filename, content || "");
         if (rc !== 0) {
           console.error("[Boxedwine] build sync failed rc=" + rc);
           return;
         }
-        // Remove the PREVIOUS build's artifacts first: assemble.bat does not, so a
+        // Remove the PREVIOUS build's outputs first: assemble.bat does not, so a
         // failed assemble would leave the old .exe on D: and the readback below would
         // re-import it as if this build had succeeded (stale binary, ok:true).
         if (typeof Module.bwDeleteFile === "function") {
@@ -400,23 +423,69 @@ function Boxedwine() {
           }
         }
         freezeState.buildInFlight = true; // guest progress is now expected (freeze detector)
-        // The source is at D:\<name>.asm whatever directory the user's prompt is in:
-        // assemble FROM D:\ (pushd/popd restores the prompt's own directory afterwards;
-        // `call` returns control to this line when the batch ends). Without this, a
-        // prompt that had left D:\ got `Cannot open file "<name>.asm" [ENOENT]`.
+        // The source is at D:\<folder>\<name>.asm whatever directory the user's prompt is
+        // in: assemble FROM its folder (pushd/popd restores the prompt's own directory
+        // afterwards; `call` returns control to this line when the batch ends). Without
+        // this, a prompt that had left D:\ got `Cannot open file "<name>.asm" [ENOENT]`.
         // A name with spaces (or cmd-special characters) is quoted: assemble.bat's %1
         // then expands to "my program", i.e. "my program".asm / .obj / .exe, which
         // JWasm, JWlink, FL and cmd all take as one name (harness scenario `spaces`).
-        const quoted = /[\s&()^;,=|<>]/.test(name) ? '"' + name + '"' : name;
-        Module.sendText(
-          "pushd D:\\ & call C:\\files\\assemble " + quoted + " & popd\r",
-        );
+        // A root source with an ASCII name gets exactly the command it always got.
+        const dir = folder ? quoteForCmd("D:\\" + folder.split("/").join("\\")) : "D:\\";
+        Module.sendText("pushd " + dir + " & call C:\\files\\assemble " + quoteForCmd(base) + " & popd\r");
         readBackBuildOutputs(name, () => {
           freezeState.buildInFlight = false;
           importScan();
         });
       }),
     );
+  };
+
+  // The named entries of the toolchain archive, read with this page's JSZip once input
+  // is open; rejects when one is missing.
+  const doReadToolchainFiles = (names) =>
+    new Promise((resolve, reject) =>
+      gated(async () => {
+        try {
+          const zip = await window.JSZip.loadAsync(Module.FS.readFile(TOOLCHAIN_ZIP));
+          const files = {};
+          for (const name of names) {
+            const entry = zip.file(name);
+            if (!entry) throw new Error(name + " is not in " + TOOLCHAIN_ZIP);
+            files[name] = await entry.async("uint8array");
+          }
+          resolve(files);
+        } catch (e) {
+          reject(e);
+        }
+      }),
+    );
+
+  // Direct folder create / remove (bwMakeDir: mkdir -p; bwRemoveDir: an EMPTY folder,
+  // the parent deletes the files first): cmd's next `dir` shows the change, nothing is
+  // typed. A build without these calls (mismatched glue/wasm) reports ok:false and
+  // changes nothing else.
+  const doMakeDir = (path) => {
+    if (!path) return;
+    gated(() => {
+      if (typeof Module === "undefined" || typeof Module.bwMakeDir !== "function")
+        return reportSync({ op: "mkdir", filename: path, ok: false, error: "bwMakeDir missing" });
+      importState.folders.add(path);
+      withVerify("mkdir", path, { present: true, dir: true }, () =>
+        Module.bwMakeDir(D_DRIVE + path),
+      );
+    });
+  };
+  const doRemoveDir = (path) => {
+    if (!path) return;
+    gated(() => {
+      if (typeof Module === "undefined" || typeof Module.bwRemoveDir !== "function")
+        return reportSync({ op: "rmdir", filename: path, ok: false, error: "bwRemoveDir missing" });
+      importState.folders.delete(path);
+      withVerify("rmdir", path, { present: false }, () =>
+        Module.bwRemoveDir(D_DRIVE + path),
+      );
+    });
   };
 
   // Direct file delete: remove a file from the guest FS so cmd's `dir` no longer
@@ -437,17 +506,34 @@ function Boxedwine() {
 
   // --- Reconcile --------------------------------------------------------
   // The parent hands over the WHOLE drawer once the environment is ready; D: is
-  // rebuilt from it (text via bwWriteFile, base64 binaries via bwWriteFileBytes),
-  // the tree is verified, and only then does the input gate open. Runs on every
-  // start (cold or restored) — the factory image holds no user file — and is
-  // idempotent (identical bytes rewrite to the same result).
-  const doReconcile = (files) => {
+  // rebuilt from it (folders first, shallowest first, with bwMakeDir; then text via
+  // bwWriteFile and base64 bytes via bwWriteFileBytes), the tree is verified, and only
+  // then does the input gate open. Runs on every start (cold or restored) — the factory
+  // image holds no user file — and is idempotent (identical bytes rewrite to the same
+  // result).
+  const doReconcile = (files, folders) => {
     const list = Array.isArray(files) ? files : [];
+    const dirs = (Array.isArray(folders) ? folders : [])
+      .filter(Boolean)
+      .sort((a, b) => a.split("/").length - b.split("/").length);
     whenModuleReady(["bwWriteFile"], () => {
       const t0 = performance.now();
       let written = 0,
+        madeFolders = 0,
         failed = [];
       importState.drawer = new Set();
+      importState.folders = new Set();
+      for (const d of dirs) {
+        importState.folders.add(d);
+        const res =
+          typeof Module.bwMakeDir === "function"
+            ? withVerify("reconcile-mkdir", d, { present: true, dir: true }, () =>
+                Module.bwMakeDir(D_DRIVE + d),
+              )
+            : reportSync({ op: "reconcile-mkdir", filename: d, ok: false, error: "bwMakeDir missing" });
+        if (res.ok) madeFolders++;
+        else failed.push(d + "/");
+      }
       for (const f of list) {
         if (!f || !f.filename) continue;
         importState.drawer.add(f.filename);
@@ -480,6 +566,8 @@ function Boxedwine() {
       const summary = {
         files: list.length,
         written,
+        folders: dirs.length,
+        madeFolders,
         failed,
         ms: Math.round(performance.now() - t0),
         tree: verifyTree(),
@@ -501,31 +589,50 @@ function Boxedwine() {
   };
 
   // --- Guest -> drawer import -------------------------------------------
-  // D: is MEMFS: a file the guest created (program output, `copy con`, a redirected
-  // echo) would vanish at the next reload unless the drawer gets it. Every
-  // IMPORT_EVERY_MS (and after a build readback) list D: and post the files the
-  // drawer does not have. Nothing is ever deleted from the drawer here.
-  const importState = { drawer: new Set(), posted: new Map(), timer: null };
+  // D: is MEMFS: a file or folder the guest created (program output, `copy con`, a
+  // redirected echo, `mkdir`) would vanish at the next reload unless the drawer gets
+  // it. Every IMPORT_EVERY_MS (and after a build readback) walk D: and post the files
+  // and folders the drawer does not have, under their exact guest names. Nothing is
+  // ever deleted from the drawer here.
+  const importState = {
+    drawer: new Set(),
+    folders: new Set(),
+    posted: new Map(),
+    timer: null,
+  };
   const importScan = () => {
     if (!inputOpen() || typeof Module === "undefined" || !Module.FS) return;
     if (window.BWSnapshot && window.BWSnapshot.busy) return;
-    const found = [];
-    let names;
-    try {
-      names = Module.FS.readdir(NATIVE_D);
-    } catch (e) {
-      return;
-    }
-    for (const n of names) {
-      if (n === "." || n === ".." || isSentinel(n) || importState.drawer.has(n))
-        continue;
-      let st;
+    const found = [],
+      folders = [],
+      entries = [];
+    let seen = 0;
+    const walk = (dir, depth) => {
+      let names;
       try {
-        st = Module.FS.stat(NATIVE_D + n);
+        names = Module.FS.readdir(NATIVE_D + dir);
       } catch (e) {
-        continue;
+        return;
       }
-      if (!Module.FS.isFile(st.mode)) continue;
+      for (const name of names) {
+        if (name === "." || name === ".." || isSentinel(name)) continue;
+        if (++seen > IMPORT_MAX_ENTRIES) return;
+        const path = (dir ? dir + "/" : "") + name;
+        let st;
+        try {
+          st = Module.FS.stat(NATIVE_D + path);
+        } catch (e) {
+          continue;
+        }
+        if (Module.FS.isDir(st.mode)) {
+          if (!importState.folders.has(path)) folders.push(path);
+          if (depth < IMPORT_MAX_DEPTH) walk(path, depth + 1);
+        } else if (Module.FS.isFile(st.mode)) entries.push({ n: path, st });
+      }
+    };
+    walk("", 0);
+    for (const { n, st } of entries) {
+      if (importState.drawer.has(n)) continue;
       if (importState.posted.get(n) === st.size) continue; // already offered at this size
       if (st.size > IMPORT_MAX_BYTES) {
         if (!importState.posted.has(n))
@@ -553,8 +660,9 @@ function Boxedwine() {
         importState.posted.set(n, st.size);
       } catch (e) {}
     }
-    if (found.length)
-      postToParent("guest-files", { files: found, source: "guest" });
+    for (const path of folders) importState.folders.add(path);
+    if (found.length || folders.length)
+      postToParent("guest-files", { files: found, folders, source: "guest" });
   };
   const startImportScan = () => {
     if (!importState.timer)
@@ -591,19 +699,27 @@ function Boxedwine() {
     if (files.length) postToParent("guest-files", { files, source: "legacy" });
   };
 
-  // Guest D: listing for tests / the drawer: [{name, size}] (Module.FS on /d_drive).
+  // Guest D: listing for tests / the drawer: [{name, size, dir}], recursive, names as
+  // "/" paths (Module.FS on /d_drive).
   const verifyTree = () => {
     try {
-      return Module.FS.readdir(NATIVE_D)
-        .filter((n) => n !== "." && n !== "..")
-        .map((n) => {
+      const out = [];
+      const walk = (dir) => {
+        for (const n of Module.FS.readdir(NATIVE_D + dir)) {
+          if (n === "." || n === "..") continue;
+          const path = (dir ? dir + "/" : "") + n;
           try {
-            const st = Module.FS.stat(NATIVE_D + n);
-            return { name: n, size: st.size, dir: Module.FS.isDir(st.mode) };
+            const st = Module.FS.stat(NATIVE_D + path);
+            const isDir = Module.FS.isDir(st.mode);
+            out.push({ name: path, size: st.size, dir: isDir });
+            if (isDir) walk(path);
           } catch (e) {
-            return { name: n, size: -1 };
+            out.push({ name: path, size: -1 });
           }
-        });
+        }
+      };
+      walk("");
+      return out;
     } catch (e) {
       return null;
     }
@@ -641,7 +757,7 @@ function Boxedwine() {
       }
       case "build-file": {
         const d = event.detail || {};
-        return doBuild(d.filename, d.content);
+        return doBuild(d.filename, d.content, !!d.isBase64);
       }
       case "delete-file":
         return doDeleteFile(
@@ -649,9 +765,13 @@ function Boxedwine() {
             ? event.detail
             : (event.detail || {}).filename,
         );
+      case "make-dir":
+        return doMakeDir(event.detail);
+      case "remove-dir":
+        return doRemoveDir(event.detail);
       case "reconcile-files": {
         const d = event.detail || {};
-        return doReconcile(d.files || d);
+        return doReconcile(d.files || d, d.folders);
       }
       case "reset":
         return doReset();
@@ -670,9 +790,12 @@ function Boxedwine() {
         doSyncFile(filename, content, !!isBinary),
       renameFile: (oldName, newName, content, isBinary) =>
         doRenameFile(oldName, newName, content, !!isBinary),
-      build: (filename, content) => doBuild(filename, content),
+      build: (filename, content, isBase64) => doBuild(filename, content, !!isBase64),
+      readToolchainFiles: (names) => doReadToolchainFiles(names),
       deleteFile: (filename) => doDeleteFile(filename),
-      reconcile: (files) => doReconcile(files),
+      makeDir: (path) => doMakeDir(path),
+      removeDir: (path) => doRemoveDir(path),
+      reconcile: (files, folders) => doReconcile(files, folders),
       inputOpen: () => inputOpen(),
       verifyTree: () => verifyTree(),
       reset: () => doReset(),

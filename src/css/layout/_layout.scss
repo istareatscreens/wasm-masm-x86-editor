@@ -1,84 +1,109 @@
 @use "../abstracts/mixins";
 @use "../abstracts/variables";
 
+// The first row holds both top bars: as many rows of $banner-height as the bar with the
+// most rows needs (banner/useBannerRows.js sets --banner-rows and data-banner-rows), and
+// the rows below give the height back. An attribute, not a class: the layout modifier is
+// found by its classList index (ViewControlGroup, Banner).
 .app-layout {
+  --banner-height: calc(var(--banner-rows, 1) * #{variables.$banner-height});
   display: grid;
   grid-template:
-    "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+    "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
     "editor editor file_drawer file_drawer" variables.$file-drawer-height
-    "editor editor cmd cmd" calc(60vh - #{variables.$banner-height})
+    "editor editor cmd cmd" calc(60vh - var(--banner-height))
     / 30vw 30vw 20vw 20vw;
 
   @include mixins.respond(half-width) {
     grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
       "editor editor file_drawer file_drawer" variables.$file-drawer-height-half
-      "cmd cmd cmd cmd" calc(50vh - #{variables.$banner-height})
+      "cmd cmd cmd cmd" calc(50vh - var(--banner-height))
       / 35vw 35vw 15vw 15vw;
   }
 
   &--no-editor {
     grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
       "cmd cmd file_drawer file_drawer" variables.$file-drawer-height
-      "cmd cmd file_drawer file_drawer" calc(60vh - #{variables.$banner-height})
+      "cmd cmd file_drawer file_drawer" calc(60vh - var(--banner-height))
       / 30vw 30vw 20vw 20vw;
 
     @include mixins.respond(half-width) {
       grid-template:
-        "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+        "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
         "cmd cmd file_drawer file_drawer" variables.$file-drawer-height-half
-        "cmd cmd file_drawer file_drawer" calc(50vh - #{variables.$banner-height})
+        "cmd cmd file_drawer file_drawer" calc(50vh - var(--banner-height))
         / 35vw 35vw 15vw 15vw;
     }
   }
 
   &--no-cmd {
     grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
       "editor editor file_drawer file_drawer" variables.$file-drawer-height
-      "editor editor file_drawer file_drawer" calc(60vh - #{variables.$banner-height})
+      "editor editor file_drawer file_drawer" calc(60vh - var(--banner-height))
       / 30vw 30vw 20vw 20vw;
 
     @include mixins.respond(half-width) {
       grid-template:
-        "banner banner file_drawer_banner file_drawer_banner" variables.$banner-height
+        "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
         "editor editor file_drawer file_drawer" variables.$file-drawer-height-half
-        "editor editor file_drawer file_drawer" calc(50vh - #{variables.$banner-height})
+        "editor editor file_drawer file_drawer" calc(50vh - var(--banner-height))
         / 35vw 35vw 15vw 15vw;
     }
   }
 
   &--no-file-drawer {
     grid-template:
-      "banner banner cmd cmd" variables.$banner-height
+      "banner banner cmd cmd" var(--banner-height)
       "editor editor cmd cmd" variables.$file-drawer-height
-      "editor editor cmd cmd" calc(60vh - #{variables.$banner-height})
+      "editor editor cmd cmd" calc(60vh - var(--banner-height))
       / 30vw 30vw 20vw 20vw;
 
     @include mixins.respond(half-width) {
       grid-template:
-        "banner banner banner banner" variables.$banner-height
+        "banner banner banner banner" var(--banner-height)
         "editor editor editor editor" variables.$file-drawer-height-half
-        "cmd cmd cmd cmd" calc(50vh - #{variables.$banner-height})
+        "cmd cmd cmd cmd" calc(50vh - var(--banner-height))
         / 35vw 35vw 15vw 15vw;
     }
   }
 
   &--only-editor {
     grid-template:
-      "banner banner banner banner" variables.$banner-height
+      "banner banner banner banner" var(--banner-height)
       "editor editor editor editor" variables.$file-drawer-height
-      "editor editor editor editor" calc(60vh - #{variables.$banner-height})
+      "editor editor editor editor" calc(60vh - var(--banner-height))
       / 30vw 30vw 20vw 20vw;
   }
 
   &--only-cmd {
     grid-template:
-      "banner banner banner banner" variables.$banner-height
+      "banner banner banner banner" var(--banner-height)
       "cmd cmd cmd cmd" variables.$file-drawer-height
-      "cmd cmd cmd cmd" calc(60vh - #{variables.$banner-height})
+      "cmd cmd cmd cmd" calc(60vh - var(--banner-height))
       / 30vw 30vw 20vw 20vw;
+  }
+
+  // A panel without an area is not drawn: off the template it would sit in an implicit
+  // track below and right of the page (as tall as all its rows), where revealing a row or
+  // taking the focus scrolls the page. The terminal keeps its box, which the emulated
+  // screen follows.
+  &--no-editor,
+  &--only-cmd {
+    > .editor {
+      display: none;
+    }
+  }
+
+  &--no-file-drawer,
+  &--only-editor,
+  &--only-cmd {
+    > .banner__file-drawer,
+    > .file-drawer-scroll {
+      display: none;
+    }
   }
 }
 

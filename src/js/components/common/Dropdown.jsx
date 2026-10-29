@@ -136,7 +136,18 @@ function Dropdown({ options = [], selected, classNameDropdown = "", onChange, di
       event.stopPropagation();
       typeAhead.current = { text: "", time: 0 };
       if (event.altKey && key === "ArrowUp" && open) return commit(activeIndex);
+      const arrow = key === "ArrowDown" || key === "ArrowUp";
+      // Up and Down wrap at both ends; on the closed dropdown they select and apply the
+      // previous or next option at once (Alt+Down opens the list)
+      const wrap = (from) => (from + steps[key] + options.length) % options.length;
+      if (arrow && !open && !event.altKey) {
+        const index = wrap(selectedIndex);
+        setActiveIndex(index);
+        if (index !== selectedIndex) onChange(options[index]);
+        return;
+      }
       const index = key === "Home" ? 0 : key === "End" ? options.length - 1
+        : arrow ? wrap(activeIndex)
         : Math.max(0, Math.min(options.length - 1, activeIndex + steps[key]));
       if (!open) openList(key === "Home" || key === "End" ? index : selectedIndex);
       else setActiveIndex(index);

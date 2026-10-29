@@ -9,9 +9,11 @@ import {
   quoteForCmd,
   checkFileExtension,
   assembleAndRun,
+  focusTerminal,
 } from "../../../utility/utilityFunctions.ts";
 
 import FileSystem from "../utility/FileSystem.js";
+import { baseOf, outputPath, parentOf } from "../utility/filesystem/paths";
 
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
@@ -64,33 +66,25 @@ const Banner = function Banner({
     }
   };
 
-  const build = async () => {
+  const build = () => {
     if (/.asm$/.test(filename)) {
       // Sync the current .asm directly into the guest (D:, no echo) and
-      // assemble->link->run it in one atomic iframe step. Content comes from the
-      // app's storage (IndexedDB, async) with a localStorage fallback for
-      // legacy-stored files, so it reflects the latest editor save.
-      let content = "";
-      try {
-        content = await FileSystem.getFileData(filename);
-      } catch (error) {
-        console.error("build: async read failed, trying sync", error);
-      }
-      if (!content) content = FileSystem.getFileContentSync(filename);
-      assembleAndRun(filename, content);
+      // assemble->link->run it in one atomic iframe step. The guest gets the stored
+      // bytes exactly (the editor saves through the same storage), with a localStorage
+      // fallback for legacy-stored files.
+      FileSystem.stripByteOrderMarks();
+      const bytes = FileSystem.getRawFileData(filename);
+      if (bytes) assembleAndRun(filename, bytes, true);
+      else assembleAndRun(filename, FileSystem.getFileContentSync(filename), false);
       unhideTerminal();
+      focusTerminal(); // the program's input is typed next
     } else {
       console.log("not an assembly file: " + filename);
     }
   };
 
-  //TODO: FIX bug when selecting non asm files
-  const getExecutableName = () => {
-    return `${filename.substring(0, filename.length - 3)}exe`;
-  };
-
   const checkForFile = () => {
-    return !fileList.includes(getExecutableName());
+    return !fileList.includes(outputPath(filename, ".exe"));
   };
 
   const reset = () => {
@@ -101,16 +95,22 @@ const Banner = function Banner({
   const cancel = () => {
     interruptEmulator();
     unhideTerminal();
+    focusTerminal();
   };
 
-  // The drawer's files live in the root of D:; the user may have cd'd anywhere in the
-  // terminal, so run the binary FROM D:\ (pushd/popd: the prompt's own directory is
-  // restored afterwards) instead of hoping the current directory is still D:\.
-  // A name with spaces (or other cmd-special characters) is quoted for cmd.
+  // The user may have cd'd anywhere in the terminal, so run the binary (bin\<name>.exe)
+  // FROM its source's folder on D:, as assemble.bat does (pushd/popd: the prompt's own
+  // directory is restored afterwards) instead of hoping the current directory is still
+  // the right one. A name with spaces (or other cmd-special characters) is quoted for
+  // cmd.
   const run = () => {
     if (/.asm$/.test(filename)) {
-      writeCommandToCMD("pushd D:\\ & " + quoteForCmd(getExecutableName()) + " & popd");
+      const folder = parentOf(filename);
+      const dir = folder ? quoteForCmd("D:\\" + folder.split("/").join("\\")) : "D:\\";
+      const exe = "bin\\" + baseOf(outputPath(filename, ".exe"));
+      writeCommandToCMD("pushd " + dir + " & " + quoteForCmd(exe) + " & popd");
       unhideTerminal();
+      focusTerminal();
     }
   };
 

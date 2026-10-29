@@ -223,6 +223,11 @@ export const FSAdapter = {
   encodeFileData: hf.encodeFileData,
   decodeFileData: hf.decodeFileData,
 
+  // The store's connection: closed before this tab deletes the store; the callback runs
+  // when another tab deletes it (the connection is closed first, so the delete goes through)
+  closeStore: () => hf.getStorage().then((storage) => storage.close()),
+  onStoreDeleted: (fn) => hf.getStorage().then((storage) => { storage.onVersionChange = fn; }),
+
   // Initialize storage
   init: (type = 'indexeddb') => storageAdapter.init(type),
   

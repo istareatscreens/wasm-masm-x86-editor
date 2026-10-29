@@ -4,7 +4,8 @@
 // (retroScrollbars.js). The vertical rail is ALWAYS present in the 16 px gutter it
 // occupies: with nothing to scroll it is the classic disabled scrollbar (embossed
 // arrows, checkered track, no thumb) - never a bare gray strip. The horizontal rail
-// exists only while there is a horizontal range, the corner only with both rails.
+// exists only while there is a horizontal range (the file drawer's is always there,
+// disabled the same way), the corner only with both rails.
 .retro-scroll-host {
   position: relative;
   min-width: 0;

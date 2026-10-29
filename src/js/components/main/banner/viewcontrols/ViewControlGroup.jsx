@@ -30,6 +30,17 @@ function ViewControlGroup({ className, refApp, ...props }) {
     };
   }, []);
 
+  // only the terminal (0 1 0 --only-cmd), with the switches in step (the Snake demo)
+  useEffect(() => {
+    const handleShowOnlyCmd = () => {
+      changeViewState(setShowCMD, true)("--only-cmd");
+      setShowEditor(false);
+      setShowFileDrawer(false);
+    };
+    window.addEventListener("show-only-cmd", handleShowOnlyCmd);
+    return () => window.removeEventListener("show-only-cmd", handleShowOnlyCmd);
+  }, [refApp]);
+
   const getChangedBoolean = (editor, cmd, filedrawer, refCMDBtn) => {
     if (editor != showEditor) {
       return editor;

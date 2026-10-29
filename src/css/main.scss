@@ -16,6 +16,8 @@
 @use "components/cmd";
 @use "components/banner";
 @use "components/list";
+@use "components/file-tree";
+@use "components/view-mode-banner";
 @use "components/checkbox";
 @use "components/switch";
 @use "components/scrollbar";
@@ -30,6 +32,7 @@
 @use "components/image";
 @use "components/loading-indicator";
 @use "components/loading-screen";
+@use "components/splash";
 
 @use "layout/layout";
 @use "layout/banner" as banner2;

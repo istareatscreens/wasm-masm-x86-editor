@@ -292,8 +292,10 @@
       <p><strong>On this page</strong></p>
       <ol>
         <li><a href="#first-program">Compile and run your first program</a></li>
+        <li><a href="#utf8-output">Print text in any language</a></li>
         <li><a href="#toolbar">Toolbar button reference</a></li>
         <li><a href="#files">Manage and back up files</a></li>
+        <li><a href="#copy">Copy console text</a></li>
         <li><a href="#troubleshooting">Troubleshoot builds and the terminal</a></li>
         <li><a href="#compatibility">Assembler and library compatibility</a></li>
         <li><a href="#help">Support and resources</a></li>
@@ -338,6 +340,29 @@ END main</code></pre>
         and <code>exit</code> ends the program.</p>
       <p><strong>Expected output</strong></p>
       <pre aria-label="Expected program output" tabindex="0"><code>Hello from MASM!</code></pre>
+
+      <h3 id="utf8-output">Print text in any language</h3>
+      <p>A string in your source is stored as UTF-8. The terminal starts with code page 437, as a US English
+        Windows console does, so programs that print its box-drawing characters keep working; to print UTF-8, switch the
+        console to code page 65001 first. <code>Irvine32.inc</code> does not declare
+        <code>SetConsoleOutputCP</code>, so the program declares it:</p>
+      <pre aria-label="MASM source that prints UTF-8 text" tabindex="0"><code>INCLUDE Irvine32.inc
+SetConsoleOutputCP PROTO, wCodePageID:DWORD
+
+.data
+msg BYTE "Hello, 世界! Привет! مرحبا", 0dh, 0ah, 0
+
+.code
+main PROC
+    INVOKE SetConsoleOutputCP, 65001   ; the console reads the bytes as UTF-8
+    mov edx, OFFSET msg
+    call WriteString
+    exit
+main ENDP
+END main</code></pre>
+      <p>Instead of calling <code>SetConsoleOutputCP</code>, you can type <code>chcp 65001</code> in the terminal
+        before running a program. The example builds unchanged with Microsoft MASM and the standard Irvine32
+        library.</p>
     </section>
 
     <section aria-labelledby="toolbar">
@@ -358,14 +383,15 @@ END main</code></pre>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/buildFile.png" width="22"
                     height="22" alt="" /></span><span>Compile, link and run .asm file</span></span></th>
             <td>Builds and runs the open <code>.asm</code> file. Select an assembly source file from the file drawer to
-              enable this button.
+              enable this button. The <code>.obj</code> and <code>.exe</code> go into a <code>bin</code> folder next
+              to the source: <code>lab1\hello.asm</code> builds <code>lab1\bin\hello.exe</code>.
             </td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/runBinary.png" width="19"
                     height="19" alt="" /></span><span>Run compiled binary</span></span></th>
-            <td>Runs the <code>.exe</code> associated with the open <code>.asm</code> file. A compiled executable must
-              exist. Source edits are not included until you rebuild.</td>
+            <td>Runs the <code>.exe</code> associated with the open <code>.asm</code> file (<code>bin\</code> in its
+              folder). A compiled executable must exist. Source edits are not included until you rebuild.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/cmdCancel.png" width="24"
@@ -407,7 +433,9 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/themeMenu.png" width="24"
                     height="24" alt="" /></span><span>Theme settings</span></span></th>
-            <td>Opens the theme options. Choose a separate editor color theme for light mode and dark mode.</td>
+            <td>Opens the theme options. Choose a separate editor color theme for light mode and dark mode. After
+              choosing from a list, <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> step through the themes (or fonts) and
+              apply each one, going round at the ends.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/vim.svg" width="24" height="24"
@@ -451,7 +479,11 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/about.png" width="24" height="24"
                     alt="" /></span><span>Application info</span></span></th>
-            <td>Opens information window about the project.</td>
+            <td>Opens information window about the project. Its <strong>Snake</strong> button builds and runs
+              the Snake game (<a href="https://github.com/meixinchoy/Snake-Game-Assembly-Language" target="_blank"
+                rel="noopener noreferrer">meixinchoy/Snake-Game-Assembly-Language</a>, MIT licence) with only the
+              terminal showing (W A S D or the arrow keys steer, X quits). The first click copies it into a folder <code>snake</code> (<code>snake-&lt;id&gt;</code>
+              when a folder of yours already has that name); later clicks play that copy, edits included.</td>
           </tr>
         </tbody>
       </table>
@@ -469,38 +501,53 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon" aria-hidden="true"><span
                     class="checkbox"></span></span><span>Select all</span></span></th>
-            <td>Checks or clears every file in the current file view. Use the checkboxes beside individual filenames to
-              select a smaller group.</td>
+            <td>Checks or clears every file and folder in the current view. Use the checkboxes beside individual files
+              and folders to select a smaller group; a folder's checkbox covers everything in it.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/newFile.png" width="15" height="15"
                     alt="" /></span><span>Create new assembly (.asm) text file</span></span></th>
-            <td>Opens the Create file dialog. Enter a filename and press <kbd>Enter</kbd>. The editor adds
-              <code>.asm</code> if needed.
+            <td>Opens the Create file dialog for the selected folder. Enter a filename and press <kbd>Enter</kbd>.
+              The editor adds <code>.asm</code> if needed.
             </td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/newFolder.png" width="16" height="16"
+                    alt="" /></span><span>Create new folder</span></span></th>
+            <td>Opens the Create folder dialog for the selected folder. The new folder is selected, so the next new
+              file goes into it.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/uploadFile.png" width="16"
                     height="16" alt="" /></span><span>Add file(s) to project</span></span></th>
-            <td>Imports one or more files from your device into the browser project.</td>
+            <td>Imports one or more files from your device into the selected folder. For a ZIP archive you choose
+              <strong>Extract here</strong> (its files and folders are recreated) or adding the ZIP file itself.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/importFolder.png" width="16"
+                    height="16" alt="" /></span><span>Import a folder</span></span></th>
+            <td>Imports a folder from your device, with its subfolders and files, into the selected folder. Browsers
+              leave out empty folders; a ZIP keeps them. Shown in browsers that can pick folders.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/saveFile.png" width="16"
                     height="16" alt="" /></span><span>Save selected file(s)</span></span></th>
-            <td>Downloads the checked files to your device. One file downloads individually; multiple files download as
-              a ZIP archive. With no boxes checked, downloads the open file.</td>
+            <td>Downloads the checked files and folders to your device. One file downloads individually; anything more,
+              or any folder, downloads as one ZIP archive with the same folders. With no boxes checked, downloads the
+              open file.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/deleteFile.png" width="24"
                     height="24" alt="" /></span><span>Delete selected file(s)</span></span></th>
-            <td>Immediately removes the checked files from the project and terminal. With no boxes checked, deletes the
-              open file. Download a backup before deleting files you may need.</td>
+            <td>Removes the checked files and folders from the project and terminal (a folder with everything in it;
+              you are asked first when it is not empty). With no boxes checked, deletes the open file. Download a
+              backup before deleting files you may need.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/files.png" width="24" height="24"
-                    alt="" /></span><span>Switch file type view</span></span></th>
-            <td>Switches the list between <code>.asm</code> source files and all other files, including generated
-              <code>.obj</code> and <code>.exe</code> files.
+                    alt="" /></span><span>Show only .asm files</span></span></th>
+            <td>Off (the default), the explorer shows every file, including generated <code>.obj</code> and
+              <code>.exe</code> files. On, it shows only <code>.asm</code> files, and every folder.
             </td>
           </tr>
           <tr>
@@ -516,11 +563,36 @@ END main</code></pre>
     <section aria-labelledby="files">
       <h2 id="files">Manage and back up files</h2>
       <h3>Open and rename files</h3>
-      <p>Click a filename to open it. Checking its box selects it for download or deletion;
-        it does not open it. Double-click a filename to rename it, then press <kbd>Enter</kbd>.
-        Keep the <code>.asm</code> extension on assembly source files.</p>
-      <p>To find build outputs or imported files with other extensions, use <strong>Switch file type view</strong>.
-        Switching views clears the checkbox selection, so select files again before downloading or deleting.</p>
+      <p>The file explorer shows the terminal's <code>D:</code> drive as a tree. Click a file to open it.
+        Checking its box selects it for download or deletion; it does not open it. Double-click a file to rename it,
+        then press <kbd>Enter</kbd>, or press <kbd>F2</kbd> (or right-click and choose <strong>Rename</strong>) to
+        rename a file or a folder. Keep the <code>.asm</code> extension on assembly source files.</p>
+      <p>Files other than <code>.asm</code> show a bar above the editor: <strong>Edit as text</strong> opens them in
+        the editor, <strong>View in hex</strong> in the hex viewer. Binary files such as <code>.exe</code> and
+        <code>.obj</code> open in hex; other files open as text.</p>
+
+      <h3>Folders</h3>
+      <p>Click a folder to select it; double-click it, or click its <kbd>+</kbd>/<kbd>-</kbd> box, to open or close
+        it. New files, new folders, uploads and imports go into the selected folder (otherwise into the folder of
+        the open file, otherwise into <code>D:\</code>); each dialog names that folder.</p>
+      <p>To move files or folders, drag them onto a folder or onto <strong>(D:)</strong>. On a touch screen, press
+        and hold, then drag. Without dragging, right-click and choose <strong>Cut</strong>, then right-click the
+        destination and choose <strong>Paste</strong> (<kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>).
+        Dragging a checked item moves every checked item. The tree also works from the keyboard: arrow keys,
+        <kbd>Enter</kbd>, <kbd>Space</kbd> (check), <kbd>F2</kbd>, <kbd>Delete</kbd> and
+        <kbd>Shift</kbd>+<kbd>F10</kbd> (the menu).</p>
+      <p>A program in a folder is built and run in that folder, so an <code>INCLUDE</code> of a file next to it
+        works as on Windows. The tree scrolls smoothly with thousands of files, and <strong>Select all</strong>
+        checks every one of them.</p>
+
+      <h3>Names and text in any language</h3>
+      <p>File and folder names and the text you type or paste can use any language, and the terminal shows them.
+        Programs are built and run under their real names: the assembler, the linker and <code>INCLUDE</code>
+        accept names in any language.</p>
+      <p>Assembly sources (<code>.asm</code> and <code>.inc</code>) are saved as UTF-8 text without a byte order
+        mark, which is what Microsoft MASM reads. A source saved by another editor with a byte order mark (UTF-8
+        with BOM, or UTF-16, which Notepad calls "Unicode") is converted to plain UTF-8, with the same text, when
+        you save it or build.</p>
 
       <h3>Automatic saving and local storage</h3>
       <p>Source edits save automatically in this browser after a short pause in typing.
@@ -532,54 +604,25 @@ END main</code></pre>
 
       <h3>Download and restore a project</h3>
       <ol>
-        <li>In the source file view, check the files you need, or use <strong>Select all</strong>.</li>
-        <li>Select <strong>Save selected file(s)</strong> to download them. Multiple checked files
-          are packaged in a ZIP archive.</li>
-        <li>Switch file type view and repeat for any other files you need to keep.</li>
-        <li>To restore a backup, extract the ZIP on your device first, then use
-          <strong>Add file(s) to project</strong> to import the extracted files.
+        <li>Check the files and folders you need, or use <strong>Select all</strong>.</li>
+        <li>Select <strong>Save selected file(s)</strong>. More than one file, or any folder, downloads as one ZIP
+          archive with the same folders.</li>
+        <li>To restore a backup, use <strong>Add file(s) to project</strong>, choose the ZIP and select
+          <strong>Extract here</strong>: its files and folders, empty ones included, come back as they were.
+          <strong>Import a folder</strong> brings in a folder from your device the same way.
         </li>
       </ol>
     </section>
 
 
-    <section aria-labelledby="Copy">
-      <h2 id="compatibility">Copy Console Text</h2>
+    <section aria-labelledby="copy">
+      <h2 id="copy">Copy Console Text</h2>
       <p>To copy text from the console highlight it with your mouse by click dragging over it and
          type: 
          <kbd>Ctrl</kbd> + <kbd>shift</kbd> + <kbd>C</kbd> 
          or 
          <kbd>cmd</kbd> + <kbd>shift</kbd> + <kbd>C</kbd> to copy it to your clipboard
       </p>
-    </section>
-
-    <section aria-labelledby="copy">
-      <h2 id="copy">Copy Terminal Text</h2>
-      <h3>Open and rename files</h3>
-      <p>Click a filename to open it. Checking its box selects it for download or deletion;
-        it does not open it. Double-click a filename to rename it, then press <kbd>Enter</kbd>.
-        Keep the <code>.asm</code> extension on assembly source files.</p>
-      <p>To find build outputs or imported files with other extensions, use <strong>Switch file type view</strong>.
-        Switching views clears the checkbox selection, so select files again before downloading or deleting.</p>
-
-      <h3>Automatic saving and local storage</h3>
-      <p>Source edits save automatically in this browser after a short pause in typing.
-        Allow that pause before switching files, building, downloading or closing the page.
-        Files are stored in IndexedDB; editor preferences are stored in local storage.</p>
-      <p class="note"><strong>Keep a downloaded backup.</strong> Browser storage stays with this browser
-        and device. It does not sync to an account, and clearing site data removes it.
-        The floppy disk button downloads a copy to your device.</p>
-
-      <h3>Download and restore a project</h3>
-      <ol>
-        <li>In the source file view, check the files you need, or use <strong>Select all</strong>.</li>
-        <li>Select <strong>Save selected file(s)</strong> to download them. Multiple checked files
-          are packaged in a ZIP archive.</li>
-        <li>Switch file type view and repeat for any other files you need to keep.</li>
-        <li>To restore a backup, extract the ZIP on your device first, then use
-          <strong>Add file(s) to project</strong> to import the extracted files.
-        </li>
-      </ol>
     </section>
 
     <section aria-labelledby="troubleshooting">
@@ -599,6 +642,17 @@ END main</code></pre>
         <dt>Typing does not reach the program or editor</dt>
         <dd>Click inside the terminal to enter program input, or inside the editor to edit source.
           If Vim mode is enabled, press <kbd>i</kbd> to insert text or turn Vim mode off.</dd>
+
+        <dt>A notice says the program stopped</dt>
+        <dd>The program ended with an exception, as it would on Windows: the notice names it (an access to an
+          address it does not own, a division by zero, an illegal or privileged instruction) with a hint. When the
+          program executed an instruction the emulated processor (a Pentium 4 with MMX, SSE and SSE2) should run,
+          the notice says so and offers <strong>Report bug</strong>: it opens a GitHub issue filled in with the
+          instruction and its bytes, which you can check before submitting.</dd>
+
+        <dt>A notice says the terminal stopped</dt>
+        <dd>The emulator itself failed; your program is not the cause and your files are safe. Select
+          <strong>Report bug</strong> to open a filled-in GitHub issue, then <strong>Reset terminal</strong>.</dd>
 
         <dt>A panel is missing</dt>
         <dd>Use its <strong>Show / hide</strong> toolbar control. If zen mode is active,
@@ -624,7 +678,10 @@ END main</code></pre>
     <section aria-labelledby="compatibility">
       <h2 id="compatibility">Assembler and library compatibility</h2>
       <p>The build tools are <strong>JWasm and JWlink</strong>, which support MASM-compatible syntax.
-        The editor does not use Microsoft's MASM executables. The browser runtime is a
+        The editor does not use Microsoft's MASM executables, but it works as Microsoft MASM (ML.exe 14) does: sources
+        stay plain UTF-8, instructions are encoded as ML encodes them, and what ML refuses is refused here too
+        (JWasm's own syntax extensions, and names ML reserves, such as <code>k1</code>, an AVX-512 register there).
+        Code written here also builds with ML.exe. The browser runtime is a
         <strong>32-bit Wine environment</strong> running through BoxedWine and WebAssembly.
         Use 32-bit x86 programs with Irvine32; 64-bit Windows executables cannot run here.
       </p>
@@ -633,6 +690,11 @@ END main</code></pre>
         Other included headers are <code>Macros.inc</code>, <code>SmallWin.inc</code>,
         <code>VirtualKeys.inc</code> and <code>GraphWin.inc</code>.
       </p>
+      <p>The library files are those of Kip Irvine's current distribution. Only <code>Clrscr</code> in
+        <code>Irvine32.lib</code> is rewritten to clear the screen faster, with the same result, so a program
+        written here links the same way with the standard library.</p>
+      <p>The emulated processor is a Pentium 4: the 386 and 486 integer instructions, x87, MMX, SSE and SSE2.
+        Instructions of later processors (SSE3 and newer) stop the program with a notice that names them.</p>
     </section>
 
     <section aria-labelledby="help">

@@ -38,6 +38,9 @@
     "sameAs": "https://github.com/istareatscreens/wasm-masm-x86-editor"
   }
   </script>
+  <!-- covers the page until its images and fonts are there (App.jsx removes it); the bar
+       shows only when that takes a moment, so a fast load never flashes it -->
+  <div id="app-splash" class="app-splash" role="status" aria-busy="true" aria-label="Loading"><div class="app-splash__bar"></div></div>
   <div id="root"></div>
   <noscript>
     <main style="position:fixed;inset:1rem;overflow:auto;padding:1rem;font-size:16px">

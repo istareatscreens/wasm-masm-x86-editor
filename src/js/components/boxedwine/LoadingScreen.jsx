@@ -18,10 +18,26 @@ https://codepen.io/duptitung/pen/XMVNyZ
 // a second stage-text line.
 const DESIGN_W = 212;
 const DESIGN_H = 280;
+// the composition is shown whole, once the artwork has decoded and its font has loaded (at
+// most READY_MS: a font that never loads does not hide the screen)
+const READY_MS = 2000;
 const LoadingScreen = () => {
     const [stage, setStage] = useState(() => (typeof window !== "undefined" && window.BW_BOOT_STAGE) || "Loading emulator");
+    const [ready, setReady] = useState(false);
     const screenRef = useRef(null);
     const groupRef = useRef(null);
+    useEffect(() => {
+        let done = false;
+        const show = () => { if (!done) { done = true; setReady(true); } };
+        const image = new Image();
+        const decoded = new Promise((resolve) => { image.onload = resolve; image.onerror = resolve; })
+            .then(() => (image.decode ? image.decode().catch(() => {}) : undefined));
+        image.src = masmwatch;
+        const font = document.fonts && document.fonts.load ? document.fonts.load('1em "Press Start"').catch(() => {}) : Promise.resolve();
+        Promise.all([decoded, font]).then(show, show);
+        const cap = setTimeout(show, READY_MS);
+        return () => { done = true; clearTimeout(cap); };
+    }, []);
     useEffect(() => {
         const onStage = (e) => setStage(String(e.detail || ""));
         window.addEventListener("bw-boot-stage", onStage);
@@ -42,10 +58,10 @@ const LoadingScreen = () => {
         }
         window.addEventListener("resize", fit);
         return () => window.removeEventListener("resize", fit);
-    }, []);
+    }, [ready]);
     return (
         <div className="loading-screen" ref={screenRef}>
-            <div className="loading" ref={groupRef}>
+            {ready && (<div className="loading" ref={groupRef}>
                 <div className="loading__logo">
                     <div className="logo">
                         <img className="logo__image" src={masmwatch} alt="" />
@@ -61,7 +77,7 @@ const LoadingScreen = () => {
                     <div className="loading__container__box"></div>
                 </div>
                 <p className="loading__stage" role="status">{stage}&hellip;</p>
-            </div>
+            </div>)}
         </div>
     );
 };
