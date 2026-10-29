@@ -13,10 +13,44 @@
     height: fit-content;
   }
 
+  // the hard reset window (banner/about/CacheResetWindow.jsx), sized like the About window
+  // (_about.scss): 30% of the page (at least 30rem), never wider or taller than the page; the
+  // text scrolls when it does not fit, the title bar and the button stay in view
   &__reset-cache {
-    width: 30%;
+    width: min(max(30rem, 30%), calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    display: flex;
+    flex-direction: column;
     text-align: center;
-    height: fit-content;
+
+    // fixed, as the About window (layout/_window.scss makes every .window absolute)
+    &.window {
+      position: fixed;
+    }
+
+    > .title-bar {
+      flex: none;
+      gap: 8px;
+
+      .title-bar-text {
+        min-width: 0;
+        margin-right: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .title-bar-controls {
+        flex: none;
+      }
+    }
+
+    > .window-body {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
 
     &--btn {
       margin-left: 0rem;
@@ -25,17 +59,24 @@
     &__content {
       display: flex;
       flex-direction: row;
+      min-height: 0;
 
       &__image {
+        flex: none;
         width: 6rem;
         height: 6rem;
         margin-left: -1rem;
         margin-right: 0.5rem;
       }
 
+      // the scroll area; 0.2rem of its 2rem margin is padding, room for the tick box's focus outline
       &__text {
+        min-width: 0;
+        overflow: auto;
+        overflow-wrap: anywhere;
         text-align: left;
-        margin-left: 2rem;
+        margin-left: 1.8rem;
+        padding-left: 0.2rem;
 
         &--warning {
           color: red;
@@ -57,6 +98,42 @@
       }
     }
 
+    .external-buttons {
+      flex: none;
+    }
+
+    // a narrow page: the image above the text, as in the About window
+    @media (max-width: 480px) {
+      &__content {
+        flex-direction: column;
+
+        &__image {
+          width: 4rem;
+          height: 4rem;
+          margin: 0 0 0.8rem;
+          align-self: center;
+        }
+
+        &__text {
+          margin-left: 0;
+        }
+      }
+    }
+
+    // a very short page: the whole body scrolls, so the text and the button both stay reachable
+    @media (max-height: 240px) {
+      > .window-body {
+        overflow: auto;
+      }
+
+      &__content {
+        flex: none;
+      }
+
+      &__content__text {
+        overflow: visible;
+      }
+    }
   }
 
   // file drawer message box (filedrawer/dialogs/ConfirmWindow.jsx): 30% of the page (at

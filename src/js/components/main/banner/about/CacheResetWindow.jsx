@@ -106,6 +106,7 @@ function CacheResetWindow({ close }) {
       windowClass={"window__reset-cache"}
       titlebarClass={"title-bar__about"}
       titlebarText={"Hard Reset Everything"}
+      keepInViewport
     >
       <div className="window__reset-cache__content">
         <img
