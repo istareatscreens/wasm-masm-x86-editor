@@ -12,6 +12,8 @@
     "build:assets": "node scripts/chunk-guest.cjs",
     "test:assets": "node --test scripts/chunk-guest.test.cjs",
     "test:presentation": "node --test scripts/boxedwine-presentation.test.cjs",
+    "test:file-drawer": "node --test scripts/file-drawer.test.cjs",
+    "test:crash-report": "node --test scripts/crash-report.test.cjs",
     "check:public": "node Boxedwine/scripts/check-public.mjs",
     "preview": "node Boxedwine/scripts/serve-public.mjs",
     "build": "gulp",
@@ -89,7 +91,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-draggable": "^4.7.2",
-    "react-onclickoutside": "^6.13.2",
     "react-window": "^2.3.1",
     "thememirror": "^2.0.1",
     "use-debounce": "^5.2.1"

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 
 import Button from "../../../common/ImageButton.jsx";
+import Checkbox from "../../../common/Checkbox.jsx";
 import Window from "../../../common/Window.jsx";
+import FileSystem from "../../utility/FileSystem.js";
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
 import errorImage from "../../../../../images/error.png";
@@ -17,21 +19,22 @@ const EMULATOR_DATABASES = ["bw-snapshot", "/root", "/d_drive"];
 const DRAWER_DATABASE = "BoxedwineFileSystem";
 const isEmulatorKey = (key) => /^bw-/.test(key) || /^bwsnapmark\|/.test(key);
 
-const deleteDatabase = (name) =>
+const deleteDatabase = (name, onBlocked) =>
   new Promise((resolve) => {
     try {
       const req = indexedDB.deleteDatabase(name);
       req.onsuccess = () => resolve({ name, ok: true });
       req.onerror = () => resolve({ name, ok: false, why: String(req.error) });
-      // another tab holds it open: the delete completes when that tab closes;
-      // the reload below still cold-boots (the marker keys are gone)
-      req.onblocked = () => resolve({ name, ok: false, why: "blocked" });
+      // another tab holds it open: the delete completes when that tab releases it (a tab
+      // of this build closes its connection at once, an older one when it is closed or
+      // reloaded); reloading before that would wait on the store forever
+      req.onblocked = () => { if (onBlocked) onBlocked(name); };
     } catch (e) {
       resolve({ name, ok: false, why: String(e) });
     }
   });
 
-export const factoryReset = async ({ deleteFiles = false } = {}) => {
+export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {}) => {
   const report = { keysRemoved: [], databases: [] };
   try {
     const keys = [];
@@ -50,7 +53,8 @@ export const factoryReset = async ({ deleteFiles = false } = {}) => {
   } catch (e) { console.warn("[factoryReset] localStorage", e); }
   if (typeof indexedDB !== "undefined") {
     const names = deleteFiles ? EMULATOR_DATABASES.concat([DRAWER_DATABASE]) : EMULATOR_DATABASES;
-    report.databases = await Promise.all(names.map(deleteDatabase));
+    if (deleteFiles) await FileSystem.closeStore(); // this tab's own connection would block the delete
+    report.databases = await Promise.all(names.map((name) => deleteDatabase(name, onBlocked)));
   }
   // the asset cache is build-keyed and harmless, but a factory reset means factory
   try { if (window.caches) { const ks = await window.caches.keys(); await Promise.all(ks.filter((k) => /^bw-/.test(k)).map((k) => window.caches.delete(k))); } } catch (e) {}
@@ -66,6 +70,7 @@ function CacheResetWindow({ close }) {
   const [countDown, setCountDown] = useState(formatCountDown(defaultCount));
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [running, setRunning] = useState(false);
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
     let count = defaultCount;
@@ -91,7 +96,7 @@ function CacheResetWindow({ close }) {
   const run = async () => {
     if (running) return;
     setRunning(true);
-    try { await factoryReset({ deleteFiles }); } catch (e) { console.error("[factoryReset]", e); }
+    try { await factoryReset({ deleteFiles, onBlocked: () => setWaiting(true) }); } catch (e) { console.error("[factoryReset]", e); }
     location.reload();
   };
 
@@ -129,8 +134,7 @@ function CacheResetWindow({ close }) {
           </p>
           <br />
           <label className="window__reset-cache__content__option">
-            <input
-              type="checkbox"
+            <Checkbox
               id="resetDeleteFiles"
               checked={deleteFiles}
               onChange={(event) => setDeleteFiles(event.target.checked)}
@@ -140,6 +144,11 @@ function CacheResetWindow({ close }) {
               <b>{"This cannot be undone — download a backup first."}</b>
             </span>
           </label>
+          {waiting && (
+            <p className="window__reset-cache__content__text--warning">
+              {"Another tab of this app still holds your files: close or reload it, and the reset continues."}
+            </p>
+          )}
           <br />
         </div>
       </div>

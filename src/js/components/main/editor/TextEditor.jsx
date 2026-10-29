@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
 import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 import { vim } from "@replit/codemirror-vim";
 
@@ -20,6 +21,7 @@ function TextEditor({
   fontSize,
   selectedFont,
   vimMode,
+  exactLineBreaks,
 }) {
   const hostRef = useRef(null);
   const scrollbars = useRef(null);
@@ -69,6 +71,9 @@ function TextEditor({
     });
     return [
       ...(vimMode ? [vim()] : []),
+      // a binary shown as text splits lines on "\n" only, so every 0x0D byte round-trips
+      // (the default also splits on "\r" and joins with "\n")
+      ...(exactLineBreaks ? [EditorState.lineSeparator.of("\n")] : []),
       basicSetup,
       masm(),
       EditorView.lineWrapping,
@@ -80,7 +85,7 @@ function TextEditor({
       // theme's own HighlightStyle takes precedence over this.
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     ];
-  }, [vimMode, fontSize, fontFamily]);
+  }, [vimMode, fontSize, fontFamily, exactLineBreaks]);
 
   const theme = useMemo(() => resolveTheme(selectedTheme), [selectedTheme]);
 

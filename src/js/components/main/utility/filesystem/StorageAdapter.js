@@ -13,6 +13,7 @@ class StorageAdapter {
   constructor() {
     this.storageType = null; // 'localstorage' or 'indexeddb'
     this.db = null;
+    this.onVersionChange = null; // runs when another tab deletes the store (see close)
   }
 
   /**
@@ -55,6 +56,12 @@ class StorageAdapter {
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
+        // another tab deleting the store (the app's "also delete all my files" reset) must
+        // not be blocked by this connection: it is closed and the owner told
+        this.db.onversionchange = () => {
+          this.close();
+          if (this.onVersionChange) this.onVersionChange();
+        };
         console.log('[StorageAdapter] IndexedDB opened successfully');
         resolve();
       };
@@ -69,6 +76,17 @@ class StorageAdapter {
         }
       };
     });
+  }
+
+  /**
+   * Close the IndexedDB connection: before this tab deletes the store, or when another
+   * tab does. Later IndexedDB operations fail; the owner reloads.
+   */
+  close() {
+    if (!this.db) return;
+    this.db.onversionchange = null;
+    try { this.db.close(); } catch (error) {}
+    this.db = null;
   }
 
   /**

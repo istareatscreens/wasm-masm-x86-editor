@@ -42,6 +42,9 @@
   }
   </script>
   <!--<button id="pushData">push data</button>-->
+  <!-- covers the page until its images and fonts are there (App.jsx removes it); the bar
+       shows only when that takes a moment, so a fast load never flashes it -->
+  <div id="app-splash" class="app-splash" role="status" aria-busy="true" aria-label="Loading"><div class="app-splash__bar"></div></div>
   <div id="root"></div>
   <noscript> You need to enable JavaScript to run this app. </noscript>
   <script src="index-editor.js"></script>

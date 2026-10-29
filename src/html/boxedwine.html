@@ -79,7 +79,7 @@
     <script src="bw-cache.js?v=3"></script>
     <script src="bw-snapshot.js?v=7"></script>
     <!-- Stock danoon2 26R1 shell + instant-startup boot hook. -->
-    <script src="boxedwine-shell.js?v=39"></script>
+    <script src="boxedwine-shell.js?v=41"></script>
     <script>
       // App launch config: the toolchain (assembler-dp0.zip) mounts read-only at C:\files;
       // user files and build outputs live on D:, the working directory.
@@ -258,6 +258,58 @@
           );
         };
       })();
+      // Text in any language: a key that types a character the US keymap does not give for that
+      // key (another keyboard layout, AltGr, Caps Lock, a dead-key composition) is typed as text
+      // through the console's text channel (Module.bwTypeText); every other key reaches SDL
+      // unchanged. US maps each key code to its unshifted and shifted US characters.
+      (function () {
+        var US = {
+          Backquote: "`~", Digit1: "1!", Digit2: "2@", Digit3: "3#", Digit4: "4$", Digit5: "5%",
+          Digit6: "6^", Digit7: "7&", Digit8: "8*", Digit9: "9(", Digit0: "0)", Minus: "-_",
+          Equal: "=+", BracketLeft: "[{", BracketRight: "]}", Backslash: "\\|", IntlBackslash: "\\|",
+          Semicolon: ";:", Quote: "'\"", Comma: ",<", Period: ".>", Slash: "/?", Space: "  ",
+        };
+        for (var c = 65; c <= 90; c++) {
+          var letter = String.fromCharCode(c);
+          US["Key" + letter] = letter.toLowerCase() + letter;
+        }
+        var typed = {}; // keys whose keydown was typed as text: their keyup is not SDL's either
+        window.addEventListener(
+          "keydown",
+          function (e) {
+            if (!window.BW_INPUT_OPEN || e.isComposing) return;
+            if (typeof Module === "undefined" || typeof Module.bwTypeText !== "function") return;
+            var altGr = e.getModifierState && e.getModifierState("AltGraph");
+            if ((e.ctrlKey || e.altKey || e.metaKey) && !altGr) return;
+            if (e.key === "Dead") {
+              // the next key brings the composed character
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              typed[e.code] = true;
+              return;
+            }
+            var chars = Array.from(e.key || "");
+            if (chars.length !== 1) return; // a named key: Enter, F1, ArrowUp, ...
+            var us = US[e.code];
+            if (chars[0].charCodeAt(0) < 0x7f && (!us || us.charAt(e.shiftKey ? 1 : 0) === e.key)) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            typed[e.code] = true;
+            Module.bwTypeText(e.key);
+          },
+          true,
+        );
+        window.addEventListener(
+          "keyup",
+          function (e) {
+            if (!typed[e.code]) return;
+            delete typed[e.code];
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          },
+          true,
+        );
+      })();
       // Drag selection beyond the console: the canvas takes pointer capture for a primary-button
       // drag, so the drag's mouse events keep reaching SDL (and conhost, which scrolls the window
       // to the selection) after the pointer leaves the canvas, the iframe or the browser window.
@@ -265,6 +317,12 @@
         var canvas = document.getElementById("canvas");
         if (!canvas || !canvas.setPointerCapture) return;
         canvas.addEventListener("pointerdown", function (e) {
+          // a click on the terminal gives it the keyboard: SDL cancels the mouse-down's default
+          // action, which is also the focus change, so keys typed after a click on the terminal
+          // kept going to whatever had the focus in the page
+          try {
+            window.focus();
+          } catch (err) {}
           if (
             e.button !== 0 ||
             (e.pointerType !== "mouse" && e.pointerType !== "pen")
@@ -417,10 +475,15 @@
       getEnvProp = function () {
         return "WINEDLLOVERRIDES=mscoree=d;mshtml=d";
       };
-      // ?bwwinedebug=<channels> (debug, cold boot): WINEDEBUG for the guest
+      // Extra guest environment. LC_CTYPE=en_US.UTF-8, the locale the guest image carries
+      // (Boxedwine/guest-image/locale-utf8.py): Wine converts native file names as UTF-8,
+      // so a name in any language keeps its name on D: (with no locale it read them as
+      // 7-bit ASCII). Only the character type is set: the system locale stays en-US, the
+      // code pages 1252/437. ?bwwinedebug=<channels> (debug, cold boot) adds WINEDEBUG.
+      window.BW_EXTRA_ENV = ["LC_CTYPE=en_US.UTF-8"];
       (function () {
         var m = /[?&]bwwinedebug=([^&]+)/.exec(location.search);
-        if (m) window.BW_EXTRA_ENV = ["WINEDEBUG=" + decodeURIComponent(m[1])];
+        if (m) window.BW_EXTRA_ENV.push("WINEDEBUG=" + decodeURIComponent(m[1]));
       })();
       // Screen geometry = the terminal panel in CSS pixels (the canvas is 100vw x 100vh, so
       // 1:1). The console fills it with whole 11x22 px cells (Liberation Mono 22 px, the

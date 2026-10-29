@@ -1,13 +1,31 @@
+// The select-all box: a column of its own at the drawer bar's left, on the banner's last
+// row, where a one-row bar has it (0.75rem above the bar's bottom).
 .checkbox--selectAll {
+  flex: none;
+  align-self: flex-end;
   margin-left: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
+// Both bars' controls are 2.5rem tall. Their lines start where a one-row bar has them
+// (0.15rem down) and are one row ($banner-height) apart; nothing is centred vertically, so
+// a bar with fewer rows than the banner keeps its controls on its top rows (useBannerRows).
 .banner {
   &__file-drawer {
     display: flex;
     flex-direction: row;
-    justify-content: flex-start; /* center items vertically, in this case */
-    align-items: center;
+    align-items: flex-start;
+    padding-top: 0.15rem;
+    &__buttons {
+      display: flex;
+      flex-direction: row;
+      flex: 1 1 auto;
+      min-width: 0;
+      flex-wrap: wrap;
+      row-gap: 0.5rem;
+      align-content: flex-start;
+      align-items: center;
+    }
     &__btn {
       margin-left: 0.2rem;
     }
@@ -15,14 +33,20 @@
   &__main {
     display: flex;
     flex-direction: row;
-    justify-content: space-between; /* center items vertically, in this case */
-    align-items: center;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-top: 0.15rem;
     &__group {
       display: flex;
       flex-direction: row;
       justify-content: flex-start;
       align-items: center;
       &--start {
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+        align-content: flex-start;
         margin-left: 0.2rem;
       }
       &--mid {

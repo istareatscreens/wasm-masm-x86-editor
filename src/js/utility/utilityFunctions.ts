@@ -128,11 +128,12 @@ export const syncFileToEmulator = (filename: string, content: string, isBinary: 
 //Hand the WHOLE drawer to the emulator: the iframe rebuilds D: from
 //it, verifies the tree and only then opens its input gate. Called on every
 //"emulator-ready" (cold boot or restore — the factory image holds no user file).
-//files: [{filename, content, isBinary}] (content = text, or base64 when isBinary).
-export const reconcileEmulatorFiles = (files: { filename: string; content: string; isBinary: boolean }[]): void => {
+//files: [{filename, content, isBinary}] (content = text, or base64 when isBinary);
+//folders: every folder path ("lab1/io"), empty ones included, created first.
+export const reconcileEmulatorFiles = (files: { filename: string; content: string; isBinary: boolean }[], folders: string[] = []): void => {
   const app = getBwApp();
-  if (app && typeof app.reconcile === "function") return app.reconcile(files);
-  postMessage("reconcile-files", { data: { files } });
+  if (app && typeof app.reconcile === "function") return app.reconcile(files, folders);
+  postMessage("reconcile-files", { data: { files, folders } });
 };
 
 //Rename a file inside the guest filesystem (Module.bwRenameFile — the node's own
@@ -144,7 +145,8 @@ export const renameFileInEmulator = (oldName: string, newName: string, content: 
   postMessage("rename-file", { data: { oldName, newName, content, isBinary } });
 };
 
-//Guest D: listing [{name,size}] for sync checks (null before the emulator is up).
+//Guest D: listing [{name,size,dir}], recursive with "/" paths, for sync checks (null
+//before the emulator is up).
 export const getEmulatorFileTree = (): any[] | null => {
   const app = getBwApp();
   try { return app && typeof app.verifyTree === "function" ? app.verifyTree() : null; } catch { return null; }
@@ -154,10 +156,28 @@ export const getEmulatorFileTree = (): any[] | null => {
 //iframe (write then type the assemble command) so there is no write/run race, and
 //the .obj/.exe readback runs in the iframe where Module.FS is local. Toolchain
 //lives read-only at C:\files (drive-agnostic assemble.bat via %~dp0); cwd is D:.
-export const assembleAndRun = (filename: string, content: string): void => {
+//content is the source's stored bytes as base64 when isBase64 (the guest gets exactly
+//those bytes), else text.
+export const assembleAndRun = (filename: string, content: string, isBase64: boolean = false): void => {
   const app = getBwApp();
-  if (app && typeof app.build === "function") return app.build(filename, content);
-  postMessage("build-file", { data: { filename, content } });
+  if (app && typeof app.build === "function") return app.build(filename, content, isBase64);
+  postMessage("build-file", { data: { filename, content, isBase64 } });
+};
+
+//The bytes of entries of the toolchain archive (C:\files in the guest), read in the
+//emulator page once its input is open: { [entry name]: Uint8Array }.
+export const readToolchainFiles = (names: string[]): Promise<{ [name: string]: Uint8Array }> => {
+  const app = getBwApp();
+  if (app && typeof app.readToolchainFiles === "function") return app.readToolchainFiles(names);
+  return Promise.reject(new Error("the emulator page is not loaded"));
+};
+
+//Give the terminal the keyboard: SDL reads keys on the emulator page's window.
+export const focusTerminal = (): void => {
+  try {
+    const iframe = <HTMLIFrameElement>document.getElementById("boxedwine");
+    if (iframe && iframe.contentWindow) iframe.contentWindow.focus();
+  } catch {}
 };
 
 //Delete a file directly from the guest filesystem via Module.bwDeleteFile so the
@@ -168,6 +188,22 @@ export const deleteFileFromEmulator = (filename: string): void => {
   const app = getBwApp();
   if (app && typeof app.deleteFile === "function") return app.deleteFile(filename);
   postMessage("delete-file", { data: filename });
+};
+
+//Create a folder (and its parents) on the guest D: via Module.bwMakeDir, so the running
+//cmd's `dir` lists it at once - no `mkdir` typed. path: drawer path ("lab1/io").
+export const makeDirInEmulator = (path: string): void => {
+  const app = getBwApp();
+  if (app && typeof app.makeDir === "function") return app.makeDir(path);
+  postMessage("make-dir", { data: path });
+};
+
+//Remove an EMPTY folder from the guest D: via Module.bwRemoveDir (the drawer deletes
+//its files first, then the folders deepest first) - no `rd` typed.
+export const removeDirFromEmulator = (path: string): void => {
+  const app = getBwApp();
+  if (app && typeof app.removeDir === "function") return app.removeDir(path);
+  postMessage("remove-dir", { data: path });
 };
 
 //Interrupt whatever runs in the terminal (Ctrl+C): the emulator injects the key

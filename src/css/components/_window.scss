@@ -42,11 +42,12 @@
         }
       }
 
-      // factory-reset opt-in ("also delete all my files"): checkbox + label on one row
+      // factory-reset opt-in ("also delete all my files"): checkbox + label on one row, 98.css's
+      // spacing between them
       &__option {
         display: flex;
         align-items: flex-start;
-        gap: 0.4rem;
+        gap: variables.$radio-label-spacing;
         cursor: pointer;
 
         input {
@@ -56,6 +57,63 @@
       }
     }
 
+  }
+
+  // file drawer message box (filedrawer/dialogs/ConfirmWindow.jsx): 30% of the page (at
+  // least 30rem), wider when its buttons need it, never wider than the page
+  &__confirm {
+    width: max-content;
+    min-width: min(max(30rem, 30%), calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+    height: fit-content;
+
+    // the text wraps to the box's width and does not widen it
+    &__message,
+    &__details {
+      box-sizing: border-box;
+      width: 0;
+      min-width: 100%;
+      overflow-wrap: break-word;
+      text-align: left;
+    }
+
+    &__details {
+      max-height: 12rem;
+      overflow: auto;
+      margin-top: 0.6rem;
+      padding-left: 2rem;
+      font-size: 1.2rem;
+    }
+
+    // one row, continued on the next when the page is too narrow for it
+    &__buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+
+    // as wide as its label and as tall as the label needs (.btn is a fixed square)
+    &__btn {
+      flex: 0 0 auto;
+      min-width: 8rem;
+      max-width: 100%;
+      height: auto;
+      min-height: 2.5rem;
+      max-height: none;
+      padding: 0.3rem 1rem;
+    }
+  }
+
+  // the first broken name rule under a name box (filedrawer/dialogs/NameWindow.jsx)
+  &__name-problem {
+    min-height: 2rem;
+    margin-top: 0.4rem;
+    text-align: left;
+    font-size: 1.2rem;
+    color: #a00000;
   }
 
   &-body {

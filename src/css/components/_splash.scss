@@ -1,0 +1,63 @@
+@use "../abstracts/variables";
+
+// #app-splash (index.html) covers the page until its images and fonts are there (App.jsx):
+// the window grey and, once the wait passes a second, the Windows 98 progress control (a
+// thin sunken trough in the same grey, highlight-blue blocks 16 px wide with 2 px gaps)
+// drifting to the right, nothing else. A load that ends within the second never shows the
+// bar, the bar fades in rather than popping, and the cover fades out grey into the same
+// grey, so neither a refresh nor a slow start flashes.
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: variables.$surface;
+  transition: opacity 0.25s;
+
+  &--done {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__bar {
+    width: 320px;
+    height: 24px;
+    padding: 4px;
+    box-sizing: border-box;
+    box-shadow: inset -1px -1px variables.$button-highlight, inset 1px 1px variables.$button-shadow;
+    background-image: linear-gradient(90deg, variables.$dialog-blue 0 16px, transparent 16px 18px);
+    background-size: 18px 100%;
+    background-repeat: repeat-x;
+    background-origin: content-box;
+    background-clip: content-box;
+    opacity: 0;
+    animation: app-splash-show 0.3s 1s forwards, app-splash-drift 0.5s linear infinite;
+  }
+}
+
+@keyframes app-splash-show {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes app-splash-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 18px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-splash {
+    transition: none;
+
+    &__bar {
+      animation: app-splash-show 0.3s 1s forwards;
+    }
+  }
+}

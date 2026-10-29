@@ -1,9 +1,65 @@
+@use "../abstracts/variables";
+
+// 98.css's tick box (https://github.com/jdan/98.css, MIT), drawn on the input itself: the
+// browser's own control shows otherwise (a rounded box in Firefox, a blue fill in Chrome).
+// Each state is one 13x13 image of 98.css's pixels, its field bevel (the four inset shadows
+// of $border-field) and its checkmark.svg 3px in, over the box's colour: an image is snapped
+// to the screen's pixels as one piece, where Firefox snaps inset shadows and a background
+// image apart at half-pixel positions on 2x screens.
+@function box($tick-fill: null) {
+  $tick: "";
+  @if $tick-fill {
+    $tick: "%3Cpath transform='translate(3 3)' fill='#{$tick-fill}' d='M7 0H6V1H5V2H4V3H3V4H2V3H1V2H0V5H1V6H2V7H3V6H4V5H5V4H6V3H7V0Z'/%3E";
+  }
+  @return url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13' shape-rendering='crispEdges'%3E%3Cpath fill='%23808080' d='M0 0H12V1H1V12H0Z'/%3E%3Cpath fill='%230a0a0a' d='M1 1H11V2H2V11H1Z'/%3E%3Cpath fill='%23dfdfdf' d='M11 1H12V12H1V11H11Z'/%3E%3Cpath fill='%23fff' d='M12 0H13V13H0V12H12Z'/%3E" + $tick + "%3C/svg%3E");
+}
+
 .checkbox {
-  content: "";
+  appearance: none;
   display: inline-block;
-  min-width: 1.3rem;
-  min-height: 1.3rem;
-  background: #fff;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px grey, inset -2px -2px #dfdfdf,
-    inset 2px 2px #0a0a0a;
+  box-sizing: border-box;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: variables.$button-highlight box() no-repeat 0 0 / 100% 100%;
+
+  &:checked {
+    background-image: box(black);
+  }
+
+  // a folder whose entries are partly ticked
+  &:indeterminate {
+    background-color: variables.$surface;
+    background-image: box("%23808080");
+  }
+
+  &:active,
+  &:disabled {
+    background-color: variables.$surface;
+  }
+
+  &:disabled:checked {
+    background-image: box("%23808080");
+  }
+
+  &:focus-visible {
+    outline: 1px dotted #000;
+    outline-offset: 1px;
+  }
+
+  // forced colours drop backgrounds: the browser's own control there
+  @media (forced-colors: active) {
+    &,
+    &:checked,
+    &:indeterminate,
+    &:active,
+    &:disabled,
+    &:disabled:checked {
+      appearance: auto;
+      background: none;
+    }
+  }
 }

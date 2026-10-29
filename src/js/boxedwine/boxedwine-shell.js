@@ -672,7 +672,7 @@
                 params.push("-env");
                 params.push(Config.envProp);
             }
-            // debug-only extra guest environment (boxedwine.html: ?bwwinedebug=...)
+            // extra guest environment (boxedwine.html: LC_CTYPE, ?bwwinedebug=...)
             if (Array.isArray(window.BW_EXTRA_ENV)) {
                 window.BW_EXTRA_ENV.forEach(function (e) { params.push("-env"); params.push(String(e)); });
             }
@@ -713,7 +713,8 @@
       // A program the user ran was ended by Wine: "wine: Unhandled <exception>, starting
       // debugger..." (no debugger is configured), or for a stack overflow only
       // "<tid>:err:virtual:virtual_setup_exception stack overflow ...". The app shows the
-      // reason and a hint keyed by `kind`.
+      // reason and a hint keyed by `kind`; for an illegal instruction it also gets the
+      // bytes at the address, which the app decodes to name the instruction.
       function bwProgramCrashed(text) {
         var m = /^wine: (Unhandled [^,]*?)(?:, starting debugger\.\.\.)?\s*$/.exec(text);
         var reason = m && m[1], kind = "other";
@@ -721,20 +722,74 @@
           if (/page fault/.test(reason)) kind = "fault";
           else if (/stack overflow/.test(reason)) kind = "stack";
           else if (/division by zero/.test(reason)) kind = "divzero";
-          else if (/instruction/.test(reason)) kind = "instruction";
+          else if (/privileged instruction/.test(reason)) kind = "privileged";
+          else if (/instruction/.test(reason)) kind = "illegal";
         } else if (/^[0-9a-f]+:err:virtual:virtual_setup_exception stack overflow \d+ bytes in thread/.test(text)) {
           reason = "stack overflow"; kind = "stack";
         }
         if (!reason) return;
         console.warn("[bw] program crashed: " + reason); // boot-log style, kept in production
-        var detail = { reason: reason, kind: kind };
+        var detail = { reason: reason, kind: kind, build: window.BW_BUILD_ID, runtime: window.BW_USE_MT ? "mt" : "st" };
+        if (kind === "illegal") bwInvalidOpcodeAt(reason, detail);
+        else if (kind === "fault") bwPrivilegedAt(detail);
         try { window.dispatchEvent(new CustomEvent("program-crashed", { detail: detail })); } catch (e) {}
         try { window.parent.postMessage(JSON.stringify({ eventName: "program-crashed", data: { data: detail } }), "/"); } catch (e) {}
+      }
+      // the bytes at the address Wine names, from the emulator's last invalid-opcode faults
+      // (Module.bwInvalidOpcodes: "<address> <bytes>" per line, oldest first, hex)
+      function bwInvalidOpcodeAt(reason, detail) {
+        var at = /at address ([0-9A-Fa-f]+)/.exec(reason);
+        if (!at || typeof Module.bwInvalidOpcodes !== "function") return;
+        try {
+          var lines = Module.bwInvalidOpcodes().split("\n");
+          for (var i = lines.length - 1; i >= 0; i--) {
+            var f = lines[i].split(" ");
+            if (f.length === 2 && f[1] && parseInt(f[0], 16) === parseInt(at[1], 16)) {
+              detail.address = f[0];
+              detail.bytes = f[1];
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      // A privileged instruction Wine does not name (LGDT, LMSW, CLTS, RDMSR, WRMSR, RDPMC, INVD,
+      // WBINVD...) is reported as a read of FFFFFFFF; the emulator's log marks the address
+      function bwPrivilegedAt(detail) {
+        var at = /page fault on read access to FFFFFFFF at address ([0-9A-Fa-f]+)/.exec(detail.reason);
+        if (!at || typeof Module.bwInvalidOpcodes !== "function") return;
+        try {
+          var lines = Module.bwInvalidOpcodes().split("\n");
+          for (var i = lines.length - 1; i >= 0; i--) {
+            var f = lines[i].split(" ");
+            if (f.length === 3 && f[2] === "privileged" && parseInt(f[0], 16) === parseInt(at[1], 16)) {
+              detail.kind = "privileged";
+              detail.reason = "Unhandled privileged instruction at address " + at[1];
+              detail.address = f[0];
+              detail.bytes = f[1];
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      // A WebAssembly trap or an abort() stops the emulator for good (its main loop or a
+      // pthread threw): the app is told at once instead of by the freeze detector seconds
+      // later. A pthread's error reaches this page as the worker's ErrorEvent.
+      var bwEmulatorCrashed = false;
+      function bwReportEmulatorCrash(msg, error) {
+        var text = String((error && error.message) || msg || "");
+        var trap = (typeof WebAssembly !== "undefined" && error instanceof WebAssembly.RuntimeError) || /RuntimeError|Aborted\(/.test(text);
+        if (!trap || bwEmulatorCrashed) return;
+        bwEmulatorCrashed = true;
+        var detail = { message: text.slice(0, 500), stack: String((error && error.stack) || "").slice(0, 2000), build: window.BW_BUILD_ID, runtime: window.BW_USE_MT ? "mt" : "st" };
+        console.error("[bw] emulator crashed: " + detail.message); // boot-log style, kept in production
+        try { window.parent.postMessage(JSON.stringify({ eventName: "emulator-crashed", data: { data: detail } }), "/"); } catch (e) {}
       }
       var Module = {
         preRun: [initialSetup],
         arguments: [],
         postRun: [],
+        // an emulator panic: the emulator aborts right after, this reports its text
+        bwOnPanic: function(text) { bwReportEmulatorCrash("Aborted(" + text + ")", null); },
         print: (function() {
           // guest stdout reaches the browser console only with ?bwlog=1; the last MAX
           // lines are kept in window.BW_GUEST_LOG
@@ -779,6 +834,7 @@
       };
       Module.setStatus('Downloading...');
       window.onerror = function(msg, file, line, column, error) {
+        bwReportEmulatorCrash(msg, error);
         Module.setStatus('Exception thrown, see JavaScript console');
         console.log(msg, file, line, column, error);
         Module.setStatus = function(text) {

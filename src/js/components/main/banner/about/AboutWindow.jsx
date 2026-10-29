@@ -69,7 +69,11 @@ function AboutWindow({ close }) {
               <p>{"INCLUDE GraphWin.inc"}</p>
               <br />
               <p>
-                <a href="https://masm.isas.dev/guide/" target="_blank" rel="noopener noreferrer">
+                <a
+                  href="https://masm.isas.dev/guide/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   MASM and Irvine32 getting-started guide
                 </a>
               </p>
@@ -136,6 +140,23 @@ function AboutWindow({ close }) {
         >
           <span>{"Donate"}</span>
         </Button>
+        <button
+          className="btn about-link"
+          type="button"
+          title="build and run the Snake game (copied into the file drawer the first time)"
+          onClick={() => {
+            close();
+            window.dispatchEvent(new CustomEvent("play-snake"));
+          }}
+        >
+          {/* U+1F40D SNAKE */}
+          <span
+            className="btn__img btn__img--about-link btn__img--emoji"
+            aria-hidden="true"
+          >
+            {"\uD83D\uDC0D"}
+          </span>
+        </button>
       </div>
     </Window>
   );

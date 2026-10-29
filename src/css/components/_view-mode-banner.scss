@@ -1,0 +1,62 @@
+@use "../abstracts/variables";
+
+// A non-.asm file in the editor area: the banner on top, the editor or hex viewer below
+// (editor/Editor.jsx). .asm files keep the bare editor.
+.editor--with-banner {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+
+  > .editor {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+// 98.css status strip
+.view-mode-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: 1.3rem;
+  background: variables.$surface;
+  box-shadow: inset 0 -1px variables.$button-shadow, inset 0 -2px variables.$button-highlight;
+
+  &__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__note {
+    flex: none;
+    color: variables.$button-shadow;
+    font-style: italic;
+    white-space: nowrap;
+  }
+
+  &__choices {
+    flex: none;
+    display: flex;
+    gap: 2px;
+  }
+
+  &__btn {
+    height: 2.2rem;
+    padding: 0 0.8rem;
+    font-size: 1.2rem;
+    white-space: nowrap;
+
+    &--on,
+    &--on:not(:disabled):active {
+      box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
+      background: variables.$button-face;
+    }
+  }
+}

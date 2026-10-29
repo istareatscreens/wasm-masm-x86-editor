@@ -155,7 +155,8 @@ function jsBoxedTaskElectron() {
     "src/js/boxedwine/bw-snapshot.js",
     "src/js/boxedwine/bw-cache.js",
     "src/js/boxedwine/boxedwine-mt.js",
-    "src/js/boxedwine/jszip.min.js"
+    "src/js/boxedwine/jszip.min.js",
+    "src/js/boxedwine/iced_x86.js"
   ])
     .pipe(dest(electronOutput));
 }
@@ -264,7 +265,8 @@ function jsBoxedTask() {
     "src/js/boxedwine/bw-cache.js",
     "src/js/boxedwine/bw-chunk-sw.js",
     "src/js/boxedwine/boxedwine-mt.js",
-    "src/js/boxedwine/jszip.min.js"
+    "src/js/boxedwine/jszip.min.js",
+    "src/js/boxedwine/iced_x86.js"
   ])
     .pipe(browserSync.stream())
     .pipe(dest(output));
@@ -292,7 +294,7 @@ function copyGuideHtmlTask() {
 function copyGuideIconsTask() {
   // Reuse the application's toolbar icons in the static user manual.
   return src([
-    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,about,newFile,uploadFile,saveFile,deleteFile,files}.png",
+    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,about,newFile,newFolder,uploadFile,importFolder,saveFile,deleteFile,files}.png",
     "src/images/vim.svg",
   ], BINARY)
     .pipe(svgoTransform())

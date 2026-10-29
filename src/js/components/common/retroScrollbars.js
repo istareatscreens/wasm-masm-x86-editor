@@ -7,8 +7,10 @@ const clamp = (value, max) => Math.max(0, Math.min(max, value));
 // When the content fits it is drawn disabled (both arrows embossed, checkered track,
 // no thumb) - it never disappears and it never leaves a bare gutter. The horizontal
 // bar only exists while there is a horizontal range (a wrapped editor never has
-// one), and the corner only while both bars are live.
-export function attachRetroScrollbars(surface, host, label) {
+// one), and the corner only while both bars are live. With horizontal: "always" the
+// horizontal bar follows the vertical rule (disabled when nothing scrolls sideways)
+// and the corner sits between the two bars.
+export function attachRetroScrollbars(surface, host, label, { horizontal = "auto" } = {}) {
   const win = surface.ownerDocument.defaultView;
   const doc = surface.ownerDocument;
   if (!win.ResizeObserver || !win.PointerEvent) return { update() {}, destroy() {} };
@@ -80,6 +82,7 @@ export function attachRetroScrollbars(surface, host, label) {
     if (!disposed && !frame) frame = win.requestAnimationFrame(measure);
   }
   const colors = win.matchMedia("(forced-colors: active)");
+  const alwaysHorizontal = horizontal === "always";
   function measure() {
     frame = 0;
     if (disposed) return;
@@ -94,7 +97,7 @@ export function attachRetroScrollbars(surface, host, label) {
       return;
     }
     const style = win.getComputedStyle(surface);
-    const x = /^(auto|scroll)$/.test(style.overflowX) && surface.scrollWidth > surface.clientWidth + 1;
+    const x = alwaysHorizontal || (/^(auto|scroll)$/.test(style.overflowX) && surface.scrollWidth > surface.clientWidth + 1);
     host.classList.toggle("retro-scroll-host--horizontal", x);
     for (const axis of axes) {
       const total = axis.vertical ? surface.scrollHeight : surface.scrollWidth;
@@ -102,8 +105,9 @@ export function attachRetroScrollbars(surface, host, label) {
       axis.max = Math.max(0, total - client);
       const allowed = /^(auto|scroll)$/.test(axis.vertical ? style.overflowY : style.overflowX);
       const active = allowed && axis.max > 1 && client > 0;
-      // vertical: always present (disabled when nothing scrolls); horizontal: only with a range
-      axis.rail.hidden = axis.vertical ? false : !active;
+      // vertical: always present (disabled when nothing scrolls); horizontal: only with a
+      // range, unless it is always present too
+      axis.rail.hidden = axis.vertical || alwaysHorizontal ? false : !active;
       setDisabled(axis, !active);
       if (!active) continue;
       const length = axis.vertical ? axis.track.clientHeight : axis.track.clientWidth;
@@ -117,7 +121,7 @@ export function attachRetroScrollbars(surface, host, label) {
       axis.before.disabled = offset <= 0;
       axis.after.disabled = offset >= axis.max - 1;
     }
-    corner.hidden = !x || axes[0].disabled;
+    corner.hidden = !x || (axes[0].disabled && !alwaysHorizontal);
   }
 
   for (const axis of axes) {

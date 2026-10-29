@@ -13,6 +13,10 @@ import { saveAs } from "file-saver";
 
 import { crlf } from "eol";
 import dataURItoBlob from "./filesystem/dataURItoBlob.js";
+import { toAsciiJson, joinPath, parentOf, baseOf, ancestorsOf, isWithin, splitPath, nameKey } from "./filesystem/paths";
+import { detectEncoding, decodeText, encodeText, canEncode, byteOrderMark, ASSEMBLER_SOURCE, bytesToBase64, base64ToBytes, bytesToBinaryString } from "./filesystem/textEncoding";
+import { isBinary, BINARY_SNIFF_BYTES } from "./filesystem/binaryDetect";
+import { planImport, planExport, decodeEntryName, MAX_ARCHIVE_BYTES } from "./filesystem/archive";
 
 import {
   writeCommandToCMD,
@@ -20,6 +24,8 @@ import {
   syncFileToEmulator,
   renameFileInEmulator,
   deleteFileFromEmulator,
+  makeDirInEmulator,
+  removeDirFromEmulator,
 } from "../../../utility/utilityFunctions.ts";
 
 const mimeType = (fileExtension) => {
@@ -99,11 +105,16 @@ export default class FileSystem {
   static fileListKey = "";
   static _eventAttached = false;
   static deleteFileQueue = [];
+  static _encodings = new Map(); // path -> text encoding the editor saves it in
 
   static async init() {
     // Seed the synchronous cache from IndexedDB BEFORE any sync read below,
     // otherwise the "/" check would miss an existing root and re-bootstrap it.
     await hf.init();
+    // another tab's "also delete all my files" reset deletes the store: the connection is
+    // closed so the delete goes through, and this tab starts over on the new store (a
+    // moment later, so the resetting tab has made it)
+    hf.onStoreDeleted(() => setTimeout(() => window.location.reload(), 1500));
     // Bootstrap the root "/" node if missing. "/" holds an Inode whose `id` is the
     // fileListKey — the key under which the {filename -> dataKey} map is stored.
     // The old browserfs layer used to create this; it was removed in the storage
@@ -123,12 +134,23 @@ export default class FileSystem {
     );
   }
 
+  // Before this tab deletes the store (the Hard Reset window): a connection of its own
+  // would block the delete.
+  static closeStore() {
+    return hf.closeStore();
+  }
+
   //reads file list
+  // The file list is read by nearly every operation: its parse is kept with the stored
+  // string it came from (a write stores a new one), and each caller gets its own copy.
+  static _listMemo = { raw: null, list: null };
+
   static _readFileList() {
     try {
       const data = hf.getFromLocalStorage(FileSystem.fileListKey);
       if (!data) return {};
-      return JSON.parse(atob(data));
+      if (data !== FileSystem._listMemo.raw) FileSystem._listMemo = { raw: data, list: JSON.parse(atob(data)) };
+      return { ...FileSystem._listMemo.list };
     } catch (error) {
       console.error('Error reading file list:', error);
       return {};
@@ -145,6 +167,68 @@ export default class FileSystem {
   //gets all stored files
   static getFileList() {
     return Object.keys(FileSystem._readFileList());
+  }
+
+  // Lists are ASCII JSON (every non-ASCII character escaped), so btoa accepts names in
+  // any language and earlier builds still parse them.
+  static _writeFileList(fileList) {
+    hf.setInLocalStorage(FileSystem.fileListKey, toAsciiJson(fileList), btoa);
+  }
+
+  // Folder registry: every folder of the drawer, empty ones included, stored next to the
+  // file list.
+  static _foldersKey() {
+    return FileSystem.fileListKey + ":folders";
+  }
+
+  static getFolderList() {
+    try {
+      const data = hf.getFromLocalStorage(FileSystem._foldersKey());
+      return data ? JSON.parse(atob(data)) : [];
+    } catch (error) {
+      console.error("Error reading folder list:", error);
+      return [];
+    }
+  }
+
+  static _writeFolderList(folders) {
+    const unique = Array.from(new Set(folders.filter(Boolean))).sort();
+    hf.setInLocalStorage(FileSystem._foldersKey(), toAsciiJson(unique), btoa);
+  }
+
+  // Every folder: the registry plus the folders above every file.
+  static getAllFolders() {
+    const folders = new Set(FileSystem.getFolderList());
+    for (const file of FileSystem.getFileList()) ancestorsOf(file).forEach((folder) => folders.add(folder));
+    return Array.from(folders);
+  }
+
+  // Register a folder and its parents; inGuest also creates them on D: (bwMakeDir is
+  // mkdir -p). Known folders cost nothing.
+  static ensureFolder(folder, inGuest = true) {
+    if (!folder) return;
+    const known = FileSystem.getFolderList();
+    const missing = ancestorsOf(folder).concat(folder).filter((path) => known.indexOf(path) < 0);
+    if (!missing.length) return;
+    FileSystem._writeFolderList(known.concat(missing));
+    if (inGuest) makeDirInEmulator(folder);
+  }
+
+  static createFolder(folder) {
+    FileSystem.ensureFolder(folder);
+  }
+
+  // The stored key of `path` when a file of that name exists in any letter case (the
+  // guest compares names case-insensitively), else `path`.
+  static _existingKey(path) {
+    const key = nameKey(path);
+    return FileSystem.getFileList().find((existing) => nameKey(existing) === key) || path;
+  }
+
+  // A byte string that starts with a UTF-16 byte-order mark.
+  static _isUtf16(raw) {
+    const b0 = raw.charCodeAt(0), b1 = raw.charCodeAt(1);
+    return (b0 === 0xff && b1 === 0xfe) || (b0 === 0xfe && b1 === 0xff);
   }
 
   //gets data from file
@@ -173,6 +257,26 @@ export default class FileSystem {
     return hf.getFileData(fileMetaData.id) || '';
   }
 
+  // A file's stored bytes (storage keeps base64).
+  static getBytes(filename) {
+    return base64ToBytes(FileSystem.getRawFileData(filename));
+  }
+
+  // isbinaryfile's verdict on the file's first bytes (only those are decoded).
+  static isBinaryFile(filename) {
+    const raw = FileSystem.getRawFileData(filename);
+    return isBinary(base64ToBytes(raw.slice(0, 4 * Math.ceil(BINARY_SNIFF_BYTES / 3))));
+  }
+
+  // A file as text: a binary shown as text byte for byte (Windows-1252: every byte
+  // round-trips), anything else in its own encoding. writeToFile saves it the same way.
+  static readText(filename, asBinary = false) {
+    const bytes = FileSystem.getBytes(filename);
+    const encoding = asBinary ? "windows-1252" : detectEncoding(bytes);
+    FileSystem._encodings.set(filename, encoding);
+    return { text: decodeText(bytes, encoding), encoding };
+  }
+
   // Synchronous content read straight from localStorage (the backing store).
   // Used to hand the current file's text to the emulator for direct file sync
   // (Module.bwWriteFile) without depending on the async storage path.
@@ -199,6 +303,35 @@ export default class FileSystem {
    * @Example writeToAssemblyFile("file", "assembly code here")
    */
   static writeToFile(filename, text) {
+    let encoding = FileSystem._encodings.get(filename) || "utf-8";
+    if (ASSEMBLER_SOURCE.test(filename) && encoding !== "utf-8" && encoding !== "windows-1252") {
+      encoding = "utf-8"; // no byte order mark in an assembler source
+      FileSystem._encodings.set(filename, encoding);
+    }
+    if (!canEncode(text, encoding)) {
+      console.warn("[FileSystem] " + filename + " now holds characters " + encoding + " cannot store; it is saved as UTF-8");
+      encoding = "utf-8";
+      FileSystem._encodings.set(filename, encoding);
+    }
+    FileSystem.writeBytes(filename, encodeText(text, encoding));
+  }
+
+  // Before a build: every assembler source that starts with a byte order mark (one never
+  // saved since it was imported) is rewritten as plain UTF-8, so the source and whatever
+  // it includes are read as Microsoft MASM reads them.
+  static stripByteOrderMarks() {
+    for (const name of FileSystem.getFileList()) {
+      if (!ASSEMBLER_SOURCE.test(name)) continue;
+      const raw = FileSystem.getRawFileData(name);
+      const mark = byteOrderMark(base64ToBytes(raw.slice(0, 4)));
+      if (!mark) continue;
+      FileSystem.writeBytes(name, encodeText(decodeText(base64ToBytes(raw), mark), "utf-8"));
+      if (FileSystem._encodings.has(name)) FileSystem._encodings.set(name, "utf-8");
+      console.log("[FileSystem] " + name + " started with a byte order mark, which MASM rejects: saved as plain UTF-8");
+    }
+  }
+
+  static writeBytes(filename, bytes) {
     //get data
     const fileMetaDataKey = FileSystem._readFileList()[filename];
     if (!fileMetaDataKey) {
@@ -213,50 +346,54 @@ export default class FileSystem {
     }
 
     //Append changes
-    fileMetaData.size = text.length;
+    const base64 = bytesToBase64(bytes);
+    fileMetaData.size = bytes.length;
 
     //save file
     hf.setInLocalStorage(fileMetaDataKey, fileMetaData, hf.encodeFileMetaData); //meta data
-    hf.setInLocalStorage(fileMetaData.id, text, hf.encodeFileData); //file data
+    hf.setInLocalStorage(fileMetaData.id, base64, (data) => data); //file data
 
-    // Mirror the (editor-debounced) save into the guest D: so the terminal copy
-    // never diverges from the drawer copy (bwWriteFile, verified, no keystrokes).
-    syncFileToEmulator(filename, text);
+    // Mirror the (editor-debounced) save into the guest D: byte for byte so the terminal
+    // copy never diverges from the drawer copy (bwWriteFileBytes, verified, no keystrokes).
+    syncFileToEmulator(filename, base64, true);
   }
 
   static renameFile(filename, newFileName) {
     let fileList = FileSystem._readFileList();
     // Rename inside the guest FIRST (Module.bwRenameFile: the node's own rename,
-    // so cmd's next `dir` shows only the new name). The app's copy of the content
-    // is passed along for the delete+write fallback. No `ren`/`echo` keystrokes.
-    let content = "";
-    // getFileData reads the IndexedDB-backed cache (getFileContentSync only sees the
-    // retired localStorage store and returns "" for every new-storage user)
-    try { content = FileSystem.getFileData(filename) || FileSystem.getFileContentSync(filename) || ""; } catch (e) {}
-    const isBinary = !/\.(asm|inc|txt|text|bat|lst|map)$/i.test(filename);
-    renameFileInEmulator(filename, newFileName, isBinary ? FileSystem.getRawFileData(filename) || "" : content, isBinary);
+    // so cmd's next `dir` shows only the new name; into another folder as well).
+    // The stored bytes are passed along for the delete+write fallback. No `ren`/`echo`
+    // keystrokes.
+    FileSystem.ensureFolder(parentOf(newFileName));
+    renameFileInEmulator(filename, newFileName, FileSystem.getRawFileData(filename) || "", true);
     //rename file in list
 
     fileList = renameObjectKey(fileList, filename, newFileName);
-    hf.setInLocalStorage(
-      FileSystem.fileListKey,
-      JSON.stringify(fileList),
-      btoa
-    );
+    FileSystem._writeFileList(fileList);
+    if (FileSystem._encodings.has(filename)) {
+      FileSystem._encodings.set(newFileName, FileSystem._encodings.get(filename));
+      FileSystem._encodings.delete(filename);
+    }
   }
 
   //TODO change INCLUDE Irvine import to correct one
-  static createDataFile(files, callback) {
+  // Uploads go into `folder` (a drawer path, "" = D:\); a name that exists in another
+  // letter case replaces that file.
+  static createDataFile(files, callback, folder = "") {
     files.forEach((file) => {
       const { fileMetaData } = file;
-      const { name, lastModified } = fileMetaData;
+      const { lastModified } = fileMetaData;
+      const name = FileSystem._existingKey(joinPath(folder, fileMetaData.name.normalize("NFC")));
       let { size } = fileMetaData;
       let data = file.data.split(",").pop(); //remove MIME
       let isEncoded = true;
       if (/.(asm|text|txt)$/.test(name)) {
-        data = crlf(atob(data)); //convert end of line (eol) to dos/win32 compatiable crlf
-        size = data.length;
-        isEncoded = false;
+        const raw = atob(data);
+        if (!FileSystem._isUtf16(raw)) {
+          data = crlf(raw); //convert end of line (eol) to dos/win32 compatiable crlf (on the bytes; UTF-16 is left alone)
+          size = data.length;
+          isEncoded = false;
+        }
       }
 
       const isDuplicate = name in FileSystem._readFileList();
@@ -340,11 +477,7 @@ export default class FileSystem {
     if (!isDuplicate) {
       fileList[filename] = fileID;
       //store in file list
-      hf.setInLocalStorage(
-        FileSystem.fileListKey,
-        JSON.stringify(fileList),
-        btoa
-      );
+      FileSystem._writeFileList(fileList);
     }
 
     //store file data in local storage
@@ -365,13 +498,17 @@ export default class FileSystem {
     );
     hf.setInLocalStorage(fileID, metaData, hf.encodeFileMetaData);
 
+    // its folder is registered (and made on D: unless the file is already there)
+    FileSystem.ensureFolder(parentOf(filename), !shouldWriteCommand);
+    FileSystem._encodings.delete(filename); // detected again when the editor opens it
     if (!shouldWriteCommand) {
       // Place the file directly on the guest D: drive (no echo command) so it
       // shows in the terminal `dir` — for NEW files and for uploads that replace
-      // an existing one (the guest copy must follow the app copy). Encoded
-      // (binary) uploads go through the binary-safe bwWriteFileBytes path with
-      // their real bytes (they used to be written as EMPTY guest files).
-      syncFileToEmulator(filename, data, !!dataIsEncoded);
+      // an existing one (the guest copy must follow the app copy). Always the
+      // stored bytes, through the binary-safe bwWriteFileBytes path (the text path
+      // re-encoded every byte >= 0x80 as UTF-8: uploaded UTF-8 text arrived
+      // double-encoded).
+      syncFileToEmulator(filename, dataIsEncoded ? data : btoa(data), true);
     }
   }
 
@@ -433,12 +570,52 @@ export default class FileSystem {
       try { hf.deleteKey(id); } catch (e) {}                        //file metaData
       delete fileList[`${filename}`];
       //remove file from file list
-      hf.setInLocalStorage(
-        FileSystem.fileListKey,
-        JSON.stringify(fileList),
-        btoa
-      );
+      FileSystem._writeFileList(fileList);
+      FileSystem._encodings.delete(filename);
     }
+  }
+
+  // Delete files and folders (a folder with everything in it) from storage and the guest
+  // D: together: the files first, then the folders deepest first.
+  static deleteEntries(paths) {
+    const list = FileSystem._readFileList();
+    const allFolders = FileSystem.getAllFolders();
+    const files = new Set(), folders = new Set();
+    for (const path of paths) {
+      if (path in list) {
+        files.add(path);
+        continue;
+      }
+      folders.add(path);
+      Object.keys(list).forEach((file) => isWithin(file, path) && files.add(file));
+      allFolders.forEach((sub) => isWithin(sub, path) && folders.add(sub));
+    }
+    FileSystem.queueFilesToDelete(...files);
+    FileSystem.deleteFiles();
+    Array.from(folders).sort((a, b) => splitPath(b).length - splitPath(a).length).forEach((folder) => removeDirFromEmulator(folder));
+    if (folders.size) FileSystem._writeFolderList(FileSystem.getFolderList().filter((folder) => !folders.has(folder)));
+  }
+
+  // Move files and folders into `folder` (the drawer checked the move with planMove).
+  static moveEntries(paths, folder) {
+    paths.forEach((path) => FileSystem._relocate(path, joinPath(folder, baseOf(path))));
+  }
+
+  static renameEntry(path, newName) {
+    FileSystem._relocate(path, joinPath(parentOf(path), newName));
+  }
+
+  // A file is renamed in place. A folder is rebuilt under its new path file by file: the
+  // guest cannot rename a directory with contents (its children would keep stale paths).
+  static _relocate(from, to) {
+    const list = FileSystem._readFileList();
+    if (from in list) return FileSystem.renameFile(from, to);
+    const moved = (path) => to + path.slice(from.length);
+    const folders = FileSystem.getAllFolders().filter((sub) => isWithin(sub, from));
+    folders.forEach((sub) => FileSystem.ensureFolder(moved(sub)));
+    Object.keys(list).filter((file) => isWithin(file, from)).forEach((file) => FileSystem.renameFile(file, moved(file)));
+    folders.sort((a, b) => splitPath(b).length - splitPath(a).length).forEach((sub) => removeDirFromEmulator(sub));
+    FileSystem._writeFolderList(FileSystem.getFolderList().filter((sub) => !isWithin(sub, from)).concat(folders.map(moved)));
   }
 
   /*
@@ -488,16 +665,83 @@ export default class FileSystem {
     // read from the app's storage (IndexedDB-backed), not the retired localStorage
     saveAs(
       dataURItoBlob(mimeType(fileExtension) + FileSystem._fileBase64(filename)),
-      filename.substring(0, filename.length - fileExtension.length) +
+      baseOf(filename).substring(0, baseOf(filename).length - fileExtension.length) +
       getFormatedDate() +
       fileExtension
     );
   }
 
-  static async saveFiles(filenames) {
-    const zipName = "MASMProjectFiles_" + getFormatedDate() + ".zip";
-    const entries = filenames.map((filename) => ({ filename, base64: FileSystem._fileBase64(filename) }));
-    await FileSystem._zipAndSave(entries, zipName);
+  // Download entries ({files, folders}: a folder with everything in it) as one zip that
+  // keeps the folder structure: files under their paths relative to D:\, every folder
+  // (empty ones included) as a directory entry. JSZip writes non-ASCII names in UTF-8.
+  static async saveEntries(targets) {
+    const plan = planExport(targets, FileSystem.getFileList(), FileSystem.getAllFolders());
+    const JSZip = await FileSystem._getJSZip();
+    if (!JSZip) throw new Error("JSZip unavailable");
+    const zip = new JSZip();
+    plan.folders.forEach((folder) => zip.folder(folder));
+    plan.files.forEach((file) => zip.file(file, FileSystem._fileBase64(file), { base64: true }));
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, (plan.name || "MASMProjectFiles") + "_" + getFormatedDate() + ".zip");
+  }
+
+  // Import a .zip under `folder` keeping its folders (planImport: safe names, existing
+  // spellings, limits). Resolves to {refused, skipped, count}.
+  static async importArchive(blob, folder) {
+    const JSZip = await FileSystem._getJSZip();
+    if (!JSZip) throw new Error("JSZip unavailable");
+    const zip = await JSZip.loadAsync(blob, { decodeFileName: decodeEntryName });
+    const entries = [];
+    zip.forEach((relativePath, entry) => entries.push({ name: entry.name, dir: entry.dir, size: (entry._data && entry._data.uncompressedSize) || 0, entry }));
+    const plan = planImport(entries, folder, FileSystem.getFileList(), FileSystem.getAllFolders());
+    if (plan.refused) return { refused: plan.refused, skipped: [], count: 0 };
+    plan.folders.forEach((path) => FileSystem.ensureFolder(path));
+    let total = 0, count = 0;
+    for (const { index, path } of plan.files) {
+      const bytes = await entries[index].entry.async("uint8array");
+      total += bytes.length;
+      // the declared sizes passed; an archive that lies about them stops here
+      if (total > MAX_ARCHIVE_BYTES) return { refused: "the archive unpacks to more than " + MAX_ARCHIVE_BYTES / 1048576 + " MiB", skipped: plan.skipped, count };
+      FileSystem.storeImported(path, bytes);
+      count++;
+    }
+    return { refused: null, skipped: plan.skipped, count };
+  }
+
+  // Import the files of a picked directory under `folder` with their relative paths
+  // (webkitRelativePath). A browser that gives no paths (older mobile pickers) gets a
+  // flat import, reported by `flat`.
+  static async importDirectoryFiles(files, folder) {
+    const list = Array.from(files);
+    const flat = list.some((file) => !file.webkitRelativePath);
+    const entries = list.map((file) => ({ name: flat ? file.name : file.webkitRelativePath, dir: false, size: file.size }));
+    const plan = planImport(entries, folder, FileSystem.getFileList(), FileSystem.getAllFolders());
+    if (plan.refused) return { refused: plan.refused, skipped: [], count: 0, flat };
+    plan.folders.forEach((path) => FileSystem.ensureFolder(path));
+    for (const { index, path } of plan.files) FileSystem.storeImported(path, await FileSystem._readFileBytes(list[index]));
+    return { refused: null, skipped: plan.skipped, count: plan.files.length, flat };
+  }
+
+  // Today's upload rules for one imported file: .asm/.txt/.text stored as text with CRLF
+  // line ends (UTF-16 left alone), everything else byte for byte.
+  static storeImported(path, bytes) {
+    const isDuplicate = path in FileSystem._readFileList();
+    const raw = bytesToBinaryString(bytes);
+    if (/.(asm|text|txt)$/.test(path) && !FileSystem._isUtf16(raw)) {
+      const text = crlf(raw);
+      FileSystem.createFile(path, text, Date.now(), false, false, text.length, isDuplicate);
+    } else {
+      FileSystem.createFile(path, btoa(raw), Date.now(), false, true, bytes.length, isDuplicate);
+    }
+  }
+
+  static _readFileBytes(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
   }
 
   // --- Legacy localStorage migration --------------------------------------
