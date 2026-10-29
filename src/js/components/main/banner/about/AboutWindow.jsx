@@ -51,7 +51,7 @@ function AboutWindow({ close }) {
             <div className="about-content__text">
               <p>
                 {
-                  "WASM MASM x86 Editor uses JWlink and JWasm to compile x86/x64 Microsoft assembly language (MASM) and provides a 32-bit wine terminal to execute x86 code using Boxedwine emscripten port."
+                  "WASM MASM x86 Editor uses JWlink and JWasm to compile x86/x64 Microsoft assembly language (MASM) and provides a 32-bit wine emulated command prompt terminal to execute x86 code using Boxedwine emscripten port."
                 }
               </p>
               <br />
@@ -81,12 +81,6 @@ function AboutWindow({ close }) {
               <p>
                 {
                   "All user data is stored in local storage + IndexedDB. If you have any errors you can reset local storage but make sure to back up your work or it will be wiped. All files can be freely downloaded using the menu buttons."
-                }
-              </p>
-              <br></br>
-              <p>
-                {
-                  "Note this app should be considered a work in progress and is not bug free. If you find a bug please feel free to post an issue."
                 }
               </p>
               <br></br>
@@ -143,7 +137,7 @@ function AboutWindow({ close }) {
         <button
           className="btn about-link"
           type="button"
-          title="build and run the Snake game (copied into the file drawer the first time)"
+          title="Snake"
           onClick={() => {
             close();
             window.dispatchEvent(new CustomEvent("play-snake"));
