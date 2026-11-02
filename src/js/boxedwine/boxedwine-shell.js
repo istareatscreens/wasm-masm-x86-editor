@@ -610,6 +610,11 @@
         }
         function getEmulatorParams() {        
             let params = ["-root", ROOT];
+            // every guest program runs as root: Boxedwine lets other users write only under /tmp, /var and /home
+            params.push("-uid");
+            params.push("0");
+            params.push("-euid");
+            params.push("0");
             params.push("-zip");
     		params.push(Config.rootZipFile);
     		

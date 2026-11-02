@@ -26,7 +26,10 @@
 
 statement { line? eol }
 
-line { Label body? | body }
+// A "%" that opens a statement makes ML expand the whole line first ("% NM proc").
+line { "%" lineBody? | lineBody }
+
+lineBody { Label body? | body }
 
 // BNF labelDef: id ":" | id "::" | "@@:"
 Label { Identifier ":" | Identifier "::" | AnonLabel ":" }
@@ -142,8 +145,20 @@ MacroCall { Identifier (FirstMacroArg? ("," MacroArg?)*) }
 
 // The first argument cannot be a record constant: "id id <...>" / "id id {...}"
 // is a TypedDataDefinition (BNF dataItem), see design.md D4.
-FirstMacroArg[@name=MacroArg] { TextLiteral | PercentExpression | typeValue | expression }
-MacroArg { TextLiteral | PercentExpression | typeValue | RecordConstant | expression }
+//
+// BNF macroArg: arbitraryText, so items separated by spaces form one argument ("1 2 3");
+// argSpace loses where both readings parse: "x MYTYPE 5" stays a TypedDataDefinition.
+FirstMacroArg[@name=MacroArg] { firstArgItem spacedArgItem* }
+MacroArg { argItem spacedArgItem* }
+firstArgItem { TextLiteral | PercentExpression | typeValue | expression | typedArg }
+argItem { TextLiteral | PercentExpression | typeValue | RecordConstant | expression | typedArg }
+spacedArgItem[@dynamicPrecedence=-1] { argSpace argItem }
+
+// A "name:type" macro argument ("count:dword") is an identifier and a qualified type.
+// ~typedArg keeps both readings of ":" (GLR); !prim matches the competing
+// reduction's precedence, which the marker requires.
+typedArg { Identifier ~typedArg !prim ":" ArgType }
+ArgType[@name=QualifiedType] { PtrType | DataType | distance }
 
 // BNF: % constExpr | % textMacroId | % macroFuncId ( macroArgList ) (operator-percent.md)
 PercentExpression { "%" expression }
@@ -182,7 +197,9 @@ aggSep { "," | eol }
 // Equates and text macros. BNF =Dir, equDir, textDir / textMacroDir.
 // ---------------------------------------------------------------------------
 EqualsDirective { Identifier "=" (typeValue | expression) }          // equal.md
-EquDirective { Identifier kwEqu (TextLiteral | typeValue | expression) } // equ.md
+// equ.md: name EQU expression | name EQU <text>; "name EQU BYTE PTR" is the
+// text form without the brackets.
+EquDirective { Identifier kwEqu (TextLiteral | typeValue | expression | typeValue opPtr) }
 TextEquDirective { Identifier (kwTextequ | kwCatstr) (TextItem (sep TextItem)*)? } // textequ.md, catstr.md
 SizeStrDirective { Identifier kwSizestr TextItem }                   // sizestr.md
 SubStrDirective { Identifier kwSubstr TextItem "," expression ("," expression)? } // substr.md
@@ -217,8 +234,10 @@ InvokeDirective { kwInvoke expression (sep InvokeArg)* }
 InvokeArg { Register "::" Register | opAddr expression | expression }
 
 // local-masm.md: LOCAL localId, ... (macro) | LOCAL labelId ⟦[count]⟧ ⟦:qualifiedType⟧, ... (proc)
+// A LOCAL that opens a macro or repeat body names its locals with LocalName,
+// which a reserved word may spell.
 LocalDirective { kwLocal LocalItem (sep LocalItem)* }
-LocalItem { Identifier ("[" expression "]")? (":" QualifiedType)? }
+LocalItem { (Identifier | LocalName) ("[" expression "]")? (":" QualifiedType)? }
 
 distance { atNear | atFar | atNear16 | atNear32 | atFar16 | atFar32 } // BNF distance / nearfar
 langType { atC | atPascal | atFortran | atBasic | atSyscall | atStdcall } // BNF langType
@@ -232,16 +251,17 @@ PtrType { (distance | kwProc)? opPtr QualifiedType? }
 // Macros and repeat blocks. macro.md, endm.md, exitm.md, goto-masm.md,
 // purge.md, for-masm.md, forc.md, repeat.md, while-masm.md; BNF macroDir,
 // macroParm, exitmDir, macroStmt, macroFor, macroForc, macroRepeat, macroWhile.
+// BNF macroParm: id; a ParamName is any word but ENDM, reserved words included.
 // ---------------------------------------------------------------------------
 MacroDirective { Identifier kwMacro (MacroParameter (sep MacroParameter)*)? }
-MacroParameter { Identifier (":" (atReq | atVararg | "=" TextLiteral))? }
+MacroParameter { ParamName (":" (atReq | atVararg | "=" TextLiteral))? }
 EndmDirective { kwEndm TextItem? }                                   // macro.md: ENDM ⟦value⟧
 ExitmDirective { kwExitm TextItem? }
 GotoDirective { kwGoto Identifier }
 MacroLabel { ":" Identifier }                                        // goto-masm.md: ":macrolabel"
 PurgeDirective { kwPurge Identifier ("," Identifier)* }
-ForDirective { (kwFor | kwIrp) Identifier (":" (atReq | "=" TextLiteral))? "," TextLiteral }
-ForcDirective { (kwForc | kwIrpc) Identifier "," TextLiteral }
+ForDirective { (kwFor | kwIrp) ParamName (":" (atReq | "=" TextLiteral))? "," TextLiteral }
+ForcDirective { (kwForc | kwIrpc) ParamName "," TextLiteral }
 RepeatDirective { (kwRepeat | kwRept) expression }
 WhileDirective { kwWhile expression }
 
@@ -249,20 +269,23 @@ WhileDirective { kwWhile expression }
 // Conditional assembly. if-masm.md and companions; BNF ifStatement,
 // elseifStatement. Conditional error: BNF errorOpt and dot-err*.md.
 // ---------------------------------------------------------------------------
+// ifdef.md / ifndef.md: IFDEF name, "label, variable, or symbol" (IFDEF @Model);
+// a register name is one too.
 IfDirective {
   (kwIf | kwIfe) expression |
   (kwIfb | kwIfnb) TextItem |
-  (kwIfdef | kwIfndef) (Identifier | PredefinedSymbol) |             // ifdef.md: "label, variable, or symbol" (IFDEF @Model)
+  (kwIfdef | kwIfndef) definedName |
   (kwIfdif | kwIfdifi | kwIfidn | kwIfidni) TextItem "," TextItem |
   kwIf1 | kwIf2
 }
 ElseifDirective {
   (kwElseif | kwElseife) expression |
   (kwElseifb | kwElseifnb) TextItem |
-  (kwElseifdef | kwElseifndef) (Identifier | PredefinedSymbol) |
+  (kwElseifdef | kwElseifndef) definedName |
   (kwElseifdif | kwElseifdifi | kwElseifidn | kwElseifidni) TextItem "," TextItem |
   kwElseif1 | kwElseif2
 }
+definedName { Identifier | PredefinedSymbol | Register }
 ElseDirective { kwElse }
 EndifDirective { kwEndif }
 ErrorDirective {
@@ -381,7 +404,9 @@ CommItem { (langType | distance)* Identifier ":" (QualifiedType | Number | Paren
 // typedef-masm.md; BNF labelDir, structDir/structHdr/nestedStruct,
 // recordDir/bitDef, typedefDir/qualifier.
 // ---------------------------------------------------------------------------
-LabelDirective { Identifier kwLabel QualifiedType }
+// label-masm.md: name LABEL qualifiedType | name LABEL ⟦NEAR | FAR | PROC⟧ PTR ⟦qualifiedType⟧.
+// PROC alone is also a LABEL type (extern-masm.md: "The type can also be PROC").
+LabelDirective { Identifier kwLabel (QualifiedType | kwProc) }
 StructDirective { Identifier? (kwStruct | kwStruc | kwUnion) expression? ("," atNonunique)? }
 RecordDirective { Identifier kwRecord BitField (sep BitField)* }
 BitField { Identifier ":" expression ("=" expression)? }
@@ -431,20 +456,23 @@ SafesehDirective { dotSafeseh Identifier }
 
 // x64 unwind directives: dot-allocstack.md .. dot-setframe.md (Unwind v1) and
 // dot-beginepilog.md .. dot-unsetframe.md (Unwind v3).
+// The register operand may also be a macro parameter or a text macro that
+// stands for a register.
 UnwindDirective {
   dotAllocstack expression |
   dotEndprolog |
   dotPushframe xCode? |
-  dotPushreg Register |
-  (dotSavereg | dotSavexmm128 | dotSetframe) Register "," expression |
+  dotPushreg unwindReg |
+  (dotSavereg | dotSavexmm128 | dotSetframe) unwindReg "," expression |
   dotBeginepilog |
   dotEndepilog |
   dotFreestack expression |
-  (dotPop2reg | dotPush2reg) Register "," Register |
+  (dotPop2reg | dotPush2reg) unwindReg "," unwindReg |
   dotPopframe (xCode | Number)? |
-  dotPopreg Register |
-  (dotRestorereg | dotRestorexmm128 | dotUnsetframe) Register "," expression
+  dotPopreg unwindReg |
+  (dotRestorereg | dotRestorexmm128 | dotUnsetframe) unwindReg "," expression
 }
+unwindReg { Register | Identifier }
 
 // comment-masm.md; BNF commentDir: COMMENT delimiter text ... text delimiter text ;;
 CommentDirective { kwComment BlockComment }
@@ -463,7 +491,7 @@ GenericDotDirective { DotWord (MacroArg? ("," MacroArg?)*) }
 typeValue { DataType | distance }
 
 expression {
-  Identifier !prim |
+  Identifier ~typedArg !prim |
   PredefinedSymbol |
   Number |
   String |
@@ -564,12 +592,28 @@ sep { "," eol? }
 // precedence; each is contextual and only produces its token where the parser
 // can shift it.
 // ---------------------------------------------------------------------------
+
+// argSpace, the space between two items of a macro argument, comes from an
+// extend tokenizer, so it comes first.
+@external tokens argSpaceTokens from "./tokens.js" { argSpace }
+
 @external tokens contextTokens from "./tokens.js" {
   TextLiteral,   // < text > with nesting and ! escapes (operator-literal.md; BNF textLiteral/text)
   BlockComment,  // COMMENT delimiter ... delimiter (comment-masm.md)
   RawText,       // rest of line after ECHO/%OUT/TITLE/SUBTITLE/SUBTTL (BNF arbitraryText)
   FileName       // INCLUDE/INCLUDELIB file specification (BNF fileSpec: fileCharList)
 }
+
+// Names a reserved word may spell, where a declaration allows them: macro
+// parameters and the LOCALs that open a body.
+@external tokens nameTokens from "./tokens.js" { ParamName[@name=Identifier], LocalName[@name=Identifier] }
+
+// BNF id: alpha (alpha | decdigit)*; in a macro or repeat body also joined with &parameter&.
+@external tokens identifierTokens from "./tokens.js" { Identifier }
+
+// The open MACRO / FOR / FORC / REPEAT / WHILE blocks and the words OPTION
+// NOKEYWORD released; it only steers tokenization.
+@context macroContext from "./tokens.js"
 
 // Case-insensitive keyword classification (keywords.js + mnemonics.js).
 @external specialize { Identifier } specializeIdentifier from "./tokens.js" {
@@ -697,8 +741,7 @@ sep { "," eol? }
   LineComment { ";" ![\n]* }
   // ml-fatal-error-a1009.md: physical lines concatenated with the line-continuation character "\"
   lineContinuation { "\\" $[ \t\r]* "\n" }
-  // BNF alpha: A-Z a-z @ _ $ ?; id: alpha (alpha | decdigit)*
-  Identifier { $[a-zA-Z@_$?] $[a-zA-Z0-9@_$?]* }
+  // Identifier (BNF id) is read by identifierTokens in tokens.js.
   // BNF constant: digits ⟦radixOverride⟧; digits: decdigit (decdigit | hexdigit)*; radixOverride: h o q t y
   Number { @digit $[0-9a-fA-F]* $[hHoOqQtTyY]? }
   // BNF floatNumber: decNumber "." ⟦decNumber⟧ ⟦exponent⟧ | digits "R" | digits "r" (sign handled by the grammar)
@@ -712,5 +755,5 @@ sep { "," eol? }
 
   "(" ")" "[" "]" "{" "}" "," ":" "::" "=" "+" "-" "*" "/" "&" "&&" "||" "%" "!" "!=" "==" "<" "<=" ">" ">="
 
-  @precedence { Float, Number, DotWord, Identifier, percentOut, "%" }
+  @precedence { Float, Number, DotWord, percentOut, "%" }
 }

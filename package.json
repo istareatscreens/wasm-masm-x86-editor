@@ -12,6 +12,8 @@
     "build:assets": "node scripts/chunk-guest.cjs",
     "test:assets": "node --test scripts/chunk-guest.test.cjs",
     "test:presentation": "node --test scripts/boxedwine-presentation.test.cjs",
+    "test:input": "node --test scripts/boxedwine-input.test.cjs",
+    "test:shell": "node --test scripts/boxedwine-shell.test.cjs",
     "test:file-drawer": "node --test scripts/file-drawer.test.cjs",
     "test:crash-report": "node --test scripts/crash-report.test.cjs",
     "check:public": "node Boxedwine/scripts/check-public.mjs",

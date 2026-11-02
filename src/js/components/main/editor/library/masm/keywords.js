@@ -7,9 +7,10 @@
 //            at*/x* are one-per-keyword (they shape grammar productions and are
 //            declared in masm.grammar); the rest are category terms.
 //   SOURCE - the file under ../syntax that documents the word. For the handful
-//            of ISA registers the reference itself does not list, the source is
-//            the processor manual that syntax/processor-manufacturer-programming-manuals.md
-//            points to, and the entry is marked with a leading "ISA:".
+//            of ISA registers the reference itself does not list, and for the
+//            ML64 REXW prefix, the source is the processor manual that
+//            syntax/processor-manufacturer-programming-manuals.md points to,
+//            and the entry is marked with a leading "ISA:".
 //
 // The lists are consumed by tokens.js (case-insensitive lookup) and by the
 // tests, and are deliberately disjoint except where noted (MNEMONIC_DUALS).
@@ -405,6 +406,7 @@ export const CONTEXTUAL_ATTRIBUTES = [
 
 // ---------------------------------------------------------------------------
 // Instruction prefixes (instruction-format.md; masm-bnf-grammar.md instrPrefix).
+// ML64 accepts REXW ("rexw jmp rax" assembles to 48 FF E0) and no other REX spelling (A2008).
 // ---------------------------------------------------------------------------
 export const PREFIXES = [
   ["REP", "Prefix", "instruction-format.md"],
@@ -419,6 +421,7 @@ export const PREFIXES = [
   ["VEX2", "Prefix", "instruction-format.md"],
   ["VEX3", "Prefix", "instruction-format.md"],
   ["EVEX", "Prefix", "instruction-format.md"],
+  ["REXW", "Prefix", "ISA: Intel SDM Vol. 2A, 2.2.1 REX Prefixes (REX.W); ML64 spells the prefix REXW"],
 ];
 
 // ---------------------------------------------------------------------------
@@ -438,6 +441,8 @@ const SDM_GPR = "ISA: Intel SDM Vol. 1, 3.4.1.1 General-Purpose Registers in 64-
 const SDM_AVX512 = "ISA: Intel SDM Vol. 1, Ch. 15 (AVX-512 register state); examples in instruction-format.md use zmm/k registers";
 const SDM_CR = "ISA: Intel SDM Vol. 3, 2.5 Control Registers";
 const APX = "ISA: Intel APX Architecture Specification (R16-R31); dot-pop2reg.md / dot-popreg.md / dot-push2reg.md list R16-R31";
+const SDM_MPX = "ISA: Intel SDM Vol. 1, 3.2 and Appendix E.3 (Intel MPX bounds registers BND0-BND3)";
+const SDM_AMX = "ISA: Intel SDM Vol. 1, 19.1 (Intel AMX tile registers TMM0..TMM7)";
 
 export const REGISTERS = [
   // byteRegister (BNF)
@@ -468,6 +473,9 @@ export const REGISTERS = [
   ...regs("YMM", 16, 31, "", "Register", SDM_AVX512),
   ...regs("ZMM", 0, 31, "", "Register", SDM_AVX512),
   ...regs("K", 0, 7, "", "Register", "instruction-format.md ({k1}..{k7}); " + SDM_AVX512),
+  // MPX bounds and AMX tile registers: ML and ML64 assemble BND0-BND3, ML64 TMM0-TMM7
+  ...regs("BND", 0, 3, "", "Register", SDM_MPX),
+  ...regs("TMM", 0, 7, "", "Register", SDM_AMX),
   // specialRegister (BNF) + CR4/CR8
   ...["CR0", "CR2", "CR3"].map((r) => [r, "Register", BNF]),
   ...["CR4", "CR8"].map((r) => [r, "Register", SDM_CR]),
