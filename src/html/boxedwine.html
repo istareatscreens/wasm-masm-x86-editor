@@ -168,6 +168,27 @@
             e.code === "KeyC"
           );
         };
+        // Ctrl+Shift+C is the console's too: it is also the browsers' DevTools inspect shortcut
+        var isCtrlCopyKey = function (e) {
+          return (
+            e.ctrlKey &&
+            !e.metaKey &&
+            e.shiftKey &&
+            !e.altKey &&
+            e.code === "KeyC"
+          );
+        };
+        // the whole chord through direct input: a C sent alone could arrive after the modifiers' releases
+        var typeCopyChord = function () {
+          try {
+            Module.sendKey(0xffe3, true); // Control_L
+            Module.sendKey(0xffe1, true); // Shift_L
+            Module.sendKey(0x63, true); // c
+            Module.sendKey(0x63, false);
+            Module.sendKey(0xffe1, false);
+            Module.sendKey(0xffe3, false);
+          } catch (err) {}
+        };
         window.addEventListener(
           "keydown",
           function (e) {
@@ -198,15 +219,10 @@
               }, 150);
               return;
             }
-            if (isCmdCopyKey(e)) {
+            if (isCmdCopyKey(e) || isCtrlCopyKey(e)) {
               e.stopImmediatePropagation();
               e.preventDefault();
-              try {
-                Module.sendKey(0xffe3, true);
-                Module.sendKey(0x63, true);
-                Module.sendKey(0x63, false);
-                Module.sendKey(0xffe3, false);
-              } catch (err) {} // Control_L + c, Shift is already down in the guest
+              typeCopyChord();
             }
           },
           true,
@@ -215,7 +231,12 @@
           "keyup",
           function (e) {
             if (!window.BW_INPUT_OPEN) return;
-            if (isPasteKey(e) || isPasteReadKey(e) || isCmdCopyKey(e))
+            if (
+              isPasteKey(e) ||
+              isPasteReadKey(e) ||
+              isCmdCopyKey(e) ||
+              isCtrlCopyKey(e)
+            )
               e.stopImmediatePropagation();
           },
           true,
@@ -497,11 +518,13 @@
         BW_BUF_ROWS = 500;
       var BW_MIN_COLS = 8,
         BW_MIN_ROWS = 2; // conhost v15 minimum (window.c WM_SIZE)
+      // the largest screen Module.bwResizeScreen takes; a larger panel shows it stretched
+      var BW_MAX_SCREEN = 8000;
       window.BW_CELL = { w: BW_CELL_W, h: BW_CELL_H };
       window.BW_CLIENT_ORIGIN = { x: 4, y: BW_FRAME_H - 4 }; // the console's first cell: inside the 4 px border and the 19 px caption
       window.bwGeometryFor = function (panelW, panelH) {
-        var w = Math.max(1, Math.round(panelW)),
-          h = Math.max(1, Math.round(panelH));
+        var w = Math.min(BW_MAX_SCREEN, Math.max(1, Math.round(panelW))),
+          h = Math.min(BW_MAX_SCREEN, Math.max(1, Math.round(panelH)));
         var cols = Math.floor((w - BW_FRAME_W) / BW_CELL_W),
           rows = Math.floor((h - BW_FRAME_H) / BW_CELL_H);
         if (!isFinite(cols) || cols < BW_MIN_COLS) cols = BW_MIN_COLS;
@@ -548,6 +571,27 @@
           window.BW_CONSOLE_GEOMETRY.height
         );
       };
+      // SDL's desktop mode comes from screen.width x screen.height, and Boxedwine scales a screen
+      // that does not fit inside it: report a display larger than any screen the page asks for
+      (function () {
+        var desktop = BW_MAX_SCREEN + 192;
+        try {
+          Object.defineProperty(window.screen, "width", {
+            configurable: true,
+            get: function () {
+              return desktop;
+            },
+          });
+          Object.defineProperty(window.screen, "height", {
+            configurable: true,
+            get: function () {
+              return desktop;
+            },
+          });
+        } catch (e) {
+          console.warn("[bw] the display size for SDL could not be set: " + e);
+        }
+      })();
       // Called by the shell before the emulator starts on a cold boot. Patches [Console]
       // FaceName/FontSize/WindowSize/ScreenBufferSize in the overlay's user.reg (Wine's live
       // copy if it exists, else the zip's); any failure leaves the zip's registry (68x26).

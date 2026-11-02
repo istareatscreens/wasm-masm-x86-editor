@@ -126,6 +126,44 @@ test('a resize before the environment is ready waits for the post-ready sync', (
   assert.deepEqual(Array.from(c.requested), [640, 240]);
 });
 
+// The page's screen geometry, from the cell constants to the cold-boot registry patch.
+const geometryStart = html.indexOf('      var BW_CELL_W = 11,');
+const geometry = html.slice(geometryStart, html.indexOf('      // Called by the shell before the emulator starts on a cold boot.', geometryStart));
+
+function geometrySetup(screen) {
+  const warnings = [];
+  const context = {
+    console: { log() {}, warn: message => warnings.push(String(message)) },
+    Math, isFinite, innerWidth: 1532, innerHeight: 1088,
+    screen: screen || { width: 1920, height: 1080, availWidth: 1920 },
+  };
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(geometry, context);
+  return { context, warnings };
+}
+
+test('the display SDL sees is larger than any screen the page asks for', () => {
+  // a terminal taller than the display: 50 % zoom on a maximized 1920x1080 window
+  const { context: c } = geometrySetup();
+  assert.equal(c.screen.width, 8192);
+  assert.equal(c.screen.height, 8192);
+  assert.equal(c.screen.availWidth, 1920, 'only width and height change');
+  assert.deepEqual([c.BW_CONSOLE_GEOMETRY.width, c.BW_CONSOLE_GEOMETRY.height], [1532, 1088]);
+  assert.equal(c.getResolution(), '1532x1088');
+  // past the emulator's limit (Module.bwResizeScreen takes at most 8000x8000)
+  const g = c.bwGeometryFor(9000, 12000);
+  assert.deepEqual([g.width, g.height], [8000, 8000]);
+  assert.ok(g.width < c.screen.width && g.height < c.screen.height);
+});
+
+test('a screen whose size cannot be redefined is reported, not fatal', () => {
+  const { context: c, warnings } = geometrySetup(Object.freeze({ width: 1920, height: 1080 }));
+  assert.equal(c.screen.width, 1920);
+  assert.ok(warnings.some(w => /display size for SDL could not be set/.test(w)));
+  assert.deepEqual([c.BW_CONSOLE_GEOMETRY.width, c.BW_CONSOLE_GEOMETRY.height], [1532, 1088]);
+});
+
 test('resize safety deadline releases a hold even if the guest does not repaint', () => {
   const { context: c, frame, elements, events, timeouts } = setup();
   frame([0, 0, 0], true);
