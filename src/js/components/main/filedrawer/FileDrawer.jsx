@@ -376,36 +376,38 @@ const FileDrawer = function FileDrawer({ fileList, fileSelected, switchFile, cre
       )}
       {dialog && dialog.kind === "confirm" && <ConfirmWindow title={dialog.title} message={dialog.message} choices={dialog.choices} close={closeDialog} />}
       {dialog && dialog.kind === "notice" && <ConfirmWindow title="File Drawer" message={dialog.message} details={dialog.details} choices={[{ label: "OK" }]} close={closeDialog} />}
-      <FileDrawerToolbar
-        fileUploadInput={fileUploadInput}
-        folderUploadInput={folderUploadInput}
-        selectAll={selectAll}
-        onSelectAll={ops.selectAll}
-        onNewFile={() => ops.newFile(targetFolder)}
-        onNewFolder={() => ops.newFolder(targetFolder)}
-        onUploadFiles={uploadFiles}
-        onImportFolder={importFolder}
-        onSave={save}
-        onDelete={ops.deleteSelection}
-        asmOnly={asmOnly}
-        onAsmOnly={setAsmOnly}
-        showLegacyDownload={showLegacyDownload}
-        onDownloadLegacy={() => FileSystem.downloadLegacyFiles()}
-      />
-      <FileTree
-        ref={tree}
-        rows={rows}
-        iconFor={iconFor}
-        checkFor={checkFor}
-        openFile={fileSelected}
-        selected={selected}
-        focused={focused}
-        setFocused={setFocused}
-        cut={cut}
-        renaming={renaming}
-        lightMode={lightMode}
-        ops={ops}
-      />
+      <div className="file-drawer">
+        <FileDrawerToolbar
+          fileUploadInput={fileUploadInput}
+          folderUploadInput={folderUploadInput}
+          selectAll={selectAll}
+          onSelectAll={ops.selectAll}
+          onNewFile={() => ops.newFile(targetFolder)}
+          onNewFolder={() => ops.newFolder(targetFolder)}
+          onUploadFiles={uploadFiles}
+          onImportFolder={importFolder}
+          onSave={save}
+          onDelete={ops.deleteSelection}
+          asmOnly={asmOnly}
+          onAsmOnly={setAsmOnly}
+          showLegacyDownload={showLegacyDownload}
+          onDownloadLegacy={() => FileSystem.downloadLegacyFiles()}
+        />
+        <FileTree
+          ref={tree}
+          rows={rows}
+          iconFor={iconFor}
+          checkFor={checkFor}
+          openFile={fileSelected}
+          selected={selected}
+          focused={focused}
+          setFocused={setFocused}
+          cut={cut}
+          renaming={renaming}
+          lightMode={lightMode}
+          ops={ops}
+        />
+      </div>
     </>
   );
 };

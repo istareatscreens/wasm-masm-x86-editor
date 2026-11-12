@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 import Window from "../../../common/Window.jsx";
+import RetroScrollArea from "../../../common/RetroScrollArea.jsx";
 
 // A retro message box: the text (a string or a list of lines) and one button per choice;
 // the first choice has the focus, Escape closes as the title bar's X does.
@@ -9,24 +10,17 @@ function ConfirmWindow({ title, message, details, choices, close }) {
   useEffect(() => {
     if (first.current) first.current.focus();
   }, []);
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") close();
+  };
 
   return (
-    <Window closeWindow={close} titlebarClass={"title-bar__about"} windowClass={"window__confirm"} titlebarText={title} keepInViewport>
-      <div
-        className="window__confirm__body"
-        onKeyDown={(event) => {
-          if (event.key === "Escape") close();
-        }}
-      >
-        <p className="window__confirm__message">{message}</p>
-        {details && details.length > 0 && (
-          <ul className="window__confirm__details">
-            {details.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
-        )}
-        <div className="window__confirm__buttons">
+    <Window
+      onClose={close}
+      className={"window__confirm"}
+      title={title}
+      footer={
+        <div className="window__confirm__buttons" onKeyDown={onKeyDown}>
           {choices.map((choice, i) => (
             <button
               key={choice.label}
@@ -42,6 +36,19 @@ function ConfirmWindow({ title, message, details, choices, close }) {
             </button>
           ))}
         </div>
+      }
+    >
+      <div className="window__confirm__body" onKeyDown={onKeyDown}>
+        <p className="window__confirm__message">{message}</p>
+        {details && details.length > 0 && (
+          <RetroScrollArea label="Details" className="window__confirm__details-area">
+            <ul className="window__confirm__details">
+              {details.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </RetroScrollArea>
+        )}
       </div>
     </Window>
   );

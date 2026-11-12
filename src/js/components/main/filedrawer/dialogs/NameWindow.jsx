@@ -29,11 +29,22 @@ function NameWindow({ title, label, problemFor, onCreate, close }) {
 
   return (
     <Window
-      closeWindow={close}
-      titlebarClass={"title-bar--create-file"}
-      windowClass={"window--create-file"}
-      titlebarText={title}
-      keepInViewport
+      onClose={close}
+      className={"window--create-file"}
+      title={title}
+      size="fit"
+      footer={
+        <div className="external-buttons external-buttons--createFile">
+          <Button
+            src={problem ? acceptDisabled : accept}
+            className={"btn btn--window btn--createFile"}
+            imageClass={"btn--window--image"}
+            title={label}
+            disabled={!!problem}
+            onClick={create}
+          />
+        </div>
+      }
     >
       <input
         type="text"
@@ -56,16 +67,6 @@ function NameWindow({ title, label, problemFor, onCreate, close }) {
       <p className="window__name-problem" aria-live="polite">
         {value && problem ? problem : "\u00a0"}
       </p>
-      <div className="external-buttons external-buttons--createFile">
-        <Button
-          src={problem ? acceptDisabled : accept}
-          className={"btn btn--window btn--createFile"}
-          imageClass={"btn--window--image"}
-          title={label}
-          disabled={!!problem}
-          onClick={create}
-        />
-      </div>
     </Window>
   );
 }

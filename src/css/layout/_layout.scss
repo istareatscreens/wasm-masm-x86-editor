@@ -1,95 +1,137 @@
 @use "../abstracts/mixins";
 @use "../abstracts/variables";
 
-// The first row holds both top bars: as many rows of $banner-height as the bar with the
-// most rows needs (banner/useBannerRows.js sets --banner-rows and data-banner-rows), and
-// the rows below give the height back. An attribute, not a class: the layout modifier is
-// found by its classList index (ViewControlGroup, Banner).
+// The page is as tall as the initial containing block (html, body and #root are 100 %): on a phone the
+// screen with the browser's toolbars shown, which does not change while they move or the on-screen
+// keyboard opens, so the terminal is not re-fitted for them. No vh or dvh here on purpose.
+//
+// Two pane columns and up to three pane rows, with a track for the splitters between them
+// (layout/AppLayout.jsx puts a SplitHandle in vsplit and hsplit; a layout without one gives its track
+// 0). The first row holds the main bar: as many rows of $banner-height as its controls need
+// (banner/useBannerRows.js sets --banner-rows and data-banner-rows); the file drawer's column starts at
+// the top with its own toolbar. The rows below share the rest by the splitters' fractions
+// (--split-wide-x/y, --split-narrow-x/y from AppLayout), each pane at least 120 px while there is room
+// for two, half each otherwise. An attribute, not a class: the layout modifier is the root's third class.
 .app-layout {
   --banner-height: calc(var(--banner-rows, 1) * #{variables.$banner-height});
+  --splitter: 6px;
+  --vbar: var(--splitter);
+  --hbar: var(--splitter);
+  --x: var(--split-wide-x, 0.6);
+  --y: var(--split-wide-y, 0.4);
+  --left: clamp(min(120px, 50%), calc(var(--x) * (100% - var(--vbar))), max(calc(100% - 120px - var(--vbar)), 50%));
+  --rest: calc(100% - var(--banner-height) - var(--hbar));
+  --top: clamp(min(120px, calc(var(--rest) / 2)), calc(var(--y) * var(--rest)), max(calc(var(--rest) - 120px), calc(var(--rest) / 2)));
+  height: 100%;
+  // a pane the layout has no area for (the hidden terminal keeps its box) gets zero-sized implicit
+  // tracks: it takes no space from the panes and cannot make the page scrollable
+  overflow: hidden;
   display: grid;
-  grid-template:
-    "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-    "editor editor file_drawer file_drawer" variables.$file-drawer-height
-    "editor editor cmd cmd" calc(60vh - var(--banner-height))
-    / 30vw 30vw 20vw 20vw;
+  grid-auto-rows: 0;
+  grid-auto-columns: 0;
+  grid-template-columns: minmax(0, var(--left)) var(--vbar) minmax(0, 1fr);
+  grid-template-rows: var(--banner-height) minmax(0, var(--top)) var(--hbar) minmax(0, 1fr);
+  grid-template-areas:
+    "banner banner file_drawer"
+    "editor vsplit file_drawer"
+    "editor vsplit hsplit"
+    "editor vsplit cmd";
+
+  // a finger needs a wider splitter
+  @media (pointer: coarse) {
+    --splitter: 14px;
+  }
 
   @include mixins.respond(half-width) {
-    grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-      "editor editor file_drawer file_drawer" variables.$file-drawer-height-half
-      "cmd cmd cmd cmd" calc(50vh - var(--banner-height))
-      / 35vw 35vw 15vw 15vw;
+    --x: var(--split-narrow-x, 0.7);
+    --y: var(--split-narrow-y, 0.5);
+  }
+
+  // where the terminal sits with every pane shown (layout/terminalPlace.ts): the template above has it
+  // under the drawer; AppLayout sets data-terminal on the layouts the place changes, by breakpoint
+  &[data-terminal="bottom"] {
+    grid-template-areas:
+      "banner banner file_drawer"
+      "editor vsplit file_drawer"
+      "hsplit hsplit hsplit"
+      "cmd cmd cmd";
+  }
+
+  &[data-terminal="left"] {
+    grid-template-areas:
+      "banner banner file_drawer"
+      "editor vsplit file_drawer"
+      "hsplit vsplit file_drawer"
+      "cmd vsplit file_drawer";
+  }
+
+  // the resize handles hidden (the banner's switch): no splitter tracks, the panes meet
+  &[data-handles="hidden"] {
+    --splitter: 0px;
   }
 
   &--no-editor {
-    grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-      "cmd cmd file_drawer file_drawer" variables.$file-drawer-height
-      "cmd cmd file_drawer file_drawer" calc(60vh - var(--banner-height))
-      / 30vw 30vw 20vw 20vw;
-
-    @include mixins.respond(half-width) {
-      grid-template:
-        "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-        "cmd cmd file_drawer file_drawer" variables.$file-drawer-height-half
-        "cmd cmd file_drawer file_drawer" calc(50vh - var(--banner-height))
-        / 35vw 35vw 15vw 15vw;
-    }
+    --hbar: 0px;
+    grid-template-areas:
+      "banner banner file_drawer"
+      "cmd vsplit file_drawer"
+      "cmd vsplit file_drawer"
+      "cmd vsplit file_drawer";
   }
 
   &--no-cmd {
-    grid-template:
-      "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-      "editor editor file_drawer file_drawer" variables.$file-drawer-height
-      "editor editor file_drawer file_drawer" calc(60vh - var(--banner-height))
-      / 30vw 30vw 20vw 20vw;
-
-    @include mixins.respond(half-width) {
-      grid-template:
-        "banner banner file_drawer_banner file_drawer_banner" var(--banner-height)
-        "editor editor file_drawer file_drawer" variables.$file-drawer-height-half
-        "editor editor file_drawer file_drawer" calc(50vh - var(--banner-height))
-        / 35vw 35vw 15vw 15vw;
-    }
+    --hbar: 0px;
+    grid-template-areas:
+      "banner banner file_drawer"
+      "editor vsplit file_drawer"
+      "editor vsplit file_drawer"
+      "editor vsplit file_drawer";
   }
 
+  // the terminal stays where it was: beside the editor when it was under the drawer, under it otherwise
   &--no-file-drawer {
-    grid-template:
-      "banner banner cmd cmd" var(--banner-height)
-      "editor editor cmd cmd" variables.$file-drawer-height
-      "editor editor cmd cmd" calc(60vh - var(--banner-height))
-      / 30vw 30vw 20vw 20vw;
+    --hbar: 0px;
+    grid-template-areas:
+      "banner banner cmd"
+      "editor vsplit cmd"
+      "editor vsplit cmd"
+      "editor vsplit cmd";
 
-    @include mixins.respond(half-width) {
-      grid-template:
-        "banner banner banner banner" var(--banner-height)
-        "editor editor editor editor" variables.$file-drawer-height-half
-        "cmd cmd cmd cmd" calc(50vh - var(--banner-height))
-        / 35vw 35vw 15vw 15vw;
+    &[data-terminal="bottom"],
+    &[data-terminal="left"] {
+      --vbar: 0px;
+      --hbar: var(--splitter);
+      grid-template-areas:
+        "banner banner banner"
+        "editor editor editor"
+        "hsplit hsplit hsplit"
+        "cmd cmd cmd";
     }
   }
 
   &--only-editor {
-    grid-template:
-      "banner banner banner banner" var(--banner-height)
-      "editor editor editor editor" variables.$file-drawer-height
-      "editor editor editor editor" calc(60vh - var(--banner-height))
-      / 30vw 30vw 20vw 20vw;
+    --vbar: 0px;
+    --hbar: 0px;
+    grid-template-areas:
+      "banner banner banner"
+      "editor editor editor"
+      "editor editor editor"
+      "editor editor editor";
   }
 
   &--only-cmd {
-    grid-template:
-      "banner banner banner banner" var(--banner-height)
-      "cmd cmd cmd cmd" variables.$file-drawer-height
-      "cmd cmd cmd cmd" calc(60vh - var(--banner-height))
-      / 30vw 30vw 20vw 20vw;
+    --vbar: 0px;
+    --hbar: 0px;
+    grid-template-areas:
+      "banner banner banner"
+      "cmd cmd cmd"
+      "cmd cmd cmd"
+      "cmd cmd cmd";
   }
 
   // A panel without an area is not drawn: off the template it would sit in an implicit
-  // track below and right of the page (as tall as all its rows), where revealing a row or
-  // taking the focus scrolls the page. The terminal keeps its box, which the emulated
-  // screen follows.
+  // track at the grid's far corner, where revealing a row or taking the focus scrolls the
+  // page. The terminal keeps its box, 0 x 0 there, which the emulated screen ignores.
   &--no-editor,
   &--only-cmd {
     > .editor {
@@ -100,16 +142,49 @@
   &--no-file-drawer,
   &--only-editor,
   &--only-cmd {
-    > .banner__file-drawer,
-    > .file-drawer-scroll {
+    > .file-drawer {
       display: none;
+    }
+  }
+}
+
+.app-layout__vsplit {
+  grid-area: vsplit;
+}
+
+.app-layout__hsplit {
+  grid-area: hsplit;
+}
+
+// a move button (layout/AppLayout.jsx, placed by its grid row and column) lies inside its splitter's
+// track, as thick as the splitter, above it
+.app-layout__move {
+  z-index: 4;
+
+  &--x {
+    align-self: center;
+    height: 32px;
+  }
+
+  &--y {
+    justify-self: center;
+    width: 32px;
+  }
+
+  @media (pointer: coarse) {
+    &--x {
+      height: 48px;
+    }
+
+    &--y {
+      width: 48px;
     }
   }
 }
 
 .banner__patch {
   grid-row: 1 / 2;
-  grid-column: 1 / 5;
+  grid-column: 1 / -1;
 }
 
 // The terminal panel is the grid item; the iframe fills it and the terminal notice
@@ -129,8 +204,7 @@
 }
 
 .banner {
-  grid-row: 1 / 2;
-  grid-column: 1 / 5;
+  grid-area: banner;
 }
 
 .banner__main {
@@ -141,10 +215,12 @@
   grid-area: editor;
 }
 
-.file-drawer__list {
+// the file drawer's column (filedrawer/FileDrawer.jsx): its toolbar at the top, as many rows tall as its
+// own controls need, and its list under it
+.file-drawer {
   grid-area: file_drawer;
-}
-
-.banner__file-drawer {
-  grid-area: file_drawer_banner;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }

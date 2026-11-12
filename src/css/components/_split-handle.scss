@@ -1,0 +1,46 @@
+@use "../abstracts/variables";
+
+// SplitHandle (common/SplitHandle.jsx): the window-grey strip between two panes, as Explorer's splitter;
+// dragged or focused it shows the checkered pattern of Windows 98's drag bar (the scrollbar track's).
+.split-handle {
+  background: variables.$surface;
+  touch-action: none;
+  user-select: none;
+  z-index: 3;
+
+  &--vertical {
+    cursor: col-resize;
+  }
+
+  &--horizontal {
+    cursor: row-resize;
+  }
+
+  &--dragging,
+  &:focus-visible {
+    background: url("./scrollbar-background.svg");
+  }
+
+  &:focus-visible {
+    outline: 1px dotted #000;
+    outline-offset: -1px;
+  }
+}
+
+// while a splitter is dragged: its cursor everywhere, no text selection, and the terminal's iframe
+// (and with it the emulator) never sees the pointer
+html[data-resizing] {
+  user-select: none;
+
+  .cmd-iframe {
+    pointer-events: none;
+  }
+}
+
+html[data-resizing="x"] * {
+  cursor: col-resize !important;
+}
+
+html[data-resizing="y"] * {
+  cursor: row-resize !important;
+}

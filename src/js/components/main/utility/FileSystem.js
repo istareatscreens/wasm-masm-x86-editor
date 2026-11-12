@@ -17,6 +17,7 @@ import { toAsciiJson, joinPath, parentOf, baseOf, ancestorsOf, isWithin, splitPa
 import { detectEncoding, decodeText, encodeText, canEncode, byteOrderMark, ASSEMBLER_SOURCE, bytesToBase64, base64ToBytes, bytesToBinaryString } from "./filesystem/textEncoding";
 import { isBinary, BINARY_SNIFF_BYTES } from "./filesystem/binaryDetect";
 import { planImport, planExport, decodeEntryName, MAX_ARCHIVE_BYTES } from "./filesystem/archive";
+import { ASM_TEMPLATE } from "./asmTemplate.js";
 
 import {
   writeCommandToCMD,
@@ -417,25 +418,10 @@ export default class FileSystem {
 
   static createAssemblyFile(filename, isInitial = false) {
     //if (!(`${filename}.asm` in fileList)) { //turn this into a call back or something
-    const template = `INCLUDE Irvine32.inc
-
-  .data                          ;data decleration
-
-  
-  .code                          ;code decleration
-
-  
-  main PROC                      ;main method starts
-  
-     call DumpRegs
-  
-     exit                        ;Exit program
-  main ENDP
-  END main`;
     // always placed on the guest D: too (before the emulator is up the sync is a
     // no-op and the start-up reconcile covers it; after it - e.g. the test.asm
     // recreated when the last .asm was deleted - cmd must see it right away)
-    FileSystem.createFile(filename, template, new Date().getTime(), false);
+    FileSystem.createFile(filename, ASM_TEMPLATE, new Date().getTime(), false);
     //}
   }
 

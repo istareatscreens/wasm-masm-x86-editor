@@ -5,6 +5,8 @@ import CommandPrompt from "./cmd/CommandPrompt.jsx";
 import Editor from "./editor/Editor.jsx";
 import Banner from "./banner/Banner.jsx";
 import useBannerRows from "./banner/useBannerRows.js";
+import AppLayout from "./layout/AppLayout.jsx";
+import useViewMode from "./layout/useViewMode.js";
 import playSnake from "./snake/playSnake.js";
 import { loadX86Decoder } from "./crash/x86Decoder";
 import { classifyInvalidOpcode, EMULATED_CPU } from "./crash/invalidOpcode";
@@ -94,6 +96,7 @@ function App() {
     selectedNightTheme: findThemeByKey("one-dark"),
     lightMode: false,
     vimMode: false,
+    handlesHidden: false,
   });
   // Stored JSON -> a valid settings object (null when unusable).
   const settingsFromStored = (stored) => {
@@ -113,6 +116,7 @@ function App() {
       selectedDayTheme: migrateThemeSetting(parsed.selectedDayTheme, false),
       selectedNightTheme: migrateThemeSetting(parsed.selectedNightTheme, true),
       vimMode: !!parsed.vimMode,
+      handlesHidden: !!parsed.handlesHidden,
     };
   };
   const readStoredSettings = () => {
@@ -153,6 +157,10 @@ function App() {
     setSettings({ ...settings, vimMode: vimMode });
   };
 
+  const setHandlesHidden = (handlesHidden) => {
+    setSettings({ ...settings, handlesHidden });
+  };
+
   //save user settings to local storage (the store the loader above reads)
   useEffect(() => {
     try {
@@ -181,6 +189,7 @@ function App() {
 
   const refApp = useRef(null);
   useBannerRows(refApp);
+  const viewMode = useViewMode();
 
   const refreshFileList = useCallback(
     async (initialRun = false) => {
@@ -468,10 +477,10 @@ function App() {
 
   // About > Snake: the game from C: is copied into a new folder, built and run
   useEffect(() => {
-    const handlePlaySnake = () => playSnake({ switchFile, refreshFileList });
+    const handlePlaySnake = () => playSnake({ switchFile, refreshFileList, showOnlyTerminal: viewMode.showOnlyTerminal });
     window.addEventListener("play-snake", handlePlaySnake);
     return () => window.removeEventListener("play-snake", handlePlaySnake);
-  }, [refreshFileList]);
+  }, [refreshFileList, viewMode.showOnlyTerminal]);
 
   // Recover a hardlocked terminal by RELOADING the emulator iframe. This is the
   // browser tearing down the stuck wasm instance (works even when the emulator's
@@ -567,7 +576,7 @@ function App() {
   //TODO Throw common props in objects
   return (
     <>
-      <div ref={refApp} onClick={handleClick} className="root app-layout">
+      <AppLayout ref={refApp} onClick={handleClick} modifier={viewMode.modifier} handles={!settings.handlesHidden}>
         <FileDrawer
           fileList={fileList}
           fileSelected={filename}
@@ -590,6 +599,9 @@ function App() {
           //vim
           vimMode={settings.vimMode}
           setVimMode={setVimMode}
+          //resize handles
+          handlesHidden={settings.handlesHidden}
+          setHandlesHidden={setHandlesHidden}
           //font
           fontList={fontList}
           setSelectedFont={setSelectedFont}
@@ -597,7 +609,7 @@ function App() {
           fontSize={settings.fontSize}
           setFontSize={setFontSize}
           //file management
-          refApp={refApp.current}
+          viewMode={viewMode}
           filename={filename}
           fileList={fileList}
         />
@@ -617,7 +629,7 @@ function App() {
           vimMode={settings.vimMode}
         />
         <CommandPrompt notice={terminalNotice} />
-      </div>
+      </AppLayout>
     </>
   );
 }

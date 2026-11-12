@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
@@ -8,12 +8,13 @@ import { vim } from "@replit/codemirror-vim";
 
 import { useDebouncedCallback } from "use-debounce";
 
-import { masm } from "./library/masm";
+import { languageFor } from "./library/languages";
 import { resolveTheme } from "./library/themes";
 import FileSystem from "../utility/FileSystem.js";
-import { attachRetroScrollbars } from "../../common/retroScrollbars.js";
+import useRetroScrollbars from "../../common/useRetroScrollbars.js";
 
 function TextEditor({
+  id,
   onChange,
   selectedTheme,
   value,
@@ -23,18 +24,9 @@ function TextEditor({
   vimMode,
   exactLineBreaks,
 }) {
-  const hostRef = useRef(null);
-  const scrollbars = useRef(null);
+  const [host, setHost] = useState(null);
   const [editorView, setEditorView] = useState(null);
-  useEffect(() => {
-    if (!editorView) return;
-    const controls = attachRetroScrollbars(editorView.scrollDOM, hostRef.current, "Editor");
-    scrollbars.current = controls;
-    return () => {
-      controls.destroy();
-      scrollbars.current = null;
-    };
-  }, [editorView]);
+  const scrollbars = useRetroScrollbars(editorView && editorView.scrollDOM, host, "Editor");
   // Debounced persistence to the virtual file system (preserves the CM5 timing).
   const writeToLocalStorage = useDebouncedCallback((name, val) => {
     FileSystem.writeToFile(name, val);
@@ -51,6 +43,8 @@ function TextEditor({
 
   const fontFamily =
     (selectedFont && (selectedFont.fontFamily || selectedFont.text)) || "monospace";
+  // MASM for .asm/.inc sources; any other file, and a binary shown as text, is plain text
+  const language = exactLineBreaks ? null : languageFor(filename);
 
   // Extensions are memoized and re-created only when the toggles that affect
   // them change, so @uiw/react-codemirror reconfigures the live view in place
@@ -75,7 +69,7 @@ function TextEditor({
       // (the default also splits on "\r" and joins with "\n")
       ...(exactLineBreaks ? [EditorState.lineSeparator.of("\n")] : []),
       basicSetup,
-      masm(),
+      ...(language ? [language] : []),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged || update.geometryChanged || update.viewportChanged) scrollbars.current?.update();
@@ -85,12 +79,12 @@ function TextEditor({
       // theme's own HighlightStyle takes precedence over this.
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     ];
-  }, [vimMode, fontSize, fontFamily, exactLineBreaks]);
+  }, [vimMode, fontSize, fontFamily, exactLineBreaks, language]);
 
   const theme = useMemo(() => resolveTheme(selectedTheme), [selectedTheme]);
 
   return (
-    <div className="editor retro-scroll-host" ref={hostRef}>
+    <div className="editor retro-scroll-host" id={id} ref={setHost}>
       <CodeMirror
         className="editor__code-mirror"
         value={value}

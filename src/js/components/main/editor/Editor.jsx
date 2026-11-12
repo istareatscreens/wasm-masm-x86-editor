@@ -52,6 +52,7 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
         </Suspense>
       ) : (
         <TextEditor
+          id={isAsm(filename) ? "editor-pane" : undefined}
           className="editor"
           selectedTheme={selectedTheme}
           fontSize={fontSize}
@@ -67,7 +68,7 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
   );
   if (isAsm(filename)) return content;
   return (
-    <div className="editor editor--with-banner">
+    <div className="editor editor--with-banner" id="editor-pane">
       <ViewModeBanner
         filename={filename}
         view={view}

@@ -1,54 +1,9 @@
 .window.window__about {
-  position: fixed;
-  width: min(64rem, calc(100vw - 16px));
-  max-height: calc(100vh - 16px);
-  max-height: calc(100dvh - 16px);
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-
-  > .title-bar {
-    flex: none;
-    min-height: 22px;
-    gap: 8px;
-
-    .title-bar-text {
-      min-width: 0;
-      margin-right: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .title-bar-controls {
-      flex: none;
-    }
-  }
-
-  > .window-body {
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .about-host {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    flex: 1; /* Stretch to fill available window-body space */
-    display: flex; /* Ensures the child surface can stretch fully */
-  }
-
   .about-content {
     display: flex;
     align-items: flex-start;
     gap: 16px;
     min-width: 0;
-    min-height: 0;
-    overflow: auto;
     overflow-wrap: anywhere;
 
     &__image {
@@ -68,7 +23,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr)) 3rem;
     gap: 8px;
-    height: auto;
     align-items: stretch;
   }
 
@@ -133,18 +87,6 @@
     }
     .about-link {
       flex-direction: row;
-    }
-  }
-
-  // On very short screens, scroll the whole body so text and actions both remain reachable.
-  @media (max-height: 240px) {
-    > .window-body {
-      overflow: auto;
-    }
-    .about-host,
-    .about-content {
-      flex: none;
-      overflow: visible;
     }
   }
 }

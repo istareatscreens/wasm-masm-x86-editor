@@ -1,6 +1,6 @@
 import React, { forwardRef, startTransition, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { attachRetroScrollbars } from "../../../common/retroScrollbars.js";
+import useRetroScrollbars from "../../../common/useRetroScrollbars.js";
 import { parentOf, baseOf } from "../../utility/filesystem/paths";
 import { PAGE_ROWS, pageCount, pageOf } from "../model/tree";
 import FileTreeRow, { ROW_HEIGHT } from "./FileTreeRow.jsx";
@@ -29,7 +29,8 @@ const showInList = (scroller, element) => {
 const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFile, selected, focused, setFocused, cut, renaming, lightMode, ops }, ref) {
   const scrollHost = useRef(null);
   const list = useRef(null);
-  const [listElement, setListElement] = useState(null); // the list, for the drag hook
+  const [listElement, setListElement] = useState(null); // the list, for the drag hook and the scrollbars
+  const [hostElement, setHostElement] = useState(null);
   const padTop = useRef(0);
   const rowElements = useRef(new Map());
   const keyboardFocus = useRef(false);
@@ -41,11 +42,9 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   useLayoutEffect(() => {
     padTop.current = parseFloat(getComputedStyle(list.current).paddingTop) || 0;
     setListElement(list.current);
+    setHostElement(scrollHost.current);
   }, []);
-  useEffect(() => {
-    const controls = attachRetroScrollbars(list.current, scrollHost.current, "Files", { horizontal: "always" });
-    return () => controls.destroy();
-  }, []);
+  useRetroScrollbars(listElement, hostElement, "Files", { horizontal: "always" });
 
   // The view's pages follow the scroll position and the list's size. Scrolling into a
   // page next to the view finds it drawn already, and the page beyond is drawn as a
@@ -271,7 +270,7 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   const focusDrawn = focusIndex >= first && focusIndex < last;
   const ghostRow = drag && rows.find((row) => row.path === drag.row.path);
   return (
-    <div className="file-drawer-scroll retro-scroll-host" ref={scrollHost}>
+    <div className="file-drawer-scroll retro-scroll-host" id="file-drawer-pane" ref={scrollHost}>
       <ul
         ref={list}
         role="tree"
