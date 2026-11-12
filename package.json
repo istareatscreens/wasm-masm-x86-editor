@@ -16,6 +16,7 @@
     "test:shell": "node --test scripts/boxedwine-shell.test.cjs",
     "test:file-drawer": "node --test scripts/file-drawer.test.cjs",
     "test:crash-report": "node --test scripts/crash-report.test.cjs",
+    "test:pane-layout": "node --test scripts/pane-layout.test.cjs",
     "check:public": "node Boxedwine/scripts/check-public.mjs",
     "preview": "node Boxedwine/scripts/serve-public.mjs",
     "build": "gulp",

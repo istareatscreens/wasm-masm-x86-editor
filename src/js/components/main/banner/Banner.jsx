@@ -29,10 +29,11 @@ import Dropdown from "./../../common/Dropdown.jsx";
 import ThemeControlGroup from "./themecontrols/ThemeControlGroup.jsx";
 import ThemeControlWindow from "./themecontrols/ThemeControlWindow.jsx";
 import FullscreenSwitch from "./viewcontrols/FullScreenSwitch.jsx";
+import HandlesSwitch from "./viewcontrols/HandlesSwitch.jsx";
 
 const Banner = function Banner({
   filename,
-  refApp,
+  viewMode,
   fileList,
   //fonts
   fontSize,
@@ -51,20 +52,13 @@ const Banner = function Banner({
   //vim
   vimMode,
   setVimMode,
+  //resize handles
+  handlesHidden,
+  setHandlesHidden,
 }) {
   const [aboutPageOpened, setAboutPageOpened] = useState(false);
   const [resetCachePageOpened, setResetCacheOpened] = useState(false);
   const [themeSettingsOpened, setThemeSettingsOpened] = useState(false);
-
-  const unhideTerminal = () => {
-    if (
-      refApp.classList[2] == "app-layout--no-cmd" ||
-      refApp.classList[2] == "app-layout--only-editor"
-    ) {
-      console.log("firing event");
-      window.dispatchEvent(new CustomEvent("show-cmd"));
-    }
-  };
 
   const build = () => {
     if (/.asm$/.test(filename)) {
@@ -76,7 +70,7 @@ const Banner = function Banner({
       const bytes = FileSystem.getRawFileData(filename);
       if (bytes) assembleAndRun(filename, bytes, true);
       else assembleAndRun(filename, FileSystem.getFileContentSync(filename), false);
-      unhideTerminal();
+      viewMode.showTerminal();
       focusTerminal(); // the program's input is typed next
     } else {
       console.log("not an assembly file: " + filename);
@@ -94,7 +88,7 @@ const Banner = function Banner({
   // Ctrl+C for the terminal: stops the running program/command, keeps the session.
   const cancel = () => {
     interruptEmulator();
-    unhideTerminal();
+    viewMode.showTerminal();
     focusTerminal();
   };
 
@@ -109,7 +103,7 @@ const Banner = function Banner({
       const dir = folder ? quoteForCmd("D:\\" + folder.split("/").join("\\")) : "D:\\";
       const exe = "bin\\" + baseOf(outputPath(filename, ".exe"));
       writeCommandToCMD("pushd " + dir + " & " + quoteForCmd(exe) + " & popd");
-      unhideTerminal();
+      viewMode.showTerminal();
       focusTerminal();
     }
   };
@@ -211,9 +205,13 @@ const Banner = function Banner({
           />
           <ViewControlGroup
             className={"banner__main__group banner__main__group--mid"}
-            refApp={refApp}
+            view={viewMode.view}
+            zen={viewMode.zen}
+            onPaneChange={viewMode.setPane}
+            onZenChange={viewMode.setZen}
           />
           <FullscreenSwitch />
+          <HandlesSwitch hidden={!!handlesHidden} onChange={setHandlesHidden} />
         </div>
         <div className={"banner__main__group banner__main__group--end"}>
           <Button
