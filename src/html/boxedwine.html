@@ -518,6 +518,9 @@
         BW_BUF_ROWS = 500;
       var BW_MIN_COLS = 8,
         BW_MIN_ROWS = 2; // conhost v15 minimum (window.c WM_SIZE)
+      // the console's smallest window: on a smaller screen it is clipped and cannot fill it
+      var BW_CONSOLE_MIN_W = BW_FRAME_W + BW_MIN_COLS * BW_CELL_W,
+        BW_CONSOLE_MIN_H = BW_FRAME_H + BW_MIN_ROWS * BW_CELL_H;
       // the largest screen Module.bwResizeScreen takes; a larger panel shows it stretched
       var BW_MAX_SCREEN = 8000;
       window.BW_CELL = { w: BW_CELL_W, h: BW_CELL_H };
@@ -544,8 +547,10 @@
       (function () {
         var w = window.innerWidth,
           h = window.innerHeight;
+        // boot on a screen the console can fill (the console-lit milestone and the restore watchdog
+        // wait for it); the fit after "fully loaded" brings a smaller panel's screen to its size
         window.BW_CONSOLE_GEOMETRY =
-          w > 100 && h > 100
+          w >= BW_CONSOLE_MIN_W && h >= BW_CONSOLE_MIN_H
             ? window.bwGeometryFor(w, h)
             : window.bwGeometryFor(772, 599);
         console.log(
@@ -602,7 +607,7 @@
           var w = window.innerWidth,
             h = window.innerHeight,
             cur = window.BW_CONSOLE_GEOMETRY;
-          if (!(w > 100 && h > 100)) return;
+          if (!(w >= BW_CONSOLE_MIN_W && h >= BW_CONSOLE_MIN_H)) return;
           var now = window.bwGeometryFor(w, h);
           if (now.width === cur.width && now.height === cur.height) return;
           window.BW_CONSOLE_GEOMETRY = now;
@@ -727,7 +732,7 @@
         function panelKey() {
           var w = window.innerWidth,
             h = window.innerHeight;
-          if (!(w > 100 && h > 100)) return "";
+          if (!(w > 0 && h > 0)) return "";
           var g = window.bwGeometryFor(w, h);
           return g.width + "x" + g.height;
         }
@@ -842,12 +847,15 @@
               size = String(Module.bwGetScreenSize());
             } catch (e) {}
             var elapsed = Date.now() - holdSince;
+            // a screen smaller than the console's smallest window is never filled by it
             if (
               size === key &&
               c &&
               c.width === g.width &&
               c.height === g.height &&
-              window.bwConsoleFillsScreen()
+              (window.bwConsoleFillsScreen() ||
+                g.width < BW_CONSOLE_MIN_W ||
+                g.height < BW_CONSOLE_MIN_H)
             ) {
               hideHold();
               return;
@@ -882,7 +890,7 @@
             if (deferredForKeyboard()) return;
             var w = window.innerWidth,
               h = window.innerHeight;
-            if (!(w > 100 && h > 100)) {
+            if (!(w > 0 && h > 0)) {
               hideHold();
               return;
             }
