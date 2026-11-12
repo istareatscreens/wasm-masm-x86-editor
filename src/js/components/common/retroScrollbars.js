@@ -9,8 +9,9 @@ const clamp = (value, max) => Math.max(0, Math.min(max, value));
 // bar only exists while there is a horizontal range (a wrapped editor never has
 // one), and the corner only while both bars are live. With horizontal: "always" the
 // horizontal bar follows the vertical rule (disabled when nothing scrolls sideways)
-// and the corner sits between the two bars.
-export function attachRetroScrollbars(surface, host, label, { horizontal = "auto" } = {}) {
+// and the corner sits between the two bars. With vertical: "auto" (a window's body) the
+// vertical bar, and its gutter, only exist while there is a vertical range.
+export function attachRetroScrollbars(surface, host, label, { horizontal = "auto", vertical = "always" } = {}) {
   const win = surface.ownerDocument.defaultView;
   const doc = surface.ownerDocument;
   if (!win.ResizeObserver || !win.PointerEvent) return { update() {}, destroy() {} };
@@ -83,6 +84,7 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
   }
   const colors = win.matchMedia("(forced-colors: active)");
   const alwaysHorizontal = horizontal === "always";
+  const autoVertical = vertical === "auto";
   function measure() {
     frame = 0;
     if (disposed) return;
@@ -91,7 +93,7 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
     surface.classList.toggle("retro-scroll-surface", enabled);
     if (!enabled) {
       stopInteraction();
-      host.classList.remove("retro-scroll-host--horizontal");
+      host.classList.remove("retro-scroll-host--horizontal", "retro-scroll-host--vertical");
       axes.forEach(({ rail }) => { rail.hidden = true; });
       corner.hidden = true;
       return;
@@ -105,9 +107,10 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
       axis.max = Math.max(0, total - client);
       const allowed = /^(auto|scroll)$/.test(axis.vertical ? style.overflowY : style.overflowX);
       const active = allowed && axis.max > 1 && client > 0;
-      // vertical: always present (disabled when nothing scrolls); horizontal: only with a
-      // range, unless it is always present too
-      axis.rail.hidden = axis.vertical || alwaysHorizontal ? false : !active;
+      // vertical: always present (disabled when nothing scrolls) unless it is "auto";
+      // horizontal: only with a range, unless it is always present too
+      axis.rail.hidden = axis.vertical ? autoVertical && !active : alwaysHorizontal ? false : !active;
+      if (axis.vertical) host.classList.toggle("retro-scroll-host--vertical", !axis.rail.hidden);
       setDisabled(axis, !active);
       if (!active) continue;
       const length = axis.vertical ? axis.track.clientHeight : axis.track.clientWidth;
@@ -121,7 +124,7 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
       axis.before.disabled = offset <= 0;
       axis.after.disabled = offset >= axis.max - 1;
     }
-    corner.hidden = !x || (axes[0].disabled && !alwaysHorizontal);
+    corner.hidden = !x || axes[0].rail.hidden || (axes[0].disabled && !alwaysHorizontal);
   }
 
   for (const axis of axes) {
@@ -244,7 +247,7 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
       listeners.forEach((remove) => remove());
       axes.forEach(({ rail }) => rail.remove());
       corner.remove();
-      host.classList.remove("retro-scroll-host--ready", "retro-scroll-host--horizontal");
+      host.classList.remove("retro-scroll-host--ready", "retro-scroll-host--horizontal", "retro-scroll-host--vertical");
       surface.classList.remove("retro-scroll-surface");
       if (!originalId) surface.removeAttribute("id");
     },

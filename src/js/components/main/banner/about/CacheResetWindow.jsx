@@ -4,14 +4,15 @@ import Button from "../../../common/ImageButton.jsx";
 import Checkbox from "../../../common/Checkbox.jsx";
 import Window from "../../../common/Window.jsx";
 import FileSystem from "../../utility/FileSystem.js";
+import { LAYOUT_KEY } from "../../layout/layoutStorage";
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
 import errorImage from "../../../../../images/error.png";
 
 // Factory reset of the terminal ENVIRONMENT. Deletes everything the
 // emulator persists — the instant-start snapshot (heap + overlay), the legacy
-// guest overlays of earlier builds, and every emulator preference/failure record
-// in localStorage — then reloads into a cold boot that captures a fresh factory
+// guest overlays of earlier builds, every emulator preference/failure record
+// in localStorage and the saved pane sizes — then reloads into a cold boot that captures a fresh factory
 // image. The user's files (the file drawer's IndexedDB) and their unsaved legacy
 // localStorage files are KEPT unless "also delete all my files" is ticked: a
 // broken environment must be recoverable without any data loss.
@@ -47,7 +48,7 @@ export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {
       report.keysRemoved = keys.filter((k) => k !== "settings");
     } else {
       for (const k of keys) {
-        if (isEmulatorKey(k)) { window.localStorage.removeItem(k); report.keysRemoved.push(k); }
+        if (isEmulatorKey(k) || k === LAYOUT_KEY) { window.localStorage.removeItem(k); report.keysRemoved.push(k); }
       }
     }
   } catch (e) { console.warn("[factoryReset] localStorage", e); }
@@ -102,11 +103,25 @@ function CacheResetWindow({ close }) {
 
   return (
     <Window
-      closeWindow={close}
-      windowClass={"window__reset-cache"}
-      titlebarClass={"title-bar__about"}
-      titlebarText={"Hard Reset Everything"}
-      keepInViewport
+      onClose={close}
+      className={"window__reset-cache"}
+      title={"Hard Reset Everything"}
+      width="50rem"
+      scrollLabel={"Hard reset"}
+      footer={
+        <div className="external-buttons">
+          <Button
+            src={cannotExecute || running ? acceptDisabled : accept}
+            className={"btn--text btn--window window__reset-cache--btn"}
+            alt={"Hard Reset Everything"}
+            disabled={cannotExecute || running}
+            id={"hardResetConfirm"}
+            onClick={run}
+          >
+            <span>{running ? "Resetting…" : `Hard Reset${countDown}`}</span>
+          </Button>
+        </div>
+      }
     >
       <div className="window__reset-cache__content">
         <img
@@ -124,8 +139,8 @@ function CacheResetWindow({ close }) {
           <p>
             {
               "If the MASM terminal is broken this fixes it: the saved instant-start state, the terminal's " +
-              "cached environment and its settings are deleted, and the page reloads into a fresh terminal " +
-              "(the first start takes a little longer)."
+              "cached environment and its settings are deleted, the panes go back to their default sizes and " +
+              "places, and the page reloads into a fresh terminal (the first start takes a little longer)."
             }
           </p>
           <br />
@@ -152,18 +167,6 @@ function CacheResetWindow({ close }) {
           )}
           <br />
         </div>
-      </div>
-      <div className="external-buttons">
-        <Button
-          src={cannotExecute || running ? acceptDisabled : accept}
-          className={"btn--text btn--window window__reset-cache--btn"}
-          alt={"Hard Reset Everything"}
-          disabled={cannotExecute || running}
-          id={"hardResetConfirm"}
-          onClick={run}
-        >
-          <span>{running ? "Resetting…" : `Hard Reset${countDown}`}</span>
-        </Button>
       </div>
     </Window>
   );

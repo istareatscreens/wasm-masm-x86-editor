@@ -13,13 +13,28 @@
   box-sizing: border-box;
 
   // the gutter the vertical rail sits in (stable width: no wrapping feedback on resize)
-  &--ready { padding-right: 16px; }
+  &--vertical { padding-right: 16px; }
   &--horizontal { padding-bottom: 16px; }
 }
 
 .retro-scroll-surface {
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; width: 0; height: 0; }
+}
+
+// RetroScrollArea (common/RetroScrollArea.jsx): the host takes the space its parent gives it and the
+// surface inside it scrolls
+.retro-scroll-area {
+  display: flex;
+  flex-direction: column;
+
+  &__surface {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    &:focus-visible { outline: 1px dotted #000; outline-offset: -1px; }
+  }
 }
 
 .retro-scrollbar {
@@ -37,6 +52,7 @@
   &--vertical { right: 0; top: 0; bottom: 0; width: 16px; flex-direction: column; }
   &--horizontal { left: 0; bottom: 0; right: 16px; height: 16px; }
   .retro-scroll-host--horizontal > &--vertical { bottom: 16px; }
+  .retro-scroll-host:not(.retro-scroll-host--vertical) > &--horizontal { right: 0; }
 
   &__track {
     flex: 1;
@@ -99,19 +115,22 @@
   &__corner { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; background: variables.$surface; }
 }
 
-// The drawer list's scroll host. It starts 2 px above its grid row so the field's
-// sunken top edge (gray line over black line) coincides with the banner's lower
-// bevel (the same two lines): the white area begins right under the banner, exactly
-// like the editor - one ridge, not two.
+// The drawer list's scroll host, the rest of the drawer's column under its toolbar. It
+// starts 2 px above the toolbar's bottom so the field's sunken top edge (gray line over
+// black line) coincides with the toolbar's lower bevel (the same two lines): the white
+// area begins right under the bar, exactly like the editor - one ridge, not two. It
+// meets the splitters beside and below it as the editor and the terminal do, so the grey
+// between two panes is the splitter alone.
 .file-drawer-scroll {
-  grid-area: file_drawer;
-  margin: -2px 0.2rem 0.2rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: -2px 0.2rem 0 0;
   // The field frame encloses the list AND its rails. Keep controls inside its
   // two-pixel bevel, including the top edge shared with the banner.
   padding: 2px;
   box-shadow: variables.$border-field;
 
-  &.retro-scroll-host--ready { padding-right: 18px; }
+  &.retro-scroll-host--vertical { padding-right: 18px; }
   &.retro-scroll-host--horizontal { padding-bottom: 18px; }
   > .retro-scrollbar--vertical { top: 2px; right: 2px; bottom: 2px; }
   &.retro-scroll-host--horizontal > .retro-scrollbar--vertical { bottom: 18px; }
@@ -128,7 +147,7 @@
 }
 
 @media (forced-colors: active) {
-  .retro-scroll-host--ready { padding: 0; }
+  .retro-scroll-host--vertical { padding: 0; }
   .retro-scroll-host--horizontal { padding: 0; }
   .file-drawer-scroll.retro-scroll-host { padding: 2px; }
   .retro-scroll-surface { scrollbar-width: auto; }

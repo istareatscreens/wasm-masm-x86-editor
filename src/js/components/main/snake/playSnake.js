@@ -12,7 +12,7 @@ import md5 from "./md5.js";
 // (EARLIER_MD5: the digests toolchain-zip.py records) is replaced in place by the game shipped
 // now; a copy the user changed is left alone and played as it is.
 const FILES = { "snake.asm": "snake/snake.asm", LICENSE: "snake/LICENSE" };
-const EARLIER_MD5 = ["52c93f064e82679d7cbc7bc144505b9e", "e3ccd1f0897c0b2f0eda901c209e6cad", "9dcd92b45fb961690771c9af69dddcde", "3128fa92b0058f26aaca76f43b9d66d8"];
+const EARLIER_MD5 = ["52c93f064e82679d7cbc7bc144505b9e", "e3ccd1f0897c0b2f0eda901c209e6cad", "9dcd92b45fb961690771c9af69dddcde", "3128fa92b0058f26aaca76f43b9d66d8", "4d59bde7c67e4e2a6c161b2058241b78"];
 const HEADER = "; Snake - https://github.com/meixinchoy/Snake-Game-Assembly-Language";
 const GAME_FOLDER = /^snake(-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i;
 
@@ -55,7 +55,7 @@ const findGame = () => {
 const rootEntryExists = (name) =>
   FileSystem.getAllFolders().concat(FileSystem.getFileList()).some((path) => !path.includes("/") && nameKey(path) === nameKey(name));
 
-export default async function playSnake({ switchFile, refreshFileList }) {
+export default async function playSnake({ switchFile, refreshFileList, showOnlyTerminal }) {
   let source = findGame();
   if (source && EARLIER_MD5.includes(md5(FileSystem.getBytes(source)))) {
     try {
@@ -87,7 +87,7 @@ export default async function playSnake({ switchFile, refreshFileList }) {
   }
   switchFile(source);
   refreshFileList();
-  window.dispatchEvent(new CustomEvent("show-only-cmd"));
+  showOnlyTerminal();
   FileSystem.stripByteOrderMarks();
   assembleAndRun(source, FileSystem.getRawFileData(source), true);
   focusTerminal();

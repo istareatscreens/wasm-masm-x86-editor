@@ -6,7 +6,7 @@ import Iframe from "./Iframe.jsx";
 // grid item (.cmd-panel, position: relative) so the banner is positioned against the
 // terminal itself and follows it through every view layout.
 const CommandPrompt = ({ notice = null }) => (
-  <div className="cmd-panel">
+  <div className="cmd-panel" id="terminal-pane">
     <Iframe onInferredClick={(e) => {}}></Iframe>
     {notice}
   </div>

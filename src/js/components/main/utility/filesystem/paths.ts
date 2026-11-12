@@ -17,6 +17,8 @@ export const parentOf = (path: string): string => path.slice(0, Math.max(path.la
 export const baseOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 export const depthOf = (path: string): number => (path ? splitPath(path).length : 0);
 export const isAsm = (path: string): boolean => /\.asm$/.test(path);
+// a MASM source or include file: the editor highlights these as MASM, any other file as plain text
+export const isMasmSource = (path: string): boolean => /\.(asm|inc)$/i.test(path);
 // path is folder itself or lies anywhere below it; the root contains everything
 export const isWithin = (path: string, folder: string): boolean =>
   folder === ROOT || path === folder || path.startsWith(folder + "/");

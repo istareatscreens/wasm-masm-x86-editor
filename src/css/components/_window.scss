@@ -7,50 +7,71 @@
   z-index: 100;
   font-size: 1.4rem;
 
-  &--about {
-    width: 30%;
-    text-align: center;
-    height: fit-content;
+  // Every window (common/Window.jsx): fixed in the middle of the page (react-draggable moves it back
+  // by half its size), never wider or taller than the visible page minus 8 px on each side. The
+  // percentages are of the fixed containing block, which is the visible area in every browser.
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  --window-width: max(30rem, 30%);
+  width: min(var(--window-width), calc(100% - 16px));
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+
+  &--fit {
+    width: max-content;
   }
 
-  // the hard reset window (banner/about/CacheResetWindow.jsx), sized like the About window
-  // (_about.scss): 30% of the page (at least 30rem), never wider or taller than the page; the
-  // text scrolls when it does not fit, the title bar and the button stay in view
-  &__reset-cache {
-    width: min(max(30rem, 30%), calc(100vw - 16px));
-    max-height: calc(100vh - 16px);
-    max-height: calc(100dvh - 16px);
+  > .title-bar {
+    flex: none;
+    gap: 8px;
+
+    .title-bar-text {
+      min-width: 0;
+      margin-right: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .title-bar-controls {
+      flex: none;
+    }
+  }
+
+  // Windows 98 leaves 7 dialog units (12 px) between a dialog's content and its buttons
+  > .window-body {
     display: flex;
     flex-direction: column;
-    text-align: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+  }
 
-    // fixed, as the About window (layout/_window.scss makes every .window absolute)
-    &.window {
-      position: fixed;
-    }
+  // the content shrinks and scrolls once the window is as tall as the page allows; the buttons
+  // below it never do
+  &__scroll {
+    flex: 0 1 auto;
+  }
 
-    > .title-bar {
-      flex: none;
-      gap: 8px;
+  &__footer {
+    flex: none;
+  }
 
-      .title-bar-text {
-        min-width: 0;
-        margin-right: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .title-bar-controls {
-        flex: none;
-      }
-    }
-
+  // a very short page: smaller margins leave the content room between the title and the buttons
+  @media (max-height: 240px) {
     > .window-body {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
+      margin: 0.6rem;
+      gap: 0.6rem;
     }
+  }
+
+  // the hard reset window (banner/about/CacheResetWindow.jsx): the image beside the text, both in the
+  // window's scroll area, as in the About window
+  &__reset-cache {
+    text-align: center;
 
     &--btn {
       margin-left: 0rem;
@@ -59,23 +80,20 @@
     &__content {
       display: flex;
       flex-direction: row;
-      min-height: 0;
 
       &__image {
         flex: none;
         width: 6rem;
         height: 6rem;
-        margin-left: -1rem;
         margin-right: 0.5rem;
       }
 
-      // the scroll area; 0.2rem of its 2rem margin is padding, room for the tick box's focus outline
+      // 0.2rem of its 1rem margin is padding, room for the tick box's focus outline
       &__text {
         min-width: 0;
-        overflow: auto;
         overflow-wrap: anywhere;
         text-align: left;
-        margin-left: 1.8rem;
+        margin-left: 0.8rem;
         padding-left: 0.2rem;
 
         &--warning {
@@ -98,10 +116,6 @@
       }
     }
 
-    .external-buttons {
-      flex: none;
-    }
-
     // a narrow page: the image above the text, as in the About window
     @media (max-width: 480px) {
       &__content {
@@ -119,31 +133,10 @@
         }
       }
     }
-
-    // a very short page: the whole body scrolls, so the text and the button both stay reachable
-    @media (max-height: 240px) {
-      > .window-body {
-        overflow: auto;
-      }
-
-      &__content {
-        flex: none;
-      }
-
-      &__content__text {
-        overflow: visible;
-      }
-    }
   }
 
-  // file drawer message box (filedrawer/dialogs/ConfirmWindow.jsx): 30% of the page (at
-  // least 30rem), wider when its buttons need it, never wider than the page
+  // file drawer message box (filedrawer/dialogs/ConfirmWindow.jsx)
   &__confirm {
-    width: max-content;
-    min-width: min(max(30rem, 30%), calc(100vw - 2rem));
-    max-width: calc(100vw - 2rem);
-    height: fit-content;
-
     // the text wraps to the box's width and does not widen it
     &__message,
     &__details {
@@ -154,10 +147,13 @@
       text-align: left;
     }
 
-    &__details {
+    // a long list scrolls on its own
+    &__details-area {
       max-height: 12rem;
-      overflow: auto;
       margin-top: 0.6rem;
+    }
+
+    &__details {
       padding-left: 2rem;
       font-size: 1.2rem;
     }
@@ -169,7 +165,6 @@
       justify-content: center;
       align-items: center;
       gap: 0.6rem;
-      margin-top: 1rem;
     }
 
     // as wide as its label and as tall as the label needs (.btn is a fixed square)
@@ -266,7 +261,7 @@
   z-index: 103;
   display: flex;
   width: 100%;
-  height: 2rem;
+  min-height: 2rem;
   justify-content: center;
   align-items: center;
 
