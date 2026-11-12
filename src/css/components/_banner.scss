@@ -1,11 +1,15 @@
 @use "../abstracts/variables";
 
-.banner {
-  // Only the lower bevel is visible. A side bevel leaves a dark corner beside
-  // the inset drawer frame where the banner patch ends.
+// The top bars' face. Only the lower bevel is visible. A side bevel leaves a dark corner beside
+// the inset drawer frame where the banner patch ends.
+%top-bar-face {
   box-shadow: inset 0 -1px variables.$window-frame,
     inset 0 -2px variables.$button-shadow;
   background: variables.$surface;
+}
+
+.banner {
+  @extend %top-bar-face;
   padding: 3px;
   z-index: -10; //need cmd (iframe) to overlap banner
   //Coverup top and side shadow
@@ -24,10 +28,11 @@
     justify-content: baseline;
   }
 
+  // the drawer's toolbar heads its own column (layout/_layout.scss), so it draws the face itself
   &__file-drawer {
-    background-color: transparent;
+    @extend %top-bar-face;
     z-index: 1;
-    margin-bottom: 0.2rem;
+    padding-bottom: 0.2rem;
   }
 
   &__main {

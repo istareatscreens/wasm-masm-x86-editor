@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useMemo, useCallback } from 'react';
 import { List } from 'react-window';
 import { Row } from './row';
+import useRetroScrollbars from '../../../../common/useRetroScrollbars.js';
 
 const ROW_HEIGHT = 25; // Height of each row in pixels
 const OVERSCAN_COUNT = 5; // Number of items to render outside of the visible area
@@ -24,8 +25,9 @@ const RowRenderer = ({ index, style, rows, bytesper }) => {
     let heading = `${index * bytesper}`;
     heading = PAD.substring(0, PAD.length - heading.length) + heading;
 
+    // as wide as the row needs: a pane narrower than a row scrolls sideways instead of clipping it
     return (
-        <div style={{ ...style, width: '100%' }}>
+        <div style={{ ...style, width: 'max-content', minWidth: '100%' }}>
             <Row sets={row} heading={heading} />
         </div>
     );
@@ -36,6 +38,14 @@ const Hex = ({ rows = [], bytesper }) => {
     const containerRef = useRef(null);
     const heightRef = useRef(0);
     const resizeObserverRef = useRef(null);
+    // Windows 98 scrollbars on react-window's list element, drawn in this container
+    const [host, setHost] = useState(null);
+    const [listApi, setListApi] = useState(null);
+    const setContainer = useCallback((element) => {
+        containerRef.current = element;
+        setHost(element);
+    }, []);
+    useRetroScrollbars(listApi ? listApi.element : null, host, 'Hex view');
 
     // Use LayoutEffect to measure synchronously before paint
     useLayoutEffect(() => {
@@ -112,7 +122,7 @@ const Hex = ({ rows = [], bytesper }) => {
     };
 
     return (
-        <div className="hexviewer" ref={containerRef} style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
+        <div className="hexviewer retro-scroll-host" ref={setContainer} style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
             <div className="hex" style={{ height: '100%', position: 'relative' }}>
                 {!isReady ? (
                     <div style={{ padding: '10px', color: '#888' }}>
@@ -120,6 +130,7 @@ const Hex = ({ rows = [], bytesper }) => {
                     </div>
                 ) : (
                     <List
+                        listRef={setListApi}
                         rowComponent={RowRenderer}
                         rowCount={listProps.itemCount}
                         rowHeight={listProps.itemSize}

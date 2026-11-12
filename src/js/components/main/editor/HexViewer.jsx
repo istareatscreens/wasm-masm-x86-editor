@@ -41,7 +41,7 @@ const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'mo
     <div
       className="hex-viewer-container editor"
       style={{
-        overflow: 'auto',
+        overflow: 'hidden',
         padding: 0,
         margin: 0,
         boxSizing: 'border-box',

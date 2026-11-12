@@ -716,6 +716,7 @@
             "x" +
             window.BW_CONSOLE_GEOMETRY.height; // boot size
         var DEBOUNCE_MS = 100,
+          AFTER_KEYBOARD_MS = 500,
           HOLD_MAX_MS = 4000,
           holdTimer = null,
           holdSince = 0,
@@ -729,6 +730,56 @@
           if (!(w > 100 && h > 100)) return "";
           var g = window.bwGeometryFor(w, h);
           return g.width + "x" + g.height;
+        }
+        // While the app page's on-screen keyboard is up (its visual viewport, unzoomed, well short of
+        // its layout viewport), the terminal is behind the keyboard and the panel's size follows the
+        // browser's toolbar and inset changes, not the user (Chrome hides a bottom address bar for the
+        // keyboard): the guest screen keeps its size, and a panel that still differs once the
+        // keyboard is gone is fitted then. The keyboard leaves the visual viewport before the
+        // browser puts its toolbar back, so for AFTER_KEYBOARD_MS after that a resize only moves
+        // the fit to the end of that time.
+        function keyboardUp() {
+          try {
+            var page = window.parent,
+              vv = page.visualViewport;
+            return (
+              page !== window &&
+              !!vv &&
+              vv.height * vv.scale < page.innerHeight - 100
+            );
+          } catch (e) {
+            return false;
+          }
+        }
+        var waitingForKeyboard = false,
+          keyboardGoneAt = 0;
+        function syncAfterKeyboard() {
+          if (waitingForKeyboard) return;
+          waitingForKeyboard = true;
+          var vv = window.parent.visualViewport;
+          vv.addEventListener("resize", function gone() {
+            if (keyboardUp()) return;
+            vv.removeEventListener("resize", gone);
+            waitingForKeyboard = false;
+            keyboardGoneAt = Date.now();
+            clearTimeout(timer);
+            timer = setTimeout(window.bwSyncScreenToPanel, AFTER_KEYBOARD_MS);
+          });
+        }
+        // true when a resize is left for later: the keyboard is up, or the layout is settling
+        function deferredForKeyboard() {
+          if (keyboardUp()) {
+            hideHold();
+            syncAfterKeyboard();
+            return true;
+          }
+          var left = AFTER_KEYBOARD_MS - (Date.now() - keyboardGoneAt);
+          if (left > 0) {
+            clearTimeout(timer);
+            timer = setTimeout(window.bwSyncScreenToPanel, left);
+            return true;
+          }
+          return false;
         }
         function holdEl() {
           var el = document.getElementById("bw-resize-hold");
@@ -828,6 +879,7 @@
               hideHold();
               return;
             }
+            if (deferredForKeyboard()) return;
             var w = window.innerWidth,
               h = window.innerHeight;
             if (!(w > 100 && h > 100)) {
@@ -869,6 +921,7 @@
         // fitted its window is never filled); the sync after "fully loaded" catches up.
         window.addEventListener("resize", function () {
           if (!window.BW_READY_AT) return;
+          if (deferredForKeyboard()) return;
           var k = panelKey();
           if (k && k !== lastKey) showHold();
           clearTimeout(timer);

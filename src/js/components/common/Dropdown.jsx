@@ -1,6 +1,6 @@
-import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { attachRetroScrollbars } from "./retroScrollbars";
+import useRetroScrollbars from "./useRetroScrollbars.js";
 
 const ROW_HEIGHT = 20;
 const MAX_MENU_HEIGHT = 244;
@@ -10,8 +10,13 @@ function Dropdown({ options = [], selected, classNameDropdown = "", onChange, di
   const listId = `${id}-list`;
   const buttonRef = useRef(null);
   const popupRef = useRef(null);
-  const scrollHostRef = useRef(null);
   const listRef = useRef(null);
+  const [scrollHost, setScrollHost] = useState(null);
+  const [listElement, setListElement] = useState(null);
+  const setList = useCallback((element) => {
+    listRef.current = element;
+    setListElement(element);
+  }, []);
   const typeAhead = useRef({ text: "", time: 0 });
   const selectedIndex = Math.max(0, options.findIndex((option) => option.id === selected?.id));
   const [open, setOpen] = useState(false);
@@ -72,11 +77,7 @@ function Dropdown({ options = [], selected, classNameDropdown = "", onChange, di
     };
   }, [open, options.length]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    const scrollbars = attachRetroScrollbars(listRef.current, scrollHostRef.current, label);
-    return () => scrollbars.destroy();
-  }, [open, label]);
+  useRetroScrollbars(listElement, scrollHost, label);
 
   useLayoutEffect(() => {
     if (!open || !placement) return;
@@ -206,8 +207,8 @@ function Dropdown({ options = [], selected, classNameDropdown = "", onChange, di
           onMouseDown={(event) => event.stopPropagation()}
           onKeyDown={onKeyDown}
         >
-          <div ref={scrollHostRef} className="dropdown-popup__scroll-host retro-scroll-host">
-            <div ref={listRef} id={listId} role="listbox" aria-label={label} className="dropdown-popup__list">
+          <div ref={setScrollHost} className="dropdown-popup__scroll-host retro-scroll-host">
+            <div ref={setList} id={listId} role="listbox" aria-label={label} className="dropdown-popup__list">
               {options.map((option, index) => (
                 <div
                   key={option.id}

@@ -22,6 +22,8 @@
 @use "components/switch";
 @use "components/scrollbar";
 @use "components/retro-scrollbar";
+@use "components/split-handle";
+@use "components/arrow-button";
 @use "components/textinput";
 @use "components/window";
 @use "components/about";
@@ -37,4 +39,3 @@
 @use "layout/layout";
 @use "layout/banner" as banner2;
 @use "layout/button" as button2;
-@use "layout/window" as window2;

@@ -17,10 +17,20 @@ function ThemeControlWindow({
 }) {
   return (
     <Window
-      closeWindow={() => setThemeSettingsOpened(false)}
-      windowClass={""}
-      titlebarClass={"Editor Theme Settings"}
-      titlebarText={"Theme Options"}
+      onClose={() => setThemeSettingsOpened(false)}
+      title={"Theme Options"}
+      size="fit"
+      footer={
+        <div className="window-body--list">
+          <Button
+            src={accept}
+            className={"btn btn--window btn--createFile"}
+            imageClass={"btn--window--image"}
+            title="close window"
+            onClick={() => setThemeSettingsOpened(false)}
+          />
+        </div>
+      }
     >
       <div className="window-body--list">
         <div className="window-body--element">
@@ -43,13 +53,6 @@ function ThemeControlWindow({
             onChange={setSelectedNightTheme}
           />
         </div>
-        <Button
-          src={accept}
-          className={"btn btn--window btn--createFile"}
-          imageClass={"btn--window--image"}
-          title="close window"
-          onClick={() => setThemeSettingsOpened(false)}
-        />
       </div>
     </Window>
   );

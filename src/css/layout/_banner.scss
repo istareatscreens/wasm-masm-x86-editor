@@ -1,5 +1,7 @@
-// The select-all box: a column of its own at the drawer bar's left, on the banner's last
-// row, where a one-row bar has it (0.75rem above the bar's bottom).
+@use "../abstracts/variables";
+
+// The select-all box: a column of its own at the drawer bar's left, on the bar's last row,
+// where a one-row bar has it (0.75rem above the bar's bottom).
 .checkbox--selectAll {
   flex: none;
   align-self: flex-end;
@@ -8,10 +10,13 @@
 }
 
 // Both bars' controls are 2.5rem tall. Their lines start where a one-row bar has them
-// (0.15rem down) and are one row ($banner-height) apart; nothing is centred vertically, so
-// a bar with fewer rows than the banner keeps its controls on its top rows (useBannerRows).
+// (0.15rem down) and are one row ($banner-height) apart; nothing is centred vertically. Each bar
+// is as many rows tall as its own controls need (useBannerRows): the main bar's count sets the
+// grid's first row, the drawer's toolbar is that tall at the top of the drawer's column.
 .banner {
   &__file-drawer {
+    flex: none;
+    min-height: calc(var(--drawer-banner-rows, 1) * #{variables.$banner-height});
     display: flex;
     flex-direction: row;
     align-items: flex-start;

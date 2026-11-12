@@ -1,12 +1,16 @@
 import { useEffect } from "react";
 
-// The top bars' controls wrap onto further rows when one row cannot hold them; then the
-// shared first grid row is as many rows tall as the bar with the most: --banner-rows and
-// data-banner-rows="N" on .app-layout (layout/_layout.scss), neither set for one row. A
-// bar's width comes from vw columns, not from the row's height, so the rows cannot change
-// what wraps (no oscillation). The drawer's select-all box is not counted: it goes to the
-// last row of whatever the banner has.
-const BARS = [".banner__main__group--start", ".banner__file-drawer__buttons"];
+// Each top bar wraps its controls onto further rows when one row cannot hold them, and is as many rows
+// tall as it needs whatever the other bar needs: the main bar's count (--banner-rows and
+// data-banner-rows on .app-layout) is the grid's first row (layout/_layout.scss), the drawer toolbar's
+// (--drawer-banner-rows and data-drawer-banner-rows) its height at the top of the drawer's column.
+// Neither is set for one row. A bar's width comes from the splitters' columns, not from the rows, so the
+// rows cannot change what wraps (no oscillation). The drawer's select-all box is not counted: it goes to
+// the toolbar's last row.
+const BARS = [
+  { selector: ".banner__main__group--start", property: "--banner-rows", attribute: "data-banner-rows" },
+  { selector: ".banner__file-drawer__buttons", property: "--drawer-banner-rows", attribute: "data-drawer-banner-rows" },
+];
 
 // A bar's rows: its controls' vertical centres, one per line (align-items: center puts
 // every centre of a line on the same height; lines are a row apart).
@@ -27,17 +31,19 @@ export default function useBannerRows(rootRef) {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const bars = BARS.map((selector) => root.querySelector(selector)).filter(Boolean);
+    const bars = BARS.map((bar) => ({ ...bar, element: root.querySelector(bar.selector) })).filter((bar) => bar.element);
     let frame = 0;
     const measure = () => {
       frame = 0;
-      const count = Math.max(1, ...bars.map(rows));
-      if (count > 1) {
-        root.setAttribute("data-banner-rows", String(count));
-        root.style.setProperty("--banner-rows", String(count));
-      } else {
-        root.removeAttribute("data-banner-rows");
-        root.style.removeProperty("--banner-rows");
+      for (const { element, property, attribute } of bars) {
+        const count = rows(element);
+        if (count > 1) {
+          root.setAttribute(attribute, String(count));
+          root.style.setProperty(property, String(count));
+        } else {
+          root.removeAttribute(attribute);
+          root.style.removeProperty(property);
+        }
       }
     };
     const schedule = () => {
@@ -47,15 +53,15 @@ export default function useBannerRows(rootRef) {
     // controls appearing or going) and the window
     const resized = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
     const watchControls = () => {
-      if (resized) for (const bar of bars) for (const child of bar.children) resized.observe(child);
+      if (resized) for (const { element } of bars) for (const child of element.children) resized.observe(child);
     };
     const changed = typeof MutationObserver === "undefined" ? null : new MutationObserver(() => {
       watchControls();
       schedule();
     });
-    for (const bar of bars) {
-      if (resized) resized.observe(bar);
-      if (changed) changed.observe(bar, { childList: true });
+    for (const { element } of bars) {
+      if (resized) resized.observe(element);
+      if (changed) changed.observe(element, { childList: true });
     }
     watchControls();
     window.addEventListener("resize", schedule);
