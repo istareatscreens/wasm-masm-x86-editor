@@ -4,11 +4,14 @@ import Button from "../../../common/ImageButton.jsx";
 import Checkbox from "../../../common/Checkbox.jsx";
 import Switch from "../../../common/ImageSwitch.jsx";
 
-import newFile from "../../../../../images/newFile.png";
-import newFolder from "../../../../../images/newFolder.png";
+import newFileIcon from "../../../../../images/newFile.png";
+import newFolderIcon from "../../../../../images/newFolder.png";
+import newDriveIcon from "../../../../../images/newDrive.png";
 import uploadFile from "../../../../../images/uploadFile.png";
 import importFolder from "../../../../../images/importFolder.png";
 import saveFile from "../../../../../images/saveFile.png";
+import shareLinkIcon from "../../../../../images/shareLink.png";
+import importLinkIcon from "../../../../../images/importLink.png";
 import deleteFile from "../../../../../images/deleteFile.png";
 import files from "../../../../../images/files.png";
 
@@ -19,18 +22,22 @@ const canPickFolders = typeof HTMLInputElement !== "undefined" && "webkitdirecto
 
 // The drawer's top bar: the controls it always had, in their order, plus "create new
 // folder" and "import a folder". The select-all box has a column of its own, on the
-// banner's last row; the buttons wrap to its right (layout/_banner.scss).
+// banner's last row; the buttons wrap to its right (layout/_banner.scss). A button that opens
+// a window toggles it ({ toggle, opener }: common/useWindowToggle.js).
 function FileDrawerToolbar({
   fileUploadInput,
   folderUploadInput,
   selectAll,
   onSelectAll,
-  onNewFile,
-  onNewFolder,
+  newFile,
+  newFolder,
+  newDrive,
   onUploadFiles,
   onImportFolder,
   onSave,
-  onDelete,
+  shareLink,
+  importLink,
+  remove,
   asmOnly,
   onAsmOnly,
   showLegacyDownload,
@@ -47,16 +54,25 @@ function FileDrawerToolbar({
       />
       <div className="banner__file-drawer__buttons">
         <Button
-          src={newFile}
+          src={newFileIcon}
           className={"banner__file-drawer__btn"}
           title="create new assembly (.asm) text file"
-          onClick={onNewFile}
+          onClick={newFile.toggle}
+          {...newFile.opener}
         />
         <Button
-          src={newFolder}
+          src={newFolderIcon}
           className={"banner__file-drawer__btn"}
           title="create new folder"
-          onClick={onNewFolder}
+          onClick={newFolder.toggle}
+          {...newFolder.opener}
+        />
+        <Button
+          src={newDriveIcon}
+          className={"banner__file-drawer__btn"}
+          title="create new drive, holding a new test.asm"
+          onClick={newDrive.toggle}
+          {...newDrive.opener}
         />
         <Button
           src={uploadFile}
@@ -100,10 +116,27 @@ function FileDrawerToolbar({
           onClick={onSave}
         />
         <Button
+          src={shareLinkIcon}
+          className={"banner__file-drawer__btn"}
+          title="share by URL: a link holding the selected files"
+          type="button"
+          onClick={shareLink.toggle}
+          {...shareLink.opener}
+        />
+        <Button
+          src={importLinkIcon}
+          className={"banner__file-drawer__btn"}
+          title="import by URL: share links, each onto a drive of its own"
+          type="button"
+          onClick={importLink.toggle}
+          {...importLink.opener}
+        />
+        <Button
           src={deleteFile}
           className={"banner__file-drawer__btn"}
           title="delete selected file(s)"
-          onClick={onDelete}
+          onClick={remove.toggle}
+          {...remove.opener}
         />
         <Switch
           className={"switch--file-drawer"}

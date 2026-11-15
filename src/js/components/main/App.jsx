@@ -13,11 +13,21 @@ import { classifyInvalidOpcode, EMULATED_CPU } from "./crash/invalidOpcode";
 import { invalidOpcodeIssue, emulatorCrashIssue } from "./crash/bugReport";
 import FreezeBanner from "./cmd/FreezeBanner.jsx";
 import RetroNotice from "../common/RetroNotice.jsx";
+import ConfirmWindow from "./filedrawer/dialogs/ConfirmWindow.jsx";
+import { windowToggle } from "../common/useWindowToggle.js";
+import ShareWindow from "./share/ShareWindow.jsx";
+import ImportWindow, { resultText } from "./share/ImportWindow.jsx";
+import useImportQuestions from "./share/useImportQuestions.jsx";
+import { importLink, fragmentLink, clearFragment, openPathOf, isDesktop } from "./utility/share/ShareService.js";
+import { preloadDecoder } from "./utility/share/brotli";
+import { startTabSync } from "./utility/session/tabSync.js";
 
 import FileSystem from "./utility/FileSystem";
 import { preloadImages } from "./utility/assets.js";
 import { getFromLocalStorage } from "./utility/filesystem/FSHelperFunctions.js";
 import { postMessage, createMessageListner, reconcileEmulatorFiles } from "../../utility/utilityFunctions.ts";
+import { labelProblem, driveRoot, driveName, rootOf, isDrivePath } from "./utility/filesystem/drives";
+import { guestPath } from "./utility/filesystem/paths";
 import { themeList as cmThemeList, normalizeThemeId } from "./editor/library/themes";
 
 // the page's cover (#app-splash in the HTML) stays at most this long: a picture or font that
@@ -44,9 +54,10 @@ function App() {
     return () => clearTimeout(cap);
   }, []);
   const [fileList, setFileList] = useState([""]);
+  const [drives, setDrives] = useState([]); // the other drives (E: to Y:), by letter
   const [lockEditor, setEditorLock] = useState(false);
   const [emulatorFrozen, setEmulatorFrozen] = useState(false);
-  // Emulator notice (runtime downgrade / restore fallback / slow boot): {title, body}
+  // Emulator notice (runtime downgrade / slow boot): {title, body}
   const [emulatorNotice, setEmulatorNotice] = useState(null);
   // A program the user ran faulted (page fault, stack overflow, ...): the guest ends it
   // at once and Wine's one-line reason is shown here with a hint per kind.
@@ -56,6 +67,20 @@ function App() {
   // the file open in the editor, for a bug report
   const filenameRef = useRef(filename);
   filenameRef.current = filename;
+  // Share by URL ({files, folders}), Import by URL, an import's result, and a row the drawer shows
+  const [shareTargets, setShareTargets] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [linkNotice, setLinkNotice] = useState(null);
+  const [reveal, setReveal] = useState(null);
+  const questions = useImportQuestions();
+  // Import by URL's button toggles its window as the window's close button does: not while it imports
+  const importBusy = useRef(false);
+  const importLinks = windowToggle(importOpen, () => setImportOpen(true), () => importBusy.current || setImportOpen(false));
+  // before a link's files are written: the editor's waiting save first, so it never lands on a file the link wrote
+  const beforeImportWrite = () => {
+    FileSystem.flushPendingSaves();
+    setEditorLock(true);
+  };
 
   //TODO: Change how this is done
   const [refreshFile, setRefreshFile] = useState(true); //value switched to force editor rerender
@@ -97,6 +122,7 @@ function App() {
     lightMode: false,
     vimMode: false,
     handlesHidden: false,
+    workspaceName: "", // the name links from D: carry (generated at the first share; D: has no label)
   });
   // Stored JSON -> a valid settings object (null when unusable).
   const settingsFromStored = (stored) => {
@@ -117,6 +143,7 @@ function App() {
       selectedNightTheme: migrateThemeSetting(parsed.selectedNightTheme, true),
       vimMode: !!parsed.vimMode,
       handlesHidden: !!parsed.handlesHidden,
+      workspaceName: typeof parsed.workspaceName === "string" && !labelProblem(parsed.workspaceName) ? parsed.workspaceName : "",
     };
   };
   const readStoredSettings = () => {
@@ -161,6 +188,15 @@ function App() {
     setSettings({ ...settings, handlesHidden });
   };
 
+  const setWorkspaceName = useCallback((workspaceName) => {
+    setSettings((current) => ({ ...current, workspaceName }));
+  }, []);
+  // settings another tab saved (session/tabSync.js)
+  const takeSettings = (stored) => {
+    const next = settingsFromStored(stored);
+    if (next) setSettings(next);
+  };
+
   //save user settings to local storage (the store the loader above reads)
   useEffect(() => {
     try {
@@ -187,12 +223,19 @@ function App() {
     };
   }, []);
 
+  // the open file's drive is in use (FileSystem.useDrive)
+  useEffect(() => {
+    FileSystem.setOpenFile(filename);
+  }, [filename]);
+
   const refApp = useRef(null);
   useBannerRows(refApp);
   const viewMode = useViewMode();
 
+  // the drawer read again; with no .asm left, test.asm is made and opened (unless `create` is false: a link is
+  // about to be imported)
   const refreshFileList = useCallback(
-    async (initialRun = false) => {
+    async (initialRun = false, create = true) => {
       let fileList = FileSystem.getFileList();
       //remove all files
       const asmFiles = fileList
@@ -201,6 +244,11 @@ function App() {
       //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
       //set create and set focused file
       if (!fileList || !asmFiles.length) {
+        if (!create) {
+          setDrives(FileSystem.getDrives());
+          setFileList(fileList);
+          return;
+        }
         const initialFileName = "test.asm";
         FileSystem.createAssemblyFile(initialFileName, true);
         switchFile(initialFileName);
@@ -209,17 +257,123 @@ function App() {
         switchFile(asmFiles[0].filename);
       }
 
+      setDrives(FileSystem.getDrives());
       setFileList(fileList);
     },
     [fileList]
   );
 
+  // --- share links ----------------------------------------------------------------------------------------
+  // What an import did, in a notice: a new drive offers Remove.
+  const showImportResult = (result) => {
+    const link = result.link;
+    if (result.status === "failed") return setLinkNotice({ title: "Link Not Imported", icon: "error", message: "The link was not imported: " + result.reason });
+    if (!["created", "created-new", "merged", "replaced"].includes(result.status)) return;
+    const details = [];
+    (result.keptBoth || []).forEach((path) => details.push("kept both: the link's copy is " + path.split("/").join("\\")));
+    if (link) {
+      link.skipped.forEach((skip) => details.push("left out: " + skip.name.split("/").join("\\") + ": " + skip.reason));
+      link.warnings.forEach((path) => details.push("warning: " + path.split("/").join("\\") + " has invisible characters that reorder text (it may not read as it runs)"));
+    }
+    const isNew = result.status === "created" || result.status === "created-new";
+    setLinkNotice({
+      title: "Link Imported",
+      icon: "information",
+      message: isNew ? "The link's files are on the new drive " + driveName(result.drive) + ". Nothing was built or run." : "The link was " + resultText(result) + ".",
+      details,
+      drive: isNew ? result.drive : null,
+    });
+  };
+  // Import one link (ShareService.importLink); the file it opens is opened. Resolves with that path, or "".
+  const runLink = async (text) => {
+    let result;
+    try {
+      result = await importLink(text, questions.ui, { before: beforeImportWrite });
+    } catch (error) {
+      result = { status: "failed", reason: error.message };
+    }
+    setEditorLock(false);
+    let opened = "";
+    if (result.drive && ["created", "created-new", "merged", "replaced"].includes(result.status)) {
+      opened = openPathOf(result);
+      if (opened) switchFile(opened);
+      setReveal({ path: opened || driveRoot(result.drive.id) });
+      setRefreshFile((value) => !value); // the open file may have been replaced
+    }
+    refreshFileList(); // test.asm only now, when no .asm exists
+    showImportResult(result);
+    return opened;
+  };
+  // Links from the address bar, one at a time; at most 3 wait while one is reviewed.
+  const links = useRef({ ready: false, busy: false, waiting: [] });
+  const pumpLinks = () => {
+    const queue = links.current;
+    if (!queue.ready || queue.busy || !queue.waiting.length) return;
+    const { text, fromAddress } = queue.waiting.shift();
+    queue.busy = true;
+    runLinkRef
+      .current(text)
+      .catch(() => {})
+      .then(() => {
+        if (fromAddress && fragmentLink() === text) clearFragment();
+        queue.busy = false;
+        pumpLinks();
+      });
+  };
+  const enqueueLink = (text, fromAddress = false) => {
+    const queue = links.current;
+    if (queue.waiting.length >= 3) {
+      setLinkNotice({ title: "Link Not Imported", icon: "error", message: "A link arrived while three others were waiting to be imported, and was not imported. Open it again once these are done." });
+      return;
+    }
+    queue.waiting.push({ text, fromAddress });
+    pumpLinks();
+  };
+  const runLinkRef = useRef(runLink);
+  runLinkRef.current = runLink;
+  const enqueueRef = useRef(enqueueLink);
+  enqueueRef.current = enqueueLink;
   useEffect(() => {
-    const handleStorageChange = () => {
-      refreshFileList();
+    const onHash = () => {
+      const link = fragmentLink();
+      if (link) enqueueRef.current(link, true);
     };
+    if (!isDesktop()) window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  // what another tab changed, once this tab reads the store again: the drawer, and the open file (reloaded,
+  // followed when it moved, another one when it was deleted)
+  const syncedRef = useRef(null);
+  syncedRef.current = (delta) => {
+    const open = filenameRef.current;
+    const moved = delta.moved[open];
+    const gone = delta.filesDeleted.indexOf(open) >= 0 || delta.drivesRemoved.some((drive) => rootOf(open) === driveRoot(drive.id));
+    if (moved) switchFile(moved);
+    refreshFileList(!moved && gone);
+    if (!moved && delta.filesWritten.indexOf(open) >= 0) setRefreshFile((value) => !value);
+  };
+  const takeSettingsRef = useRef(takeSettings);
+  takeSettingsRef.current = takeSettings;
+  // Remove (the notice of a new drive): the drive goes, and the editor leaves it when it was open there
+  const removeImported = (drive) => {
+    const wasOpen = rootOf(filenameRef.current) === driveRoot(drive.id);
+    FileSystem.deleteDrive(drive.id);
+    refreshFileList(wasOpen);
+  };
+  // Delete Extra Drives (Hard Reset Everything): every drive but D:, and the editor leaves them
+  const deleteExtraDrives = () => {
+    const wasOpen = isDrivePath(filenameRef.current);
+    FileSystem.deleteAllDrives();
+    refreshFileList(wasOpen);
+  };
+
+  useEffect(() => {
+    let unmounted = false,
+      stopTabSync = null;
 
     const init = async () => {
+      // a link the page was opened with: its Brotli decoder loads while the rest starts
+      if (!isDesktop() && fragmentLink()) preloadDecoder();
       // the store held by another tab (one of an older build, while a "delete all my
       // files" reset waits on it): said, instead of an empty drawer
       let waited = false;
@@ -234,13 +388,21 @@ function App() {
       await FileSystem.init();
       clearTimeout(slow);
       if (waited) setEmulatorNotice(null);
-      window.addEventListener("storage", handleStorageChange);
-      refreshFileList(true);
+      // the page loads as for any visit (the drawer, the first .asm opened, tab sync); a link it was opened with
+      // is then imported like one that arrives later, and test.asm is made afterwards only if no .asm exists
+      const startLink = isDesktop() ? null : fragmentLink();
+      refreshFileList(true, !startLink);
+      if (!unmounted)
+        stopTabSync = startTabSync({ onSynced: (delta) => syncedRef.current(delta), onSettings: (stored) => takeSettingsRef.current(stored) });
+      links.current.ready = true;
+      if (startLink) enqueueRef.current(startLink, true);
+      else pumpLinks();
     };
 
     init();
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      unmounted = true;
+      if (stopTabSync) stopTabSync();
     };
   }, []);
 
@@ -295,8 +457,8 @@ function App() {
     // Reliability notices from the emulator page (boxedwine.html runtime policy +
     // bw-snapshot.js watchdog). All are informational: the terminal has ALREADY
     // self-healed onto a working path; nothing here touches the user's files.
-    // Informational notices about a self-healed start (runtime downgrade, restore
-    // fallback) are DEFERRED until the terminal is ready: every notice uses the
+    // Informational notices about a self-healed start (runtime downgrade) are
+    // DEFERRED until the terminal is ready: every notice uses the
     // retro chrome and one that pops up while the loading screen is still up reads
     // as a failure notice. Only a start that can never finish
     // (wasm failed to load) is shown immediately.
@@ -311,14 +473,8 @@ function App() {
           "Everything works the same; it will be retried automatically after the next update.",
       });
     };
-    const handleRestoreFallback = (event) => {
-      const d = event.detail || {};
-      showWhenReady({
-        title: "Terminal restarted from scratch",
-        body: "The saved instant-start state could not be resumed, so the terminal started from scratch " +
-          "(that is why it took longer). " + (d.count >= 2 ? "Instant start has been disabled for this version." : "It has been re-saved automatically."),
-      });
-    };
+    // A start that could not resume the instant-start state booted from scratch and saved it again: no notice
+    // (bw-snapshot.js logs it).
     const handleSlow = (event) => {
       const d = (event && event.detail) || {};
       if (d.reason) {
@@ -344,7 +500,6 @@ function App() {
       });
     };
     window.addEventListener("runtime-downgraded", handleDowngraded);
-    window.addEventListener("restore-fallback", handleRestoreFallback);
     window.addEventListener("snapshot-not-saved", handleSnapshotNotSaved);
     window.addEventListener("emulator-slow", handleSlow);
     const crashHints = {
@@ -387,6 +542,15 @@ function App() {
         .catch((e) => console.warn("[App] the x86 decoder did not load", e));
     };
     window.addEventListener("program-crashed", handleCrashed);
+    // a build or run the terminal refused: the file's drive has no letter there
+    const handleRunRefused = (event) => {
+      const name = ((event && event.detail) || {}).filename || "";
+      setEmulatorNotice({
+        title: "Nothing was built or run",
+        body: "The drive of " + guestPath(name) + " has no letter in this terminal. Reset the command prompt, then try again.",
+      });
+    };
+    window.addEventListener("run-refused", handleRunRefused);
     const handleEmulatorCrashed = (event) => setEmulatorCrash((event && event.detail) || {});
     window.addEventListener("emulator-crashed", handleEmulatorCrashed);
 
@@ -408,7 +572,8 @@ function App() {
         }
         folders = FileSystem.getAllFolders();
       } catch (e) { console.warn("[App] drawer listing for reconciliation failed", e); }
-      reconcileEmulatorFiles(files, folders);
+      const guestDrives = FileSystem.getDrives().map(({ id, letter, label }) => ({ id, letter, label }));
+      reconcileEmulatorFiles(files, folders, guestDrives);
       if (deferredNotice.current) { setEmulatorNotice(deferredNotice.current); deferredNotice.current = null; }
     };
     window.addEventListener("emulator-ready", handleEmulatorReady);
@@ -464,10 +629,10 @@ function App() {
       window.removeEventListener("emulator-frozen", handleFrozen);
       window.removeEventListener("emulator-recovered", handleRecovered);
       window.removeEventListener("runtime-downgraded", handleDowngraded);
-      window.removeEventListener("restore-fallback", handleRestoreFallback);
       window.removeEventListener("snapshot-not-saved", handleSnapshotNotSaved);
       window.removeEventListener("emulator-slow", handleSlow);
       window.removeEventListener("program-crashed", handleCrashed);
+      window.removeEventListener("run-refused", handleRunRefused);
       window.removeEventListener("emulator-crashed", handleEmulatorCrashed);
       window.removeEventListener("emulator-ready", handleEmulatorReady);
       window.removeEventListener("guest-files", handleGuestFiles);
@@ -579,6 +744,12 @@ function App() {
       <AppLayout ref={refApp} onClick={handleClick} modifier={viewMode.modifier} handles={!settings.handlesHidden}>
         <FileDrawer
           fileList={fileList}
+          drives={drives}
+          onShare={setShareTargets}
+          shareOpen={!!shareTargets}
+          closeShare={() => setShareTargets(null)}
+          importLinks={importLinks}
+          reveal={reveal}
           fileSelected={filename}
           switchFile={switchFile}
           createFile={createFile}
@@ -602,6 +773,9 @@ function App() {
           //resize handles
           handlesHidden={settings.handlesHidden}
           setHandlesHidden={setHandlesHidden}
+          //drives
+          drives={drives}
+          deleteExtraDrives={deleteExtraDrives}
           //font
           fontList={fontList}
           setSelectedFont={setSelectedFont}
@@ -630,6 +804,43 @@ function App() {
         />
         <CommandPrompt notice={terminalNotice} />
       </AppLayout>
+      {shareTargets && (
+        <ShareWindow
+          targets={shareTargets}
+          drives={drives}
+          workspaceName={settings.workspaceName}
+          setWorkspaceName={setWorkspaceName}
+          openFile={filename}
+          close={() => setShareTargets(null)}
+        />
+      )}
+      {importOpen && (
+        <ImportWindow
+          ui={questions.ui}
+          before={beforeImportWrite}
+          onStart={() => (importBusy.current = true)}
+          onImported={(results) => {
+            importBusy.current = false;
+            setEditorLock(false);
+            refreshFileList();
+            setRefreshFile((value) => !value);
+            const first = results.find((result) => ["created", "created-new", "merged", "replaced"].includes(result.status) && openPathOf(result));
+            if (first) switchFile(openPathOf(first));
+          }}
+          close={() => setImportOpen(false)}
+        />
+      )}
+      {linkNotice && (
+        <ConfirmWindow
+          title={linkNotice.title}
+          icon={linkNotice.icon}
+          message={linkNotice.message}
+          details={linkNotice.details}
+          choices={linkNotice.drive ? [{ label: "OK" }, { label: "Remove", onSelect: () => removeImported(linkNotice.drive) }] : [{ label: "OK" }]}
+          close={() => setLinkNotice(null)}
+        />
+      )}
+      {questions.element}
     </>
   );
 }

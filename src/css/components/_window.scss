@@ -1,3 +1,4 @@
+@use "../abstracts/mixins";
 @use "../abstracts/variables";
 
 .window {
@@ -7,9 +8,6 @@
   z-index: 100;
   font-size: 1.4rem;
 
-  // Every window (common/Window.jsx): fixed in the middle of the page (react-draggable moves it back
-  // by half its size), never wider or taller than the visible page minus 8 px on each side. The
-  // percentages are of the fixed containing block, which is the visible area in every browser.
   position: fixed;
   left: 50%;
   top: 50%;
@@ -56,6 +54,20 @@
     flex: 0 1 auto;
   }
 
+  // a scroll area of window content (the body, Import by URL's links): what it holds keeps 98.css's 8 px
+  // window margin from the vertical bar (list boxes and text fields have the bar inside their own field)
+  &__scroll-area {
+    &.retro-scroll-host--vertical {
+      padding-right: 16px + 8px;
+    }
+
+    @media (forced-colors: active) {
+      > .retro-scroll-area__surface {
+        padding-right: 8px;
+      }
+    }
+  }
+
   &__footer {
     flex: none;
   }
@@ -73,18 +85,39 @@
   &__reset-cache {
     text-align: center;
 
-    &--btn {
-      margin-left: 0rem;
+    // its buttons: Windows 98's push buttons, a 16 px icon before the label
+    &--btn,
+    &__action {
+      @include mixins.push-button;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    &__icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+    }
+
+    // Restore Default Layout and Delete Extra Drives...: 12 px under the option (7 dialog units), 6 px apart
+    // (4 dialog units), from the text's left edge
+    &__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
     }
 
     &__content {
       display: flex;
       flex-direction: row;
 
+      // the message boxes' critical-stop icon, sized by common/PixelIcon.jsx (6rem, 4rem on a narrow page)
       &__image {
         flex: none;
-        width: 6rem;
-        height: 6rem;
         margin-right: 0.5rem;
       }
 
@@ -100,20 +133,6 @@
           color: red;
         }
       }
-
-      // factory-reset opt-in ("also delete all my files"): checkbox + label on one row, 98.css's
-      // spacing between them
-      &__option {
-        display: flex;
-        align-items: flex-start;
-        gap: variables.$radio-label-spacing;
-        cursor: pointer;
-
-        input {
-          margin-top: 0.15rem;
-          flex: 0 0 auto;
-        }
-      }
     }
 
     // a narrow page: the image above the text, as in the About window
@@ -122,8 +141,6 @@
         flex-direction: column;
 
         &__image {
-          width: 4rem;
-          height: 4rem;
           margin: 0 0 0.8rem;
           align-self: center;
         }
@@ -135,47 +152,259 @@
     }
   }
 
-  // file drawer message box (filedrawer/dialogs/ConfirmWindow.jsx)
+  // Windows 98 message boxes (filedrawer/dialogs/ConfirmWindow.jsx): the icon beside the text, the box as wide
+  // as its text needs (up to 40rem) and as its buttons; nothing in it scrolls sideways
   &__confirm {
-    // the text wraps to the box's width and does not widen it
-    &__message,
-    &__details {
-      box-sizing: border-box;
-      width: 0;
-      min-width: 100%;
-      overflow-wrap: break-word;
+    min-width: min(24rem, calc(100% - 16px));
+
+    .retro-scroll-area__surface {
+      overflow-x: hidden;
+    }
+
+    &__body {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+    }
+
+    &__icon {
+      flex: none;
+    }
+
+    &__text {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 40rem;
       text-align: left;
+      overflow-wrap: anywhere;
     }
 
-    // a long list scrolls on its own
-    &__details-area {
-      max-height: 12rem;
-      margin-top: 0.6rem;
+    &__message {
+      margin: 0;
+
+      & + & {
+        margin-top: 1rem;
+      }
+    }
+
+    // a file's size beside its icon, on a line of its own (Confirm File Replace)
+    &__file {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0.4rem 0 0.4rem 1.6rem;
+    }
+
+    // a tick box under the text (an import's "do this for every remaining link")
+    &__option {
+      margin-top: 1rem;
     }
 
     &__details {
-      padding-left: 2rem;
+      max-height: 10rem;
+      margin-top: 1rem;
       font-size: 1.2rem;
     }
 
-    // one row, continued on the next when the page is too narrow for it
+    // the buttons in their groups: 6 px apart in a group (4 dialog units, related controls), 12 px between
+    // groups (7 dialog units); a group too wide for what is left of a line starts the next one
     &__buttons {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       align-items: center;
-      gap: 0.6rem;
+      gap: 6px 12px;
     }
 
-    // as wide as its label and as tall as the label needs (.btn is a fixed square)
-    &__btn {
-      flex: 0 0 auto;
-      min-width: 8rem;
+    &__group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
       max-width: 100%;
+    }
+
+    &__btn {
+      @include mixins.push-button;
+    }
+  }
+
+  // Share by URL and Import by URL (main/share/): their icon beside what they hold, as in the About window;
+  // nothing in them scrolls sideways
+  &__share,
+  &__import {
+    .retro-scroll-area__surface {
+      overflow-x: hidden;
+    }
+  }
+
+  &__dialog {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    text-align: left;
+    overflow-wrap: anywhere;
+
+    &__icon {
+      flex: none;
+    }
+
+    // its parts: related lines 6 px apart (4 dialog units), group boxes 12 px (7 dialog units)
+    &__content {
+      flex: 1 1 auto;
+      min-width: 0;
+
+      p {
+        margin: 0 0 0.6rem;
+      }
+
+      > .group-box {
+        margin-bottom: 12px;
+      }
+
+      > :last-child,
+      .group-box > :last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+
+  &__list {
+    max-height: 12rem;
+    margin-bottom: 0.6rem;
+    font-size: 1.2rem;
+  }
+
+  &__problem {
+    color: #a00000;
+  }
+
+  &__share {
+    &__name {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+
+      input {
+        flex: 1 1 auto;
+        min-width: 0;
+        width: auto;
+      }
+    }
+
+    // the link: small monospace text, broken anywhere (a link has no spaces)
+    &__link {
+      margin-bottom: 0.6rem;
+      font-family: monospace;
+      font-size: 1.2rem;
+      line-height: 1.6rem;
+      word-break: break-all;
+    }
+
+    // a small text button inside a line
+    &__add {
+      width: auto;
       height: auto;
-      min-height: 2.5rem;
-      max-height: none;
-      padding: 0.3rem 1rem;
+      min-height: 2rem;
+      padding: 0.1rem 0.6rem;
+    }
+  }
+
+  &__import {
+    &__list {
+      max-height: 24rem;
+    }
+
+    &__rows {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    &__row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    &__toggle-slot {
+      flex: none;
+      width: 9px;
+      padding-top: 0.8rem;
+    }
+
+    // the tree's 9-px +/- box (_file-tree.scss)
+    &__toggle {
+      position: relative;
+      display: block;
+      box-sizing: border-box;
+      width: 9px;
+      height: 9px;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 1px solid variables.$button-shadow;
+      background: variables.$button-highlight;
+      box-shadow: none;
+      cursor: pointer;
+
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        background: #000;
+      }
+
+      &::before {
+        left: 1px;
+        top: 3px;
+        width: 5px;
+        height: 1px;
+      }
+
+      &::after {
+        left: 3px;
+        top: 1px;
+        width: 1px;
+        height: 5px;
+      }
+
+      &--open::after {
+        display: none;
+      }
+    }
+
+    &__main {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    &__text {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    &__status {
+      font-size: 1.2rem;
+
+      &--bad {
+        color: #a00000;
+      }
+    }
+
+    // what a link holds, under its row
+    &__details {
+      max-height: 12rem;
+      margin-top: 0.2rem;
+      font-size: 1.2rem;
     }
   }
 
@@ -208,7 +437,11 @@
 }
 
 .title-bar {
-  background: linear-gradient(90deg, variables.$dialog-blue, variables.$dialog-blue-light);
+  background: linear-gradient(
+    90deg,
+    variables.$dialog-blue,
+    variables.$dialog-blue-light
+  );
   padding: 0.3rem 0.2rem 0.3rem 0.3rem;
   text-align: center;
   height: 1.7rem;
@@ -224,7 +457,11 @@
 }
 
 .title-bar.inactive {
-  background: linear-gradient(90deg, variables.$dialog-gray, variables.$dialog-gray-light);
+  background: linear-gradient(
+    90deg,
+    variables.$dialog-gray,
+    variables.$dialog-gray-light
+  );
 }
 
 .title-bar-text {

@@ -14,6 +14,8 @@ import { saveAs } from "file-saver";
 import { crlf } from "eol";
 import dataURItoBlob from "./filesystem/dataURItoBlob.js";
 import { toAsciiJson, joinPath, parentOf, baseOf, ancestorsOf, isWithin, splitPath, nameKey } from "./filesystem/paths";
+import { splitDrive, driveRoot, withRoot, rootOf, isRootPath, registryKey, driveListKey, driveFoldersKey, parseRegistry, setDriveLetters, chooseLetter, newDriveId, exportPath } from "./filesystem/drives";
+import { mergeFileMap, mergeNames, mergeDrives, diffViews } from "./filesystem/storeSync";
 import { detectEncoding, decodeText, encodeText, canEncode, byteOrderMark, ASSEMBLER_SOURCE, bytesToBase64, base64ToBytes, bytesToBinaryString } from "./filesystem/textEncoding";
 import { isBinary, BINARY_SNIFF_BYTES } from "./filesystem/binaryDetect";
 import { planImport, planExport, decodeEntryName, MAX_ARCHIVE_BYTES } from "./filesystem/archive";
@@ -27,6 +29,8 @@ import {
   deleteFileFromEmulator,
   makeDirInEmulator,
   removeDirFromEmulator,
+  mapDriveInEmulator,
+  removeDriveFromEmulator,
 } from "../../../utility/utilityFunctions.ts";
 
 const mimeType = (fileExtension) => {
@@ -112,6 +116,7 @@ export default class FileSystem {
     // Seed the synchronous cache from IndexedDB BEFORE any sync read below,
     // otherwise the "/" check would miss an existing root and re-bootstrap it.
     await hf.init();
+    hf.setMerger(FileSystem._mergerFor);
     // another tab's "also delete all my files" reset deletes the store: the connection is
     // closed so the delete goes through, and this tab starts over on the new store (a
     // moment later, so the resetting tab has made it)
@@ -141,21 +146,84 @@ export default class FileSystem {
     return hf.closeStore();
   }
 
-  //reads file list
-  // The file list is read by nearly every operation: its parse is kept with the stored
-  // string it came from (a write stores a new one), and each caller gets its own copy.
-  static _listMemo = { raw: null, list: null };
+  // The lists are read by nearly every operation: each parse is kept with the stored string
+  // it came from (a write stores a new one). Callers never change a parse: they copy it.
+  static _memo = new Map();
 
-  static _readFileList() {
+  static _readJson(key, empty) {
     try {
-      const data = hf.getFromLocalStorage(FileSystem.fileListKey);
-      if (!data) return {};
-      if (data !== FileSystem._listMemo.raw) FileSystem._listMemo = { raw: data, list: JSON.parse(atob(data)) };
-      return { ...FileSystem._listMemo.list };
+      const data = hf.getFromLocalStorage(key);
+      if (!data) return empty;
+      const hit = FileSystem._memo.get(key);
+      if (hit && hit.raw === data) return hit.value;
+      const value = JSON.parse(atob(data));
+      FileSystem._memo.set(key, { raw: data, value });
+      return value;
     } catch (error) {
-      console.error('Error reading file list:', error);
-      return {};
+      console.error("Error reading " + key + ":", error);
+      return empty;
     }
+  }
+
+  // The other drives: those with a letter by letter, then those without by label. Each has file lists of its own
+  // next to D:'s; the tree and every operation see them as one list, a drive's files under "drive:<id>/".
+  static getDrives() {
+    const drives = parseRegistry(FileSystem._readJson(registryKey(FileSystem.fileListKey), []));
+    setDriveLetters(drives);
+    return drives;
+  }
+
+  static _writeDrives(drives) {
+    hf.setInLocalStorage(registryKey(FileSystem.fileListKey), toAsciiJson(drives), btoa);
+    setDriveLetters(drives);
+  }
+
+  static _listKeyOf(id) {
+    return id === null ? FileSystem.fileListKey : driveListKey(FileSystem.fileListKey, id);
+  }
+
+  static _foldersKeyOf(id) {
+    return id === null ? FileSystem.fileListKey + ":folders" : driveFoldersKey(FileSystem.fileListKey, id);
+  }
+
+  //reads file list
+  static _readFileList() {
+    const list = Object.assign({}, FileSystem._readJson(FileSystem.fileListKey, {}));
+    for (const drive of FileSystem.getDrives()) {
+      const own = FileSystem._readJson(FileSystem._listKeyOf(drive.id), {});
+      for (const rel of Object.keys(own)) list[withRoot(driveRoot(drive.id), rel)] = own[rel];
+    }
+    return list;
+  }
+
+  // Paths grouped by drive (null = D:), each with its path from the drive's root.
+  static _byDrive(paths) {
+    const groups = new Map([[null, []]]);
+    FileSystem.getDrives().forEach((drive) => groups.set(drive.id, []));
+    const unknown = [];
+    for (const path of paths) {
+      const { id, rel } = splitDrive(path);
+      if (groups.has(id)) groups.get(id).push({ path, rel });
+      else unknown.push(path);
+    }
+    if (unknown.length) console.warn("[FileSystem] not stored, their drive no longer exists: " + unknown.join(", "));
+    return groups;
+  }
+
+  // One list per drive, written only when it changed, the lists that gained entries first: a move
+  // between drives never leaves an entry in neither list.
+  static _writeParts(parts, keyOf, sizeOf) {
+    const writes = [];
+    parts.forEach((part, id) => {
+      const key = keyOf(id), value = btoa(toAsciiJson(part)), stored = hf.getFromLocalStorage(key);
+      if (value === stored || (!stored && !sizeOf(part))) return;
+      let before = 0;
+      try {
+        before = stored ? sizeOf(JSON.parse(atob(stored))) : 0;
+      } catch (error) {}
+      writes.push({ key, value, gained: sizeOf(part) - before });
+    });
+    writes.sort((a, b) => b.gained - a.gained).forEach((write) => hf.setInLocalStorage(write.key, write.value));
   }
 
   //Gets file list key
@@ -173,28 +241,31 @@ export default class FileSystem {
   // Lists are ASCII JSON (every non-ASCII character escaped), so btoa accepts names in
   // any language and earlier builds still parse them.
   static _writeFileList(fileList) {
-    hf.setInLocalStorage(FileSystem.fileListKey, toAsciiJson(fileList), btoa);
+    const parts = new Map();
+    FileSystem._byDrive(Object.keys(fileList)).forEach((entries, id) => {
+      const part = {};
+      entries.forEach(({ path, rel }) => (part[rel] = fileList[path]));
+      parts.set(id, part);
+    });
+    FileSystem._writeParts(parts, FileSystem._listKeyOf, (part) => Object.keys(part).length);
   }
 
   // Folder registry: every folder of the drawer, empty ones included, stored next to the
-  // file list.
-  static _foldersKey() {
-    return FileSystem.fileListKey + ":folders";
-  }
-
+  // file list (a drive's next to its own).
   static getFolderList() {
-    try {
-      const data = hf.getFromLocalStorage(FileSystem._foldersKey());
-      return data ? JSON.parse(atob(data)) : [];
-    } catch (error) {
-      console.error("Error reading folder list:", error);
-      return [];
+    let folders = FileSystem._readJson(FileSystem._foldersKeyOf(null), []).slice();
+    for (const drive of FileSystem.getDrives()) {
+      const root = driveRoot(drive.id);
+      folders = folders.concat(FileSystem._readJson(FileSystem._foldersKeyOf(drive.id), []).map((rel) => withRoot(root, rel)));
     }
+    return folders;
   }
 
   static _writeFolderList(folders) {
-    const unique = Array.from(new Set(folders.filter(Boolean))).sort();
-    hf.setInLocalStorage(FileSystem._foldersKey(), toAsciiJson(unique), btoa);
+    const unique = Array.from(new Set(folders.filter((folder) => folder && !isRootPath(folder)))).sort();
+    const parts = new Map();
+    FileSystem._byDrive(unique).forEach((entries, id) => parts.set(id, entries.map((entry) => entry.rel)));
+    FileSystem._writeParts(parts, FileSystem._foldersKeyOf, (part) => part.length);
   }
 
   // Every folder: the registry plus the folders above every file.
@@ -207,7 +278,7 @@ export default class FileSystem {
   // Register a folder and its parents; inGuest also creates them on D: (bwMakeDir is
   // mkdir -p). Known folders cost nothing.
   static ensureFolder(folder, inGuest = true) {
-    if (!folder) return;
+    if (isRootPath(folder)) return;
     const known = FileSystem.getFolderList();
     const missing = ancestorsOf(folder).concat(folder).filter((path) => known.indexOf(path) < 0);
     if (!missing.length) return;
@@ -217,6 +288,167 @@ export default class FileSystem {
 
   static createFolder(folder) {
     FileSystem.ensureFolder(folder);
+  }
+
+  // A new drive, given a letter at once (FileSystem.useDrive) and mapped in the terminal.
+  static createDrive(label) {
+    const drives = FileSystem.getDrives();
+    let id;
+    do id = newDriveId(crypto.getRandomValues(new Uint8Array(8)));
+    while (drives.some((drive) => drive.id === id));
+    const now = Date.now();
+    FileSystem._writeDrives(drives.concat([{ id, label, letter: "", createdAt: now, usedAt: now }]));
+    FileSystem.useDrive(id);
+    return FileSystem.getDrives().find((drive) => drive.id === id);
+  }
+
+  // The file open in the editor, and the drive of the last build or run: the terminal may still be running it.
+  // Neither drive gives its letter to another.
+  static _openFile = "";
+  static _lastRun = null;
+
+  // The drive of `id` is marked as used now. With `letter`, it is first given a letter if it has none: the first
+  // free one of E: to Y:, else the letter of the drive used least recently, which is left without one and unmapped.
+  // Returns its letter, "" when it has none.
+  static useDrive(id, letter = true) {
+    const drives = FileSystem.getDrives();
+    const drive = drives.find((entry) => entry.id === id);
+    if (!drive) return "";
+    const remap = [];
+    if (letter && !drive.letter) {
+      const keep = [splitDrive(FileSystem._openFile).id, FileSystem._lastRun].filter((other) => other && other !== id);
+      const choice = chooseLetter(drives, keep);
+      if (choice && choice.from) {
+        const from = drives.find((entry) => entry.id === choice.from);
+        from.letter = "";
+        remap.push(from);
+      }
+      if (choice) {
+        drive.letter = choice.letter;
+        remap.push(drive);
+      }
+    }
+    drive.usedAt = Date.now();
+    FileSystem._writeDrives(drives);
+    remap.forEach((entry) => mapDriveInEmulator(entry));
+    return drive.letter;
+  }
+
+  // The editor opened `path`: its drive is marked as used.
+  static setOpenFile(path) {
+    FileSystem._openFile = path || "";
+    const { id } = splitDrive(FileSystem._openFile);
+    if (id !== null) FileSystem.useDrive(id, false);
+  }
+
+  // Before a build or run of `path`: its drive gets a letter if it has none, and keeps it. Returns the drive's
+  // letter ("d" for D:), "" when it has none.
+  static useDriveToRun(path) {
+    const { id } = splitDrive(path);
+    FileSystem._lastRun = id;
+    return id === null ? "d" : FileSystem.useDrive(id);
+  }
+
+  static setDriveLabel(id, label) {
+    const drives = FileSystem.getDrives();
+    const drive = drives.find((entry) => entry.id === id);
+    if (!drive || drive.label === label) return;
+    drive.label = label;
+    FileSystem._writeDrives(drives);
+    mapDriveInEmulator(drive); // its label file is written again
+  }
+
+  // A drive is deleted in this order: the registry forgets it, then its files and lists go from storage,
+  // and the terminal unmaps it and removes its folder.
+  static deleteDrive(id) {
+    const drives = FileSystem.getDrives();
+    const drive = drives.find((entry) => entry.id === id);
+    if (!drive) return;
+    FileSystem._writeDrives(drives.filter((entry) => entry.id !== id));
+    FileSystem._eraseDrive(drive);
+  }
+
+  static deleteAllDrives() {
+    const drives = FileSystem.getDrives();
+    if (!drives.length) return;
+    FileSystem._writeDrives([]);
+    drives.forEach((drive) => FileSystem._eraseDrive(drive));
+  }
+
+  static _eraseDrive(drive) {
+    const listKey = FileSystem._listKeyOf(drive.id), foldersKey = FileSystem._foldersKeyOf(drive.id);
+    const list = FileSystem._readJson(listKey, {});
+    for (const rel of Object.keys(list)) {
+      try { hf.deleteKey(hf.getFileMetaData(list[rel]).id); } catch (e) {} // contents
+      try { hf.deleteKey(list[rel]); } catch (e) {} // metadata
+    }
+    hf.deleteKey(listKey);
+    hf.deleteKey(foldersKey);
+    FileSystem._memo.delete(listKey);
+    FileSystem._memo.delete(foldersKey);
+    const root = driveRoot(drive.id);
+    Array.from(FileSystem._encodings.keys()).forEach((path) => rootOf(path) === root && FileSystem._encodings.delete(path));
+    removeDriveFromEmulator(drive);
+  }
+
+  // Resolves once every storage write made so far has reached the database.
+  static flush() {
+    return hf.flush();
+  }
+
+  // Saves the editor holds back (its autosave waits for a pause in typing), written at once when the user
+  // leaves this tab (session/tabSync.js).
+  static pendingSaves = new Set();
+  static flushPendingSaves() {
+    FileSystem.pendingSaves.forEach((flush) => {
+      try {
+        flush();
+      } catch (e) {
+        console.warn("[FileSystem] a pending save failed", e);
+      }
+    });
+  }
+
+  // Lists are written whole: a write over a list another tab changed since this tab read it applies this
+  // tab's changes to what is stored (filesystem/storeSync.ts).
+  static _mergerFor(key) {
+    const listKey = FileSystem.fileListKey;
+    if (!listKey || (key !== listKey && key.indexOf(listKey + ":") !== 0)) return null;
+    const parse = (value, empty) => {
+      try {
+        return value ? JSON.parse(atob(value)) : empty;
+      } catch (error) {
+        return empty;
+      }
+    };
+    const merging = (merge, empty, read = (value) => value) => (base, next, stored) =>
+      btoa(toAsciiJson(merge(read(parse(base, empty)), read(parse(next, empty)), read(parse(stored, empty)))));
+    if (key === registryKey(listKey)) return merging(mergeDrives, [], parseRegistry);
+    return /:folders$/.test(key) ? merging(mergeNames, []) : merging(mergeFileMap, {});
+  }
+
+  // What another tab changed: the store read again, and the difference between this tab's view of it
+  // before and after (filesystem/storeSync.ts), for the drawer, the editor and the terminal.
+  static async sync() {
+    const before = FileSystem._view();
+    await hf.reload();
+    const after = FileSystem._view();
+    const delta = diffViews(before, after);
+    delta.filesDeleted.concat(delta.filesWritten).forEach((path) => FileSystem._encodings.delete(path));
+    return delta;
+  }
+
+  static _view() {
+    const list = FileSystem._readFileList(), files = {};
+    for (const path of Object.keys(list)) {
+      const meta = hf.getFromLocalStorage(list[path]);
+      let data = null;
+      try {
+        data = hf.getFromLocalStorage(hf.decodeFileMetaData(meta).id);
+      } catch (e) {}
+      files[path] = { key: list[path], meta, data };
+    }
+    return { files, folders: FileSystem.getAllFolders(), drives: FileSystem.getDrives() };
   }
 
   // The stored key of `path` when a file of that name exists in any letter case (the
@@ -658,15 +890,17 @@ export default class FileSystem {
   }
 
   // Download entries ({files, folders}: a folder with everything in it) as one zip that
-  // keeps the folder structure: files under their paths relative to D:\, every folder
-  // (empty ones included) as a directory entry. JSZip writes non-ASCII names in UTF-8.
+  // keeps the folder structure: files under their paths relative to their drive's root (under a
+  // folder per drive letter when the entries span drives), every folder (empty ones included) as a
+  // directory entry. JSZip writes non-ASCII names in UTF-8.
   static async saveEntries(targets) {
     const plan = planExport(targets, FileSystem.getFileList(), FileSystem.getAllFolders());
+    const perDrive = new Set(plan.files.concat(plan.folders).map(rootOf)).size > 1;
     const JSZip = await FileSystem._getJSZip();
     if (!JSZip) throw new Error("JSZip unavailable");
     const zip = new JSZip();
-    plan.folders.forEach((folder) => zip.folder(folder));
-    plan.files.forEach((file) => zip.file(file, FileSystem._fileBase64(file), { base64: true }));
+    plan.folders.forEach((folder) => zip.folder(exportPath(folder, perDrive)));
+    plan.files.forEach((file) => zip.file(exportPath(file, perDrive), FileSystem._fileBase64(file), { base64: true }));
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, (plan.name || "MASMProjectFiles") + "_" + getFormatedDate() + ".zip");
   }

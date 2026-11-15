@@ -3,9 +3,10 @@ import { createPortal, flushSync } from "react-dom";
 import useRetroScrollbars from "../../../common/useRetroScrollbars.js";
 import { parentOf, baseOf } from "../../utility/filesystem/paths";
 import { PAGE_ROWS, pageCount, pageOf } from "../model/tree";
-import FileTreeRow, { ROW_HEIGHT } from "./FileTreeRow.jsx";
+import FileTreeRow, { ROW_HEIGHT, INDENT } from "./FileTreeRow.jsx";
 import TreeContextMenu from "./TreeContextMenu.jsx";
 import usePointerDrag from "../hooks/usePointerDrag.js";
+import useMarquee from "../hooks/useMarquee.js";
 
 // scrollIntoView({ block: "nearest" }) within the list alone: scrollIntoView also scrolls
 // every scrollable ancestor, the page itself when the row lies outside the window
@@ -20,18 +21,20 @@ const showInList = (scroller, element) => {
 };
 
 // The drawer's tree (WAI-ARIA tree pattern): rows from model/tree.ts, one roving tab stop,
-// Explorer's keys, the context menu and drag-to-folder. The list keeps one scroll range
+// Explorer's keys, the context menu (a row's, or the drawer's on empty space), drag-to-folder
+// and the selection rectangle. The list keeps one scroll range
 // for every row, but draws only the rows near the view: the pages (PAGE_ROWS rows) the
 // view shows and one page before and after them, in normal flow between two spacers that
 // stand for the rest; scrolling loads and unloads pages. All file operations go
 // through `ops` (FileDrawer.jsx); this component only presents and routes input. Its
 // ref's focus() puts the DOM focus on the row that holds the tab stop.
-const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFile, selected, focused, setFocused, cut, renaming, lightMode, ops }, ref) {
+const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFile, selected, focused, setFocused, cut, renaming, lightMode, targetFolder, ops }, ref) {
   const scrollHost = useRef(null);
   const list = useRef(null);
   const [listElement, setListElement] = useState(null); // the list, for the drag hook and the scrollbars
   const [hostElement, setHostElement] = useState(null);
   const padTop = useRef(0);
+  const padLeft = useRef(0);
   const rowElements = useRef(new Map());
   const keyboardFocus = useRef(false);
   const pending = useRef(null); // a row to show (and focus) once it is drawn
@@ -41,6 +44,7 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
 
   useLayoutEffect(() => {
     padTop.current = parseFloat(getComputedStyle(list.current).paddingTop) || 0;
+    padLeft.current = parseFloat(getComputedStyle(list.current).paddingLeft) || 0;
     setListElement(list.current);
     setHostElement(scrollHost.current);
   }, []);
@@ -77,6 +81,50 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   const last = Math.min(rows.length, (Math.min(view.bottom, lastPage) + 2) * PAGE_ROWS);
   const drawn = useMemo(() => rows.slice(first, last), [rows, first, last]);
   const indexOf = useMemo(() => new Map(rows.map((row, i) => [row.path, i])), [rows]);
+
+  // A row's label: its tick box, indent, icon and name, as wide as Explorer's hit area for the row. Its width is
+  // worked out from the row's depth and its name measured in the label's font (bold for the open file), so rows
+  // not drawn are measured too.
+  const labelBox = useRef({ start: 0, font: "", widths: new Map(), context: null });
+  const labelWidth = (row) => {
+    const box = labelBox.current;
+    if (!box.font) {
+      const drawn = list.current.querySelector(".file-tree__row[data-path] .file-tree__label");
+      if (!drawn) return 0;
+      const style = getComputedStyle(drawn);
+      const li = drawn.closest(".file-tree__row");
+      box.start = drawn.getBoundingClientRect().left - li.getBoundingClientRect().left - (Number(li.getAttribute("aria-level")) - 1) * INDENT;
+      box.pad = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      box.font = style.fontSize + " " + style.fontFamily;
+      box.context = document.createElement("canvas").getContext("2d");
+    }
+    const bold = row.path === openFile;
+    const key = (bold ? "b" : "n") + row.name;
+    if (!box.widths.has(key)) {
+      box.context.font = (bold ? "bold " : "") + box.font;
+      box.widths.set(key, box.context.measureText(row.name).width);
+    }
+    return box.start + row.depth * INDENT + box.pad + box.widths.get(key);
+  };
+  const rowAtY = (y) => Math.floor((y - padTop.current) / ROW_HEIGHT);
+  const { box: marquee, suppressClick: marqueeEnded } = useMarquee({
+    list: listElement,
+    onLabelAt: (x, y) => {
+      const row = rows[rowAtY(y)];
+      return !!row && x <= padLeft.current + labelWidth(row);
+    },
+    rowsIn: (rect) => {
+      const touched = [];
+      for (let i = Math.max(0, rowAtY(rect.top)); i <= Math.min(rows.length - 1, rowAtY(rect.bottom)); i++) {
+        if (rect.left <= padLeft.current + labelWidth(rows[i])) touched.push(rows[i]);
+      }
+      return touched;
+    },
+    onStart: ops.marqueeStart,
+    onChange: ops.marqueeTicks,
+    onCancel: ops.marqueeCancel,
+    onLongPress: (x, y) => openMenu(null, x, y),
+  });
 
   const { drag, onPointerDown, suppressClick } = usePointerDrag({
     list: listElement,
@@ -181,8 +229,9 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
     }
   });
 
+  // a row's menu, or the drawer's (row null: empty space)
   const openMenu = (row, x, y) => {
-    setFocused(row.path);
+    if (row) setFocused(row.path);
     setMenu({ row, x, y });
   };
   // a closing menu hands the focus back to its row (an item that opens a dialog or the
@@ -201,8 +250,13 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
       check: (row, value) => ops.check(row, value),
       focus: (row) => setFocused(row.path),
       contextMenu: (row, x, y) => openMenu(row, x, y),
-      pointerDown: (event, row) => onPointerDown(event, row),
-      dragJustEnded: () => suppressClick.current,
+      // a press on a row's blank part, right of its label, draws a selection rectangle instead (a touch keeps the row's)
+      pointerDown: (event, row) => {
+        const label = event.currentTarget.querySelector(".file-tree__label, .file-tree__rename");
+        if (event.pointerType !== "touch" && label && event.clientX > label.getBoundingClientRect().right) return;
+        onPointerDown(event, row);
+      },
+      dragJustEnded: () => suppressClick.current || marqueeEnded.current,
       rename: (path, name) => ops.rename(path, name),
       renameCancel: () => ops.renameCancel(),
       renameProblem: (path, name) => ops.renameProblem(path, name),
@@ -232,9 +286,9 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
       if (row.kind === "folder" && row.expanded) ops.toggle(row.path, false);
       else if (row.kind !== "root") go(rows.findIndex((r) => r.path === parentOf(row.path)));
     } else if (event.key === "Enter") ops.activate(row, true);
-    else if (event.key === "F2" && row.kind !== "root") ops.renameStart(row.path);
-    else if (event.key === "Delete" && row.kind !== "root") ops.deleteRow(row);
-    else if (event.key === " " && row.kind !== "root") ops.check(row, checkFor(row) !== "checked");
+    else if (event.key === "F2" && (row.kind !== "root" || row.path)) ops.renameStart(row.path);
+    else if (event.key === "Delete" && (row.kind !== "root" || row.path)) ops.deleteRow(row);
+    else if (event.key === " ") ops.check(row, checkFor(row) !== "checked");
     else if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
       const label = event.currentTarget.querySelector('[data-path="' + CSS.escape(row.path) + '"] .file-tree__label');
       const rect = (label || event.currentTarget).getBoundingClientRect();
@@ -247,22 +301,34 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
     event.stopPropagation();
   };
 
+  // a row's menu, or (row null) the drawer's: new items go to the target folder
   const menuItems = (row) => {
-    const folder = row.kind === "file" ? parentOf(row.path) : row.path;
+    const folder = !row ? targetFolder : row.kind === "file" ? parentOf(row.path) : row.path;
     const pasteProblem = cut.size ? ops.moveProblem(Array.from(cut), folder) : "nothing to paste";
+    const create = [
+      { label: "New File...", onSelect: () => ops.newFile(folder) },
+      { label: "New Folder...", onSelect: () => ops.newFolder(folder) },
+      { label: "New Drive...", onSelect: () => ops.newDrive() },
+    ];
+    if (!row) return [...create, { separator: true }, { label: "Paste", onSelect: () => ops.paste(folder), disabled: !!pasteProblem }, { separator: true }, { label: "Select All", onSelect: () => ops.selectAll(true) }];
+    const letterless = row.kind === "root" && ops.isLetterless(row.path);
     return [
       row.kind === "file"
         ? { label: "Open", onSelect: () => ops.activate(row, true) }
         : { label: row.expanded ? "Collapse" : "Expand", onSelect: () => ops.toggle(row.path), disabled: !row.hasChildren || row.kind === "root" },
       { separator: true },
-      { label: "New File...", onSelect: () => ops.newFile(folder) },
-      { label: "New Folder...", onSelect: () => ops.newFolder(folder) },
+      ...create,
       { separator: true },
       { label: "Cut", onSelect: () => ops.cut(row), disabled: row.kind === "root" },
       { label: "Paste", onSelect: () => ops.paste(folder), disabled: !!pasteProblem },
       { separator: true },
-      { label: "Rename", onSelect: () => ops.renameStart(row.path), disabled: row.kind === "root" },
-      { label: "Delete", onSelect: () => ops.deleteRow(row), disabled: row.kind === "root" },
+      { label: "Share by URL...", onSelect: () => ops.share(row) },
+      { separator: true },
+      { label: "Rename", onSelect: () => ops.renameStart(row.path), disabled: row.kind === "root" && !row.path },
+      ...(letterless ? [{ label: "Assign Drive Letter", onSelect: () => ops.assignLetter(row) }] : []),
+      row.kind === "root"
+        ? { label: "Delete drive...", onSelect: () => ops.deleteRow(row), disabled: !row.path }
+        : { label: "Delete", onSelect: () => ops.deleteRow(row) },
     ];
   };
 
@@ -274,12 +340,17 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
       <ul
         ref={list}
         role="tree"
-        aria-label="Files on D:"
+        aria-label="Drives and files"
         tabIndex={focusDrawn ? -1 : 0}
         className={"file-drawer__list tree-view file-tree" + (lightMode ? "" : " file-drawer__list--dark file-tree--dark")}
         onKeyDown={onKeyDown}
         onFocus={(event) => {
           lastFocused.current = event.target;
+        }}
+        onContextMenu={(event) => {
+          if (event.target.closest("[data-path]")) return; // a row's own menu
+          event.preventDefault();
+          openMenu(null, event.clientX, event.clientY);
         }}
       >
         {first > 0 && <li key="above" className="file-tree__spacer" data-spacer="" role="presentation" aria-hidden="true" style={{ height: first * ROW_HEIGHT }} />}
@@ -290,7 +361,7 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
             posinset={positions[indexOf.get(row.path)].posinset}
             setsize={positions[indexOf.get(row.path)].setsize}
             icon={iconFor(row)}
-            check={row.kind === "root" ? undefined : checkFor(row)}
+            check={checkFor(row)}
             isOpen={row.path === openFile}
             isSelected={row.path === selected}
             isFocused={row.path === focusPath}
@@ -302,6 +373,14 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
           />
         ))}
         {last < rows.length && <li key="below" className="file-tree__spacer" data-spacer="" role="presentation" aria-hidden="true" style={{ height: (rows.length - last) * ROW_HEIGHT }} />}
+        {marquee && (
+          <li
+            className="file-tree__marquee"
+            role="presentation"
+            aria-hidden="true"
+            style={{ left: marquee.left, top: marquee.top, width: marquee.right - marquee.left, height: marquee.bottom - marquee.top }}
+          />
+        )}
       </ul>
       {drag &&
         createPortal(

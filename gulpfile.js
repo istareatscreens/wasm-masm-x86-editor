@@ -294,7 +294,7 @@ function copyGuideHtmlTask() {
 function copyGuideIconsTask() {
   // Reuse the application's toolbar icons in the static user manual.
   return src([
-    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,resizeHandles,about,newFile,newFolder,uploadFile,importFolder,saveFile,deleteFile,files}.png",
+    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,resizeHandles,about,newFile,newFolder,newDrive,uploadFile,importFolder,saveFile,shareLink,importLink,deleteFile,files}.png",
     "src/images/vim.svg",
   ], BINARY)
     .pipe(svgoTransform())
@@ -337,6 +337,9 @@ function watchTask() {
         },
       ],
     },
+    // no clicks, form input or scrolling copied between tabs: browser-sync replays them on the element at the
+    // same position in every other tab, and the app's tabs differ (another tab's theme switch, or a button)
+    ghostMode: false,
   });
   gulp.watch(
     [cssPath, jsPath, jsBoxedPath, htmlPath + "**/*.html"],

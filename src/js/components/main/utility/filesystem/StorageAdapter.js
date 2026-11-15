@@ -167,6 +167,56 @@ class StorageAdapter {
     }
   }
 
+  /**
+   * Every [key, value] entry, failing (unlike getAll) when the store cannot be read: a tab
+   * reading the store again keeps its cache then.
+   * @returns {Promise<Array<[string, string]>>}
+   */
+  async readAll() {
+    if (this.storageType !== 'indexeddb') return this._getAllLocalStorage();
+    return new Promise((resolve, reject) => {
+      const request = this.db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).getAll();
+      request.onsuccess = () => resolve((request.result || []).map((r) => [r.key, r.value]));
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Write `value` where its writer read `base`. When the store holds something else, another
+   * tab wrote the key meanwhile, and merge(base, value, stored) is written instead, in the same
+   * transaction.
+   * @returns {Promise<boolean>} whether it merged
+   */
+  async mergeItem(key, base, value, merge) {
+    const resolve = (stored) => {
+      if (stored === base || stored === value) return { value, merged: false };
+      try {
+        return { value: merge(base, value, stored), merged: true };
+      } catch (error) {
+        console.error('[StorageAdapter] merge of ' + key + ' failed, written as is:', error);
+        return { value, merged: true };
+      }
+    };
+    if (this.storageType !== 'indexeddb') {
+      const result = resolve(this._getItemLocalStorage(key));
+      this._setItemLocalStorage(key, result.value);
+      return result.merged;
+    }
+    return new Promise((done, reject) => {
+      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      let merged = false;
+      const read = store.get(key);
+      read.onsuccess = () => {
+        const result = resolve(read.result ? read.result.value : null);
+        merged = result.merged;
+        store.put({ key, value: result.value });
+      };
+      transaction.oncomplete = () => done(merged);
+      transaction.onerror = transaction.onabort = () => reject(transaction.error);
+    });
+  }
+
   async _getAllIndexedDB() {
     return new Promise((resolve) => {
       try {
