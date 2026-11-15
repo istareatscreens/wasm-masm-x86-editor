@@ -1,0 +1,23 @@
+@use "../abstracts/variables";
+
+.check-option {
+  display: flex;
+  align-items: flex-start;
+  gap: variables.$radio-label-spacing;
+  cursor: pointer;
+
+  &__box {
+    flex: none;
+    display: flex;
+    align-items: center;
+    height: 1lh;
+  }
+
+  &__text {
+    min-width: 0;
+  }
+
+  &:has(:disabled) {
+    cursor: default;
+  }
+}

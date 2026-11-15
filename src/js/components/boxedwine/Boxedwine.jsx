@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { outputPath } from "../main/utility/filesystem/paths";
+import { guestPathOf, nativePathOf, splitDrive, driveRoot, D_GUEST, D_NATIVE, LABEL_FILES } from "../main/utility/filesystem/drives";
 import LoadingScreen from "./LoadingScreen.jsx";
 
 // The emulator canvas is a static element in boxedwine.html (the stock 26R1
 // shell captures #canvas at script load). This component owns the app-side
 // event wiring (all terminal I/O goes through direct BoxedWine embind calls —
 // no synthetic KeyboardEvents, no echo file hacks) and the click overlay.
-const D_DRIVE = "/mnt/drive_d/"; // guest D:\  (writable workspace, write path via bwWriteFile)
-const NATIVE_D = "/d_drive/"; // same drive, native emscripten path for readback via Module.FS
+// Drawer paths reach the guest through guestPathOf (the emulator's file functions: D: is
+// /mnt/drive_d, another drive a folder of the drive store /mnt/bw_drives) and nativePathOf
+// (Module.FS readback: /d_drive, /bw_drives).
 // The toolchain archive boxedwine.html mounts at C:\files (getAppZipFile): the shell
 // writes it to this page's file system before the mount, and a restore keeps it.
 const TOOLCHAIN_ZIP = "/assembler-dp0.zip";
@@ -69,7 +71,7 @@ const readBackBuildOutputs = (name, onDone) => {
     // poll, and reading it the moment it appears returned a 0-byte (or partial) file.
     let exeReady = false;
     try {
-      const sz = Module.FS.stat(NATIVE_D + name + ".exe").size;
+      const sz = Module.FS.stat(nativePathOf(name + ".exe")).size;
       exeReady = sz > 0 && sz === lastSize;
       lastSize = sz;
     } catch (e) {
@@ -80,7 +82,7 @@ const readBackBuildOutputs = (name, onDone) => {
     const outputs = [];
     for (const ext of OUTPUT_EXTS) {
       try {
-        const bytes = Module.FS.readFile(NATIVE_D + name + ext); // Uint8Array
+        const bytes = Module.FS.readFile(nativePathOf(name + ext)); // Uint8Array
         // a 0-byte artifact (JWasm truncates the .obj on an assemble error) is not an output
         if (bytes.length)
           outputs.push({
@@ -122,12 +124,15 @@ function Boxedwine() {
       "sync-file",
       "rename-file",
       "build-file",
+      "run-file",
       "delete-file",
       "make-dir",
       "remove-dir",
       "reset",
       "reconcile-files",
       "interrupt",
+      "map-drive",
+      "remove-drive",
     ].forEach((evt) => window.addEventListener(evt, onFallbackEvent));
     window.addEventListener("boxedwine-input-open", onInputOpen);
     exposeDirectApi();
@@ -143,11 +148,14 @@ function Boxedwine() {
       "sync-file",
       "rename-file",
       "build-file",
+      "run-file",
       "delete-file",
       "make-dir",
       "remove-dir",
       "reconcile-files",
       "interrupt",
+      "map-drive",
+      "remove-drive",
       "boxedwine-fully-loaded",
     ].forEach((e) => window.removeEventListener(e, onFallbackEvent));
     window.removeEventListener("boxedwine-input-open", onInputOpen);
@@ -252,7 +260,7 @@ function Boxedwine() {
   // warns (production-visible) and reports ok:false to the parent.
   const guestStat = (filename) => {
     try {
-      const st = Module.FS.stat(NATIVE_D + filename);
+      const st = Module.FS.stat(nativePathOf(filename));
       return { exists: true, size: st.size, dir: Module.FS.isDir(st.mode) };
     } catch (e) {
       return { exists: false, size: -1, dir: false };
@@ -313,7 +321,7 @@ function Boxedwine() {
       const u8 = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       return {
-        rc: Module.bwWriteFileBytes(D_DRIVE + filename, u8),
+        rc: Module.bwWriteFileBytes(guestPathOf(filename), u8),
         size: u8.length,
       };
     }
@@ -323,7 +331,7 @@ function Boxedwine() {
       typeof TextEncoder !== "undefined"
         ? new TextEncoder().encode(text).length
         : text.length;
-    return { rc: Module.bwWriteFile(D_DRIVE + filename, text), size };
+    return { rc: Module.bwWriteFile(guestPathOf(filename), text), size };
   };
 
   // Direct file sync: write a file into the guest FS so cmd sees it (no echo).
@@ -365,7 +373,7 @@ function Boxedwine() {
         const run = () => {
           let rc =
             typeof Module.bwRenameFile === "function"
-              ? Module.bwRenameFile(D_DRIVE + oldName, D_DRIVE + newName)
+              ? Module.bwRenameFile(guestPathOf(oldName), guestPathOf(newName))
               : -99;
           if (rc !== 0) {
             console.warn(
@@ -377,7 +385,7 @@ function Boxedwine() {
                 newName +
                 "; falling back to delete+write",
             );
-            Module.bwDeleteFile(D_DRIVE + oldName);
+            Module.bwDeleteFile(guestPathOf(oldName));
             rc = writeGuestFile(newName, content, isBinary).rc;
           }
           return rc;
@@ -403,11 +411,16 @@ function Boxedwine() {
         const folder = slash < 0 ? "" : filename.slice(0, slash);
         const base = filename.slice(slash + 1).replace(/\.asm$/i, "");
         const name = outputPath(filename, ""); // drawer path of the outputs, minus ext
+        // A name with spaces (or cmd-special characters) is quoted: assemble.bat's %1 then expands to
+        // "my program", i.e. "my program".asm / .obj / .exe, which JWasm, JWlink, FL and cmd all take as one
+        // name (harness scenario `spaces`).
+        const command = inFolder(folder, "call C:\\files\\assemble " + quoteForCmd(base));
+        if (!command) return postToParent("run-refused", { filename });
         importState.drawer.add(filename);
-        if (folder && typeof Module.bwMakeDir === "function") Module.bwMakeDir(D_DRIVE + folder);
+        if (folder && typeof Module.bwMakeDir === "function") Module.bwMakeDir(guestPathOf(folder));
         const rc = isBase64
           ? writeGuestFile(filename, content, true).rc
-          : Module.bwWriteFile(D_DRIVE + filename, content || "");
+          : Module.bwWriteFile(guestPathOf(filename), content || "");
         if (rc !== 0) {
           console.error("[Boxedwine] build sync failed rc=" + rc);
           return;
@@ -418,27 +431,50 @@ function Boxedwine() {
         if (typeof Module.bwDeleteFile === "function") {
           for (const ext of OUTPUT_EXTS) {
             try {
-              Module.bwDeleteFile(D_DRIVE + name + ext);
+              Module.bwDeleteFile(guestPathOf(name + ext));
             } catch (e) {}
           }
         }
         freezeState.buildInFlight = true; // guest progress is now expected (freeze detector)
-        // The source is at D:\<folder>\<name>.asm whatever directory the user's prompt is
-        // in: assemble FROM its folder (pushd/popd restores the prompt's own directory
-        // afterwards; `call` returns control to this line when the batch ends). Without
-        // this, a prompt that had left D:\ got `Cannot open file "<name>.asm" [ENOENT]`.
-        // A name with spaces (or cmd-special characters) is quoted: assemble.bat's %1
-        // then expands to "my program", i.e. "my program".asm / .obj / .exe, which
-        // JWasm, JWlink, FL and cmd all take as one name (harness scenario `spaces`).
-        // A root source with an ASCII name gets exactly the command it always got.
-        const dir = folder ? quoteForCmd("D:\\" + folder.split("/").join("\\")) : "D:\\";
-        Module.sendText("pushd " + dir + " & call C:\\files\\assemble " + quoteForCmd(base) + " & popd\r");
+        Module.sendText(command + "\r");
         readBackBuildOutputs(name, () => {
           freezeState.buildInFlight = false;
           importScan();
         });
       }),
     );
+  };
+
+  // The program a build of `filename` made (bin\<name>.exe), run from the source's folder.
+  const doRun = (filename) => {
+    if (!filename) return;
+    gated(() =>
+      whenModuleReady(["sendText"], () => {
+        const slash = filename.lastIndexOf("/");
+        const exe = "bin\\" + filename.slice(slash + 1).replace(/\.asm$/i, "") + ".exe";
+        const command = inFolder(slash < 0 ? "" : filename.slice(0, slash), quoteForCmd(exe));
+        if (!command) return postToParent("run-refused", { filename });
+        Module.sendText(command + "\r");
+      }),
+    );
+  };
+
+  // The command that runs `body` in `folder` (a drawer path) on the folder's own drive, whatever directory the
+  // user's prompt is in: `pushd <X:\folder> & if not errorlevel 1 (<body> & popd)`. The letter comes from this
+  // page's own drive map, and must still link to that drive's folder. A pushd that fails sets errorlevel 1, so it
+  // runs nothing and pops nothing, and a file of the same name elsewhere is never built or run (Wine 6.0's cmd runs
+  // what follows && whatever the result); popd gives the prompt its own directory back. null when the drive has no
+  // letter here.
+  const inFolder = (folder, body) => {
+    const { id, rel } = splitDrive(folder);
+    let letter = "D";
+    if (id !== null) {
+      const mapped = drives.get(id);
+      if (!mapped || !mapped.letter || Module.bwDriveLink(mapped.letter) !== guestPathOf(driveRoot(id))) return null;
+      letter = mapped.letter.toUpperCase();
+    }
+    const dir = rel ? quoteForCmd(letter + ":\\" + rel.split("/").join("\\")) : letter + ":\\";
+    return "pushd " + dir + " & if not errorlevel 1 (" + body + " & popd)";
   };
 
   // The named entries of the toolchain archive, read with this page's JSZip once input
@@ -472,7 +508,7 @@ function Boxedwine() {
         return reportSync({ op: "mkdir", filename: path, ok: false, error: "bwMakeDir missing" });
       importState.folders.add(path);
       withVerify("mkdir", path, { present: true, dir: true }, () =>
-        Module.bwMakeDir(D_DRIVE + path),
+        Module.bwMakeDir(guestPathOf(path)),
       );
     });
   };
@@ -483,10 +519,73 @@ function Boxedwine() {
         return reportSync({ op: "rmdir", filename: path, ok: false, error: "bwRemoveDir missing" });
       importState.folders.delete(path);
       withVerify("rmdir", path, { present: false }, () =>
-        Module.bwRemoveDir(D_DRIVE + path),
+        Module.bwRemoveDir(guestPathOf(path)),
       );
     });
   };
+
+  // --- Drives -------------------------------------------------------------
+  // The other drives: each a folder of the drive store (/mnt/bw_drives/<id>) with its label in .windows-label,
+  // mapped to its letter (Module.bwMapDrive) while it has one. Snapshots never hold a mapping: the parent maps
+  // every drive at each start (reconcile) and whenever one is made, relabelled, given a letter or left without.
+  const drives = new Map(); // id -> { letter ("" for none), label }
+  const mapGuestDrive = (drive) => {
+    const root = guestPathOf(driveRoot(drive.id));
+    const letter = drive.letter || "";
+    // the letter the drive had here goes, unless it already links to another drive (which took it meanwhile)
+    const old = drives.get(drive.id);
+    if (old && old.letter && old.letter !== letter && Module.bwDriveLink(old.letter) === root) Module.bwUnmapDrive(old.letter);
+    const made = Module.bwMakeDir(root);
+    const labelled = Module.bwWriteFile(root + "/" + LABEL_FILES[0], (drive.label || "") + "\n");
+    drives.set(drive.id, { letter, label: drive.label });
+    if (!letter) return reportSync({ op: "map-drive", filename: drive.label || drive.id, ok: made === 0 && labelled === 0, made, labelled, letter });
+    const rc = Module.bwMapDrive(letter, root);
+    const link = Module.bwDriveLink(letter);
+    return reportSync({ op: "map-drive", filename: letter.toUpperCase() + ":", ok: made === 0 && labelled === 0 && rc === 0 && link === root, made, labelled, rc, link });
+  };
+  const doMapDrive = (drive) => {
+    if (!drive || !drive.id) return;
+    gated(() => whenModuleReady(["bwMapDrive"], () => mapGuestDrive(drive)));
+  };
+  // a deleted drive: unmapped, then its folder emptied and removed, deepest first
+  const doRemoveDrive = (drive) => {
+    if (!drive || !drive.id) return;
+    gated(() =>
+      whenModuleReady(["bwUnmapDrive"], () => {
+        const root = driveRoot(drive.id);
+        const mapped = drives.get(drive.id);
+        const letter = mapped ? mapped.letter : drive.letter;
+        drives.delete(drive.id);
+        const rc = letter && Module.bwDriveLink(letter) === guestPathOf(root) ? Module.bwUnmapDrive(letter) : 0;
+        const dirs = [];
+        const walk = (rel) => {
+          let names;
+          try {
+            names = Module.FS.readdir(nativePathOf(root + (rel ? "/" + rel : "")));
+          } catch (e) {
+            return;
+          }
+          for (const n of names) {
+            if (n === "." || n === "..") continue;
+            const sub = (rel ? rel + "/" : "") + n;
+            try {
+              if (Module.FS.isDir(Module.FS.stat(nativePathOf(root + "/" + sub)).mode)) {
+                walk(sub);
+                dirs.push(sub);
+              } else Module.bwDeleteFile(guestPathOf(root + "/" + sub));
+            } catch (e) {}
+          }
+        };
+        walk("");
+        dirs.forEach((sub) => Module.bwRemoveDir(guestPathOf(root + "/" + sub)));
+        Module.bwRemoveDir(guestPathOf(root));
+        for (const set of [importState.drawer, importState.folders]) for (const path of Array.from(set)) if (path.startsWith(root + "/")) set.delete(path);
+        for (const path of Array.from(importState.posted.keys())) if (path.startsWith(root + "/")) importState.posted.delete(path);
+        reportSync({ op: "remove-drive", filename: letter ? letter.toUpperCase() + ":" : drive.label || drive.id, ok: rc === 0 && !guestStat(root).exists, rc });
+      }),
+    );
+  };
+  const isLabelFile = (depth, name) => depth === 0 && LABEL_FILES.indexOf(name) >= 0;
 
   // Direct file delete: remove a file from the guest FS so cmd's `dir` no longer
   // shows it — WITHOUT typing a `del` command (more efficient + reliable, stays
@@ -498,7 +597,7 @@ function Boxedwine() {
         importState.drawer.delete(filename);
         importState.posted.delete(filename);
         withVerify("delete", filename, { present: false }, () =>
-          Module.bwDeleteFile(D_DRIVE + filename),
+          Module.bwDeleteFile(guestPathOf(filename)),
         );
       }),
     );
@@ -511,7 +610,7 @@ function Boxedwine() {
   // then does the input gate open. Runs on every start (cold or restored) — the factory
   // image holds no user file — and is idempotent (identical bytes rewrite to the same
   // result).
-  const doReconcile = (files, folders) => {
+  const doReconcile = (files, folders, driveList) => {
     const list = Array.isArray(files) ? files : [];
     const dirs = (Array.isArray(folders) ? folders : [])
       .filter(Boolean)
@@ -523,12 +622,23 @@ function Boxedwine() {
         failed = [];
       importState.drawer = new Set();
       importState.folders = new Set();
+      // the drives first (their folders, labels and letters); D: has no label
+      for (const drive of Array.isArray(driveList) ? driveList : []) {
+        if (!drive || !drive.id) continue;
+        const name = drive.letter ? drive.letter.toUpperCase() + ":" : drive.label || drive.id;
+        const res =
+          typeof Module.bwMapDrive === "function"
+            ? mapGuestDrive(drive)
+            : reportSync({ op: "map-drive", filename: name, ok: false, error: "bwMapDrive missing" });
+        if (!res.ok) failed.push(name);
+      }
+      Module.bwDeleteFile(D_GUEST + "/" + LABEL_FILES[0]);
       for (const d of dirs) {
         importState.folders.add(d);
         const res =
           typeof Module.bwMakeDir === "function"
             ? withVerify("reconcile-mkdir", d, { present: true, dir: true }, () =>
-                Module.bwMakeDir(D_DRIVE + d),
+                Module.bwMakeDir(guestPathOf(d)),
               )
             : reportSync({ op: "reconcile-mkdir", filename: d, ok: false, error: "bwMakeDir missing" });
         if (res.ok) madeFolders++;
@@ -568,6 +678,7 @@ function Boxedwine() {
         written,
         folders: dirs.length,
         madeFolders,
+        drives: drives.size,
         failed,
         ms: Math.round(performance.now() - t0),
         tree: verifyTree(),
@@ -591,8 +702,9 @@ function Boxedwine() {
   // --- Guest -> drawer import -------------------------------------------
   // D: is MEMFS: a file or folder the guest created (program output, `copy con`, a
   // redirected echo, `mkdir`) would vanish at the next reload unless the drawer gets
-  // it. Every IMPORT_EVERY_MS (and after a build readback) walk D: and post the files
-  // and folders the drawer does not have, under their exact guest names. Nothing is
+  // it. Every IMPORT_EVERY_MS (and after a build readback) walk D: and the other drives and post
+  // the files and folders the drawer does not have, under their exact guest names (a drive's
+  // under "drive:<id>/"); the label files at a drive's root are not drawer files. Nothing is
   // ever deleted from the drawer here.
   const importState = {
     drawer: new Set(),
@@ -607,30 +719,32 @@ function Boxedwine() {
       folders = [],
       entries = [];
     let seen = 0;
-    const walk = (dir, depth) => {
+    const walk = (root, dir, depth) => {
       let names;
       try {
-        names = Module.FS.readdir(NATIVE_D + dir);
+        names = Module.FS.readdir(nativePathOf(root ? root + (dir ? "/" + dir : "") : dir));
       } catch (e) {
         return;
       }
       for (const name of names) {
-        if (name === "." || name === ".." || isSentinel(name)) continue;
+        if (name === "." || name === ".." || isSentinel(name) || isLabelFile(depth, name)) continue;
         if (++seen > IMPORT_MAX_ENTRIES) return;
-        const path = (dir ? dir + "/" : "") + name;
+        const rel = (dir ? dir + "/" : "") + name;
+        const path = root ? root + "/" + rel : rel;
         let st;
         try {
-          st = Module.FS.stat(NATIVE_D + path);
+          st = Module.FS.stat(nativePathOf(path));
         } catch (e) {
           continue;
         }
         if (Module.FS.isDir(st.mode)) {
           if (!importState.folders.has(path)) folders.push(path);
-          if (depth < IMPORT_MAX_DEPTH) walk(path, depth + 1);
+          if (depth < IMPORT_MAX_DEPTH) walk(root, rel, depth + 1);
         } else if (Module.FS.isFile(st.mode)) entries.push({ n: path, st });
       }
     };
-    walk("", 0);
+    walk("", "", 0);
+    for (const id of Array.from(drives.keys())) walk(driveRoot(id), "", 0);
     for (const { n, st } of entries) {
       if (importState.drawer.has(n)) continue;
       if (importState.posted.get(n) === st.size) continue; // already offered at this size
@@ -649,7 +763,7 @@ function Boxedwine() {
         continue;
       }
       try {
-        const bytes = Module.FS.readFile(NATIVE_D + n);
+        const bytes = Module.FS.readFile(nativePathOf(n));
         if (bytes.length !== st.size) continue; // still being written: next scan
         found.push({
           filename: n,
@@ -700,16 +814,16 @@ function Boxedwine() {
   };
 
   // Guest D: listing for tests / the drawer: [{name, size, dir}], recursive, names as
-  // "/" paths (Module.FS on /d_drive).
+  // "/" paths (Module.FS on /d_drive), D:'s label file left out.
   const verifyTree = () => {
     try {
       const out = [];
       const walk = (dir) => {
-        for (const n of Module.FS.readdir(NATIVE_D + dir)) {
-          if (n === "." || n === "..") continue;
+        for (const n of Module.FS.readdir(D_NATIVE + "/" + dir)) {
+          if (n === "." || n === ".." || isLabelFile(dir ? 1 : 0, n)) continue;
           const path = (dir ? dir + "/" : "") + n;
           try {
-            const st = Module.FS.stat(NATIVE_D + path);
+            const st = Module.FS.stat(nativePathOf(path));
             const isDir = Module.FS.isDir(st.mode);
             out.push({ name: path, size: st.size, dir: isDir });
             if (isDir) walk(path);
@@ -759,6 +873,8 @@ function Boxedwine() {
         const d = event.detail || {};
         return doBuild(d.filename, d.content, !!d.isBase64);
       }
+      case "run-file":
+        return doRun(typeof event.detail === "string" ? event.detail : (event.detail || {}).filename);
       case "delete-file":
         return doDeleteFile(
           typeof event.detail === "string"
@@ -771,8 +887,12 @@ function Boxedwine() {
         return doRemoveDir(event.detail);
       case "reconcile-files": {
         const d = event.detail || {};
-        return doReconcile(d.files || d, d.folders);
+        return doReconcile(d.files || d, d.folders, d.drives);
       }
+      case "map-drive":
+        return doMapDrive(event.detail);
+      case "remove-drive":
+        return doRemoveDrive(event.detail);
       case "reset":
         return doReset();
       case "interrupt":
@@ -791,11 +911,15 @@ function Boxedwine() {
       renameFile: (oldName, newName, content, isBinary) =>
         doRenameFile(oldName, newName, content, !!isBinary),
       build: (filename, content, isBase64) => doBuild(filename, content, !!isBase64),
+      run: (filename) => doRun(filename),
       readToolchainFiles: (names) => doReadToolchainFiles(names),
       deleteFile: (filename) => doDeleteFile(filename),
       makeDir: (path) => doMakeDir(path),
       removeDir: (path) => doRemoveDir(path),
-      reconcile: (files, folders) => doReconcile(files, folders),
+      reconcile: (files, folders, driveList) => doReconcile(files, folders, driveList),
+      mapDrive: (drive) => doMapDrive(drive),
+      removeDrive: (drive) => doRemoveDrive(drive),
+      driveLink: (letter) => (typeof Module !== "undefined" && Module.bwDriveLink ? Module.bwDriveLink(letter) : ""),
       inputOpen: () => inputOpen(),
       verifyTree: () => verifyTree(),
       reset: () => doReset(),

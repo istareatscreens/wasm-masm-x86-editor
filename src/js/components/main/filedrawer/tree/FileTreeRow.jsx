@@ -61,18 +61,16 @@ function FileTreeRow({ row, posinset, setsize, icon, check, isOpen, isSelected, 
       onPointerDown={(event) => actions.pointerDown(event, row)}
     >
       <span className="file-tree__gutter">
-        {row.kind !== "root" && (
-          <Checkbox
-            tabIndex={-1}
-            className="file-tree__check"
-            aria-label={"select " + row.name}
-            checked={check === "checked"}
-            indeterminate={check === "mixed"}
-            onChange={(event) => actions.check(row, event.target.checked)}
-            onClick={(event) => event.stopPropagation()}
-            onDoubleClick={(event) => event.stopPropagation()}
-          />
-        )}
+        <Checkbox
+          tabIndex={-1}
+          className="file-tree__check"
+          aria-label={"select " + row.name}
+          checked={check === "checked"}
+          indeterminate={check === "mixed"}
+          onChange={(event) => actions.check(row, event.target.checked)}
+          onClick={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+        />
       </span>
       <span className="file-tree__indent" style={{ width: row.depth * INDENT + 2 }} aria-hidden="true">
         {lines}
@@ -85,13 +83,15 @@ function FileTreeRow({ row, posinset, setsize, icon, check, isOpen, isSelected, 
       <img className="file-tree__icon" src={icon} alt="" draggable={false} />
       {isRenaming ? (
         <RenameInput
-          initial={row.name}
+          initial={row.kind === "root" ? row.label || "" : row.name}
           problemFor={(name) => actions.renameProblem(row.path, name)}
           onCommit={(name) => actions.rename(row.path, name)}
           onCancel={actions.renameCancel}
         />
       ) : (
-        <span className={"file-tree__label" + (isSelected ? " file-tree__label--selected" : "") + (isOpen ? " file-tree__label--open" : "")}>{row.name}</span>
+        <span className={"file-tree__label" + (isSelected ? " file-tree__label--selected" : "") + (isOpen ? " file-tree__label--open" : "")} title={row.title}>
+          {row.name}
+        </span>
       )}
     </li>
   );

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
@@ -31,6 +31,15 @@ function TextEditor({
   const writeToLocalStorage = useDebouncedCallback((name, val) => {
     FileSystem.writeToFile(name, val);
   }, 400);
+  // a save still waiting is written at once when the user leaves this tab (and when the editor goes)
+  useEffect(() => {
+    const flush = () => writeToLocalStorage.flush();
+    FileSystem.pendingSaves.add(flush);
+    return () => {
+      FileSystem.pendingSaves.delete(flush);
+      flush();
+    };
+  }, [writeToLocalStorage]);
 
   // CM6 onChange gives (value, viewUpdate) — NOT the CM5 (editor, data, value).
   // use-debounce v5 returns { callback, cancel, flush } (NOT a callable): calling

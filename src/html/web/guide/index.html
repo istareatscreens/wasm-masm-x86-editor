@@ -296,6 +296,7 @@
         <li><a href="#toolbar">Toolbar button reference</a></li>
         <li><a href="#files">Manage and back up files</a></li>
         <li><a href="#copy">Copy console text</a></li>
+        <li><a href="#scroll">Scroll the terminal</a></li>
         <li><a href="#troubleshooting">Troubleshoot builds and the terminal</a></li>
         <li><a href="#compatibility">Assembler and library compatibility</a></li>
         <li><a href="#help">Support and resources</a></li>
@@ -492,7 +493,7 @@ END main</code></pre>
 
       <h3 id="file-controls">File explorer controls</h3>
       <table>
-        <caption>File toolbar: select, create, import, download and delete.</caption>
+        <caption>File toolbar: select; create files, folders and drives; import; download; share; delete.</caption>
         <thead>
           <tr>
             <th scope="col">Control</th>
@@ -520,6 +521,13 @@ END main</code></pre>
               file goes into it.</td>
           </tr>
           <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/newDrive.png" width="16" height="16"
+                    alt="" /></span><span>Create new drive</span></span></th>
+            <td>Opens the Create Drive dialog with a free label such as <code>New_Drive</code>. The new drive gets a
+              letter and a new <code>test.asm</code>, which opens in the editor. See
+              <a href="#share">Share files by link</a> for how drives work.</td>
+          </tr>
+          <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/uploadFile.png" width="16"
                     height="16" alt="" /></span><span>Add file(s) to project</span></span></th>
             <td>Imports one or more files from your device into the selected folder. For a ZIP archive you choose
@@ -539,11 +547,25 @@ END main</code></pre>
               open file.</td>
           </tr>
           <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/shareLink.png" width="16"
+                    height="16" alt="" /></span><span>Share by URL</span></span></th>
+            <td>Makes a link that holds the checked files and folders of one drive, of every type (with no boxes
+              checked, the open file). Whoever opens the link gets the files on a drive of their own.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/importLink.png" width="16"
+                    height="16" alt="" /></span><span>Import by URL</span></span></th>
+            <td>Opens a window for one or many share links, each imported from the web address it holds: paste them
+              (several pasted at once fill several rows), or load a <code>.csv</code> or <code>.txt</code> list of them,
+              then select <strong>Import all</strong>.</td>
+          </tr>
+          <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/deleteFile.png" width="24"
                     height="24" alt="" /></span><span>Delete selected file(s)</span></span></th>
             <td>Removes the checked files and folders from the project and terminal (a folder with everything in it;
-              you are asked first when it is not empty). With no boxes checked, deletes the open file. Download a
-              backup before deleting files you may need.</td>
+              you are asked first when it is not empty), and every drive whose box is checked, empty ones included
+              (<code>D:</code> is only emptied). With no boxes checked, deletes the open file. Download a backup before
+              deleting files you may need.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/files.png" width="24" height="24"
@@ -565,7 +587,8 @@ END main</code></pre>
     <section aria-labelledby="files">
       <h2 id="files">Manage and back up files</h2>
       <h3>Open and rename files</h3>
-      <p>The file explorer shows the terminal's <code>D:</code> drive as a tree. Click a file to open it.
+      <p>The file explorer shows the terminal's <code>D:</code> drive as a tree, and below it any other drive a share
+        link brought, each with its letter. Click a file to open it.
         Checking its box selects it for download or deletion; it does not open it. Double-click a file to rename it,
         then press <kbd>Enter</kbd>, or press <kbd>F2</kbd> (or right-click and choose <strong>Rename</strong>) to
         rename a file or a folder. Keep the <code>.asm</code> extension on assembly source files.</p>
@@ -577,16 +600,13 @@ END main</code></pre>
       <p>Click a folder to select it; double-click it, or click its <kbd>+</kbd>/<kbd>-</kbd> box, to open or close
         it. New files, new folders, uploads and imports go into the selected folder (otherwise into the folder of
         the open file, otherwise into <code>D:\</code>); each dialog names that folder.</p>
-      <p>To move files or folders, drag them onto a folder or onto <strong>(D:)</strong>. On a touch screen, press
+      <p>To move files or folders, drag them onto a folder or onto a drive such as <strong>(D:)</strong>, from one
+        drive to another as well. On a touch screen, press
         and hold, then drag. Without dragging, right-click and choose <strong>Cut</strong>, then right-click the
         destination and choose <strong>Paste</strong> (<kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>).
         Dragging a checked item moves every checked item. The tree also works from the keyboard: arrow keys,
         <kbd>Enter</kbd>, <kbd>Space</kbd> (check), <kbd>F2</kbd>, <kbd>Delete</kbd> and
         <kbd>Shift</kbd>+<kbd>F10</kbd> (the menu).</p>
-      <p>Right-click a file or folder, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, for its menu: <strong>Open</strong>
-        (on a folder, <strong>Expand</strong> or <strong>Collapse</strong>), <strong>New File...</strong> and
-        <strong>New Folder...</strong> (created inside that folder, or next to that file), <strong>Cut</strong>,
-        <strong>Paste</strong>, <strong>Rename</strong> and <strong>Delete</strong>.</p>
       <p>A program in a folder is built and run in that folder, so an <code>INCLUDE</code> of a file next to it
         works as on Windows. The tree scrolls smoothly with thousands of files, and <strong>Select all</strong>
         checks every one of them.</p>
@@ -629,6 +649,21 @@ END main</code></pre>
          or 
          <kbd>cmd</kbd> + <kbd>shift</kbd> + <kbd>C</kbd> to copy it to your clipboard
       </p>
+    </section>
+
+    <section aria-labelledby="scroll">
+      <h2 id="scroll">Scroll the terminal</h2>
+      <p>The terminal keeps the last 500 lines of output. To see earlier ones:</p>
+      <ul>
+        <li><strong>Mouse wheel:</strong> each notch scrolls three rows on Windows and Linux (on Windows, as many as
+          the system's mouse setting for lines to scroll); on a Mac, as far as a page scrolls.</li>
+        <li><strong>Trackpad:</strong> the rows follow your fingers, one row at a time.</li>
+        <li><strong>Scrollbar:</strong> click an arrow to scroll one row, or hold it down to keep scrolling; click the
+          track above or below the thumb (the box) to scroll by the window's height less one row; drag the thumb to go
+          anywhere in the 500 lines.</li>
+      </ul>
+      <p>A program that reads the mouse itself, in a window with no earlier lines to scroll, gets one wheel event for
+        each row: three for a notch.</p>
     </section>
 
     <section aria-labelledby="troubleshooting">
@@ -675,7 +710,9 @@ END main</code></pre>
           countdown and select <strong>Hard Reset</strong>.</li>
       </ol>
       <p>A hard reset rebuilds the terminal environment and may take longer than a normal startup.
-        Files in the file explorer are restored automatically.</p>
+        Files in the file explorer, on every drive, are restored automatically, and the panes keep their layout.
+        <strong>Delete Extra Drives...</strong> in the same window removes the drives other than <code>D:</code>, and
+        <strong>Restore Default Layout</strong> puts the panes back in their default places.</p>
       <p class="note"><strong>Deleting files during a hard reset cannot be undone.</strong>
         Select <strong>Also delete all my files</strong> only if you intend to erase the project
         and any files left from an older version. Download a backup first.</p>

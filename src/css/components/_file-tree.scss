@@ -1,9 +1,22 @@
 @use "../abstracts/variables";
 
-// The file drawer's Windows 98 Explorer tree. Geometry (INDENT, connector columns, 20-px
-// rows) is set in filedrawer/tree/FileTreeRow.jsx; the field, font and colours come from
-// .file-drawer__list (components/list) and the scroll host (components/retro-scrollbar).
 .file-tree {
+  position: relative;
+
+  &__marquee {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    border: 1px dotted #fff;
+    mix-blend-mode: difference;
+    pointer-events: none;
+
+    @media (forced-colors: active) {
+      border-color: CanvasText;
+      mix-blend-mode: normal;
+    }
+  }
+
   &__row {
     position: relative;
     display: flex;

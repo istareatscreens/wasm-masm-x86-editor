@@ -6,16 +6,17 @@ import Window from "../../../common/Window.jsx";
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
 
-// "Create file in D:\lab1" / "Create folder in D:\lab1". The typed name is trimmed and
-// NFC-normalised; problemFor(name) returns the first broken rule (shown as the box's
-// tooltip) or null. Enter is evaluated synchronously, so a name typed and confirmed at
-// once is never swallowed.
-function NameWindow({ title, label, problemFor, onCreate, close }) {
-  const [value, setValue] = useState("");
+// "Create file in D:\lab1" / "Create folder in D:\lab1" / "Create Drive". The typed name (`initial` to
+// start with, selected) is trimmed and NFC-normalised; problemFor(name) returns the first broken rule (shown
+// as the box's tooltip) or null. Enter is evaluated synchronously, so a name typed and confirmed at once is
+// never swallowed.
+function NameWindow({ title, label, initial = "", problemFor, onCreate, close }) {
+  const [value, setValue] = useState(initial);
   const input = useRef(null);
 
   useEffect(() => {
     input.current.focus();
+    input.current.select();
   }, []);
 
   const name = value.trim().normalize("NFC");

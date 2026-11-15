@@ -1,9 +1,10 @@
 import { DEFAULT_PLACE, isPlace } from "./terminalPlace";
 import type { Place } from "./terminalPlace";
+import { removeStoredState } from "../../common/useStoredState.js";
 
-// The splitters' positions and the terminal's place, kept in localStorage under "layout" (the hard reset
-// deletes the key): the left column's and the upper row's share of the space and where the terminal sits
-// (terminalPlace.ts), for the wide and the narrow (<= 900 px) layout. A record without `terminal` keeps
+// The splitters' positions and the terminal's place, kept in localStorage under "layout" (Restore Default
+// Layout deletes the key): the left column's and the upper row's share of the space and where the terminal
+// sits (terminalPlace.ts), for the wide and the narrow (<= 900 px) layout. A record without `terminal` keeps
 // its shares and takes the default place.
 export const LAYOUT_KEY = "layout";
 export const LAYOUT_VERSION = 1;
@@ -41,3 +42,8 @@ export function parseLayout(text: string | null): Layout {
 
 export const serializeLayout = (layout: Layout): string =>
   JSON.stringify({ version: LAYOUT_VERSION, wide: layout.wide, narrow: layout.narrow });
+
+export const isDefaultLayout = (layout: Layout): boolean => serializeLayout(layout) === serializeLayout(DEFAULT_LAYOUT);
+
+// Restore Default Layout: the stored layout goes, and the page takes the default at once, with no reload.
+export const resetLayout = (): void => removeStoredState(LAYOUT_KEY);
