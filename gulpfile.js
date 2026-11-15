@@ -13,9 +13,11 @@ const htmlmin = require("gulp-htmlmin");
 const sitemap = require('gulp-sitemap');
 const file = require('gulp-file');
 const fsp = require("fs/promises");
+const path = require("path");
 const { Transform } = require("stream");
 const { optimize: svgoOptimize } = require("svgo");
 const { chunkGuest, guestChunkVersions, GUEST_CHUNKS_PLACEHOLDER } = require("./scripts/chunk-guest.cjs");
+const { versionAssetRefs } = require("./scripts/asset-versions.cjs");
 
 // gulp 5 decodes src() streams as UTF-8 unless told not to: binary assets need BINARY.
 const BINARY = { encoding: false };
@@ -117,6 +119,22 @@ function injectGuestChunks({ electron = false } = {}) {
         vinyl.contents = Buffer.from(text.replace(GUEST_CHUNKS_PLACEHOLDER, () => JSON.stringify(chunks)));
         cb(null, vinyl);
       }).catch((e) => cb(e));
+    },
+  });
+}
+// Each page names the local files it loads ?v=<hash of the built file> (scripts/asset-versions.cjs: why), so the
+// pages are built after those files (pagesTask), and a file a page loads that the build did not make fails it.
+function versionAssets() {
+  const hashes = new Map(); // style.css is loaded by two pages
+  return new Transform({
+    objectMode: true,
+    transform(vinyl, enc, cb) {
+      if (!vinyl.isBuffer() || !/\.html$/i.test(vinyl.path)) return cb(null, vinyl);
+      const page = vinyl.relative.split(path.sep).join("/");
+      const { html, missing } = versionAssetRefs(vinyl.contents.toString(), page, path.resolve(output), hashes);
+      if (missing.length) return cb(new Error(page + " loads files the build did not make: " + missing.join(", ")));
+      vinyl.contents = Buffer.from(html);
+      cb(null, vinyl);
     },
   });
 }
@@ -280,6 +298,7 @@ function copyHtml() {
   return src([htmlPath + "boxedwine.html", htmlPath + "web/index.html", htmlPath + "web/404.html"])
     .pipe(injectBwBuildId())
     .pipe(injectGuestChunks())
+    .pipe(versionAssets())
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(gulp.dest("public"));
 }
@@ -287,6 +306,7 @@ function copyHtml() {
 
 function copyGuideHtmlTask() {
   return src(htmlPath + "web/guide/**/*.html", { base: htmlPath + "web" })
+    .pipe(versionAssets())
     .pipe(htmlmin({ collapseWhitespace: true, removeComments: true }))
     .pipe(dest(output));
 }
@@ -301,7 +321,8 @@ function copyGuideIconsTask() {
     .pipe(dest(output + "guide/icons/"));
 }
 
-const copyGuideTask = parallel(copyGuideHtmlTask, copyGuideIconsTask);
+// The pages, after every file they load is built: each names those files by hash (versionAssets).
+const pagesTask = parallel(copyHtml, copyGuideHtmlTask);
 
 function imgTask() {
   return src([imagePath + ".ico", "src/css/images/*", "src/images/masm-icon-512w.png"], BINARY)
@@ -344,13 +365,10 @@ function watchTask() {
   gulp.watch(
     [cssPath, jsPath, jsBoxedPath, htmlPath + "**/*.html"],
     { interval: 1000 },
-    parallel(
-      cssTask,
-      jsTask,
-      wasmTask,
-      series(parallel(copyHtml, copyGuideTask), generateSitemapTask),
-      jsBoxedTask,
-      imgTask,
+    series(
+      parallel(cssTask, jsTask, wasmTask, jsBoxedTask, imgTask, copyGuideIconsTask),
+      pagesTask,
+      generateSitemapTask,
     )
   );
   gulp.watch("_headers", copyHeadersTask);
@@ -387,12 +405,12 @@ exports.default = series(
     jsBoxedTask,
     cssTask,
     wasmTask,
-    copyHtml,
-    copyGuideTask,
+    copyGuideIconsTask,
     imgTask,
     fontTask,
     guestAssetsTask
   ),
+  pagesTask,
   // sitemap/robots run AFTER copyHtml has populated public/ with the html.
   parallel(generateSitemapTask, generateRobotsTask, copyHeadersTask)
 );
@@ -404,14 +422,14 @@ exports.watch = series(
     jsBoxedTask,
     cssTask,
     wasmTask,
-    copyHtml,
-    copyGuideTask,
+    copyGuideIconsTask,
     imgTask,
     fontTask,
     guestAssetsTask,
     generateRobotsTask,
     copyHeadersTask,
   ),
+  pagesTask,
   generateSitemapTask,
   watchTask
 );
