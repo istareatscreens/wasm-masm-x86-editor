@@ -13,11 +13,11 @@ function ThemeControlWindow({
   setSelectedDayTheme,
   selectedNightTheme,
   selectedDayTheme,
-  setThemeSettingsOpened,
+  close,
 }) {
   return (
     <Window
-      onClose={() => setThemeSettingsOpened(false)}
+      onClose={close}
       title={"Theme Options"}
       size="fit"
       footer={
@@ -27,7 +27,7 @@ function ThemeControlWindow({
             className={"btn btn--window btn--createFile"}
             imageClass={"btn--window--image"}
             title="close window"
-            onClick={() => setThemeSettingsOpened(false)}
+            onClick={close}
           />
         </div>
       }

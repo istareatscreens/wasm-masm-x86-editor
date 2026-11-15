@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import Switch from "../../../common/ImageSwitch.jsx";
 import Button from "../../../common/ImageButton.jsx";
@@ -9,12 +9,7 @@ import sun from "../../../../../images/sun.png";
 //source: http://pixelartmaker.com/art/4bc9a3f2fb39a94
 import moon from "../../../../../images/moon.png";
 
-function ThemeControlGroup({
-  setLightMode,
-  lightMode,
-  themeSettingsOpened,
-  setThemeSettingsOpened,
-}) {
+function ThemeControlGroup({ setLightMode, lightMode, themeSettings }) {
   return (
     <div className={"banner__theme-mode"}>
       <Switch
@@ -26,7 +21,8 @@ function ThemeControlGroup({
       />
       <Button
         title={"Theme settings"}
-        onClick={() => setThemeSettingsOpened(!themeSettingsOpened)}
+        onClick={themeSettings.toggle}
+        {...themeSettings.opener}
         className={"banner__main__btn"}
         src={themeMenu}
       />

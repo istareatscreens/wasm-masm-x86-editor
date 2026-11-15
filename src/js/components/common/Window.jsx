@@ -5,6 +5,15 @@ import RetroScrollArea from "./RetroScrollArea.jsx";
 
 const MARGIN = 8;
 
+// The position `to` moved so that the window's corner lands on whole device pixels, `rect` being the window drawn at
+// `from`: centred by translate(-50%), a window of fractional size sits between pixels, and draws every 1-px line in it
+// (bevels, frames) blurred or faint.
+const onPixels = (rect, from, to) => {
+  const ratio = window.devicePixelRatio || 1;
+  const snap = (edge) => Math.round(edge * ratio) / ratio - edge;
+  return { x: to.x + snap(rect.left + to.x - from.x), y: to.y + snap(rect.top + to.y - from.y) };
+};
+
 // Every window of the app: a Windows 98 title bar with the close button, the body and, when given, a
 // row of buttons that never scrolls. It is rendered into <body>, sized by `size` (fit: as wide as its
 // content, medium) or by the `width` it asks for (a CSS length), never wider than the page, and kept
@@ -32,7 +41,8 @@ const Window = ({ title, onClose, size = "medium", width, className = "", scroll
       setBounds(next);
       const x = Math.max(next.left, Math.min(next.right, current.x));
       const y = Math.max(next.top, Math.min(next.bottom, current.y));
-      if (x !== current.x || y !== current.y) setPosition({ x, y });
+      const snapped = onPixels(rect, current, { x, y });
+      if (Math.abs(snapped.x - current.x) > 0.001 || Math.abs(snapped.y - current.y) > 0.001) setPosition(snapped);
     };
     fit();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
@@ -51,7 +61,7 @@ const Window = ({ title, onClose, size = "medium", width, className = "", scroll
       nodeRef={windowRef}
       position={position}
       bounds={bounds}
-      onDrag={(_, data) => setPosition({ x: data.x, y: data.y })}
+      onDrag={(_, data) => setPosition(onPixels(windowRef.current.getBoundingClientRect(), { x: data.lastX, y: data.lastY }, data))}
     >
       <div
         ref={windowRef}
@@ -73,7 +83,7 @@ const Window = ({ title, onClose, size = "medium", width, className = "", scroll
         </div>
         <div className="window-body no-drag">
           <RetroScrollArea
-            className="window__scroll"
+            className="window__scroll window__scroll-area"
             label={scrollLabel || title}
             region={!!scrollLabel}
             vertical={scrollLabel ? "always" : "auto"}

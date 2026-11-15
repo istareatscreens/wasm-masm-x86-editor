@@ -1,54 +1,79 @@
 import React, { useEffect, useRef } from "react";
 
 import Window from "../../../common/Window.jsx";
-import RetroScrollArea from "../../../common/RetroScrollArea.jsx";
+import ListBox from "../../../common/ListBox.jsx";
+import CheckOption from "../../../common/CheckOption.jsx";
+import iconWarning from "../../../../../images/msgWarning.png";
+import iconInformation from "../../../../../images/msgInfo.png";
+import iconQuestion from "../../../../../images/msgQuestion.png";
+import iconError from "../../../../../images/msgError.png";
 
-// A retro message box: the text (a string or a list of lines) and one button per choice;
-// the first choice has the focus, Escape closes as the title bar's X does.
-function ConfirmWindow({ title, message, details, choices, close }) {
-  const first = useRef(null);
+const ICONS = { warning: iconWarning, information: iconInformation, question: iconQuestion, error: iconError };
+
+// A Windows 98 message box: its icon (warning, information, question or error) beside the text (a string, or
+// a list of paragraphs), and its buttons, one per choice. `choices` is one group of choices or a list of groups;
+// the groups stand apart, and a narrow page moves a group to the next line whole. The box is as wide as its text
+// needs, up to a limit, and as its buttons. The `defaultChoice` (a label; else the first choice) has the focus,
+// Escape closes as the title bar's X does. A choice closes the box first; `dismiss`, when given, is what the X and
+// Escape do instead of `close`. `option` adds a tick box under the text ({ label, checked, onChange }); `details`
+// (lines) are listed in a list box.
+function ConfirmWindow({ title, message, details, choices, defaultChoice, close, dismiss, option, icon }) {
+  const focused = useRef(null);
   useEffect(() => {
-    if (first.current) first.current.focus();
+    if (focused.current) focused.current.focus();
   }, []);
+  const leave = dismiss || close;
   const onKeyDown = (event) => {
-    if (event.key === "Escape") close();
+    if (event.key === "Escape") leave();
   };
+  const paragraphs = Array.isArray(message) ? message : [message];
+  const groups = Array.isArray(choices[0]) ? choices : [choices];
+  const focus = defaultChoice || groups[0][0].label;
 
   return (
     <Window
-      onClose={close}
+      onClose={leave}
       className={"window__confirm"}
       title={title}
+      size="fit"
       footer={
         <div className="window__confirm__buttons" onKeyDown={onKeyDown}>
-          {choices.map((choice, i) => (
-            <button
-              key={choice.label}
-              ref={i === 0 ? first : null}
-              type="button"
-              className="btn btn--text window__confirm__btn"
-              onClick={() => {
-                close();
-                if (choice.onSelect) choice.onSelect();
-              }}
-            >
-              {choice.label}
-            </button>
+          {groups.map((group, g) => (
+            <div key={g} className="window__confirm__group">
+              {group.map((choice) => (
+                <button
+                  key={choice.label}
+                  ref={choice.label === focus ? focused : null}
+                  type="button"
+                  className="btn btn--text window__confirm__btn"
+                  onClick={() => {
+                    close();
+                    if (choice.onSelect) choice.onSelect();
+                  }}
+                >
+                  {choice.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       }
     >
       <div className="window__confirm__body" onKeyDown={onKeyDown}>
-        <p className="window__confirm__message">{message}</p>
-        {details && details.length > 0 && (
-          <RetroScrollArea label="Details" className="window__confirm__details-area">
-            <ul className="window__confirm__details">
-              {details.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
-          </RetroScrollArea>
-        )}
+        {icon && <img className="window__confirm__icon" src={ICONS[icon]} alt="" width={32} height={32} />}
+        <div className="window__confirm__text">
+          {paragraphs.map((text, i) => (
+            <p key={i} className="window__confirm__message">
+              {text}
+            </p>
+          ))}
+          {option && (
+            <CheckOption className="window__confirm__option" checked={option.checked} onChange={option.onChange}>
+              {option.label}
+            </CheckOption>
+          )}
+          {details && details.length > 0 && <ListBox label="Details" items={details} className="window__confirm__details" />}
+        </div>
       </div>
     </Window>
   );

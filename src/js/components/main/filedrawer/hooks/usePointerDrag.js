@@ -78,7 +78,7 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
     setDrag({ items: s.items, row: s.row, x, y, target: null, problem: null });
   };
 
-  // the drop target under the pointer: a folder row, the (D:) row, or the empty list
+  // the drop target under the pointer: a folder row, a drive's row, or the empty list
   // area below the rows (= D:\); a file row, and the space of rows not drawn yet
   // (data-spacer), are no target
   const targetAt = (x, y) => {
@@ -135,7 +135,7 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
       e.preventDefault();
       const { target, rowEl } = targetAt(e.clientX, e.clientY);
       s.target = target;
-      s.problem = target === null ? "Drop on a folder or on (D:)." : handlers.current.check(s.items, target);
+      s.problem = target === null ? "Drop on a folder or on a drive." : handlers.current.check(s.items, target);
       // hover over a collapsed folder opens it
       const collapsed = rowEl && rowEl.getAttribute("aria-expanded") === "false" ? rowEl.getAttribute("data-path") : null;
       if (collapsed !== s.hover) {

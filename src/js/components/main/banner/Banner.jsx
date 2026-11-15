@@ -1,25 +1,25 @@
-import React, { useState } from "react";
+import React from "react";
 import Button from "../../common/ImageButton.jsx";
 import Switch from "../../common/ImageSwitch.jsx";
+import useWindowToggle from "../../common/useWindowToggle.js";
 import vimImage from "../../../../images/vim.svg";
 import {
   resetEmulator,
   interruptEmulator,
-  writeCommandToCMD,
-  quoteForCmd,
   checkFileExtension,
   assembleAndRun,
+  runInEmulator,
   focusTerminal,
 } from "../../../utility/utilityFunctions.ts";
 
 import FileSystem from "../utility/FileSystem.js";
-import { baseOf, outputPath, parentOf } from "../utility/filesystem/paths";
+import { outputPath } from "../utility/filesystem/paths";
 
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
 import cmdCancel from "../../../../images/cmdCancel.png";
 import runBinary from "../../../../images/runBinary.png";
-import about from "../../../../images/about.png";
+import aboutIcon from "../../../../images/about.png";
 import resetCache from "../../../../images/cacheReset.png";
 
 import About from "./about/About.jsx";
@@ -55,10 +55,13 @@ const Banner = function Banner({
   //resize handles
   handlesHidden,
   setHandlesHidden,
+  //drives (Hard Reset Everything)
+  drives,
+  deleteExtraDrives,
 }) {
-  const [aboutPageOpened, setAboutPageOpened] = useState(false);
-  const [resetCachePageOpened, setResetCacheOpened] = useState(false);
-  const [themeSettingsOpened, setThemeSettingsOpened] = useState(false);
+  const about = useWindowToggle();
+  const hardReset = useWindowToggle();
+  const themeSettings = useWindowToggle();
 
   const build = () => {
     if (/.asm$/.test(filename)) {
@@ -67,6 +70,7 @@ const Banner = function Banner({
       // bytes exactly (the editor saves through the same storage), with a localStorage
       // fallback for legacy-stored files.
       FileSystem.stripByteOrderMarks();
+      FileSystem.useDriveToRun(filename); // a drive without a letter gets one first
       const bytes = FileSystem.getRawFileData(filename);
       if (bytes) assembleAndRun(filename, bytes, true);
       else assembleAndRun(filename, FileSystem.getFileContentSync(filename), false);
@@ -92,17 +96,12 @@ const Banner = function Banner({
     focusTerminal();
   };
 
-  // The user may have cd'd anywhere in the terminal, so run the binary (bin\<name>.exe)
-  // FROM its source's folder on D:, as assemble.bat does (pushd/popd: the prompt's own
-  // directory is restored afterwards) instead of hoping the current directory is still
-  // the right one. A name with spaces (or other cmd-special characters) is quoted for
-  // cmd.
+  // The user may have cd'd anywhere in the terminal, so the binary (bin\<name>.exe) runs FROM its
+  // source's folder on the source's own drive, as a build does (emulator page: Boxedwine.jsx).
   const run = () => {
     if (/.asm$/.test(filename)) {
-      const folder = parentOf(filename);
-      const dir = folder ? quoteForCmd("D:\\" + folder.split("/").join("\\")) : "D:\\";
-      const exe = "bin\\" + baseOf(outputPath(filename, ".exe"));
-      writeCommandToCMD("pushd " + dir + " & " + quoteForCmd(exe) + " & popd");
+      FileSystem.useDriveToRun(filename);
+      runInEmulator(filename);
       viewMode.showTerminal();
       focusTerminal();
     }
@@ -115,17 +114,11 @@ const Banner = function Banner({
   //TODO: Move props to objects
   return (
     <>
-      {aboutPageOpened && (
-        <About close={() => setAboutPageOpened(false)} />
-      )}
-      {resetCachePageOpened && (
-        <ResetCache close={() => setResetCacheOpened(false)}></ResetCache>
-      )
-      }
-      {themeSettingsOpened && (
+      {about.isOpen && <About close={about.close} />}
+      {hardReset.isOpen && <ResetCache close={hardReset.close} drives={drives} fileList={fileList} deleteExtraDrives={deleteExtraDrives} />}
+      {themeSettings.isOpen && (
         <ThemeControlWindow
-          setThemeSettingsOpened={setThemeSettingsOpened}
-          themeSettingsOpened={setThemeSettingsOpened}
+          close={themeSettings.close}
           themeList={themeList}
           setSelectedDayTheme={setSelectedDayTheme}
           setSelectedNightTheme={setSelectedNightTheme}
@@ -170,7 +163,8 @@ const Banner = function Banner({
           <Button
             title={"hard reset"}
             className={"banner__main__btn"}
-            onClick={() => setResetCacheOpened(!resetCachePageOpened)}
+            onClick={hardReset.toggle}
+            {...hardReset.opener}
             src={resetCache}
           />
           <input
@@ -191,8 +185,7 @@ const Banner = function Banner({
             selected={selectedFont}
           />
           <ThemeControlGroup
-            setThemeSettingsOpened={setThemeSettingsOpened}
-            themeSettingsOpened={themeSettingsOpened}
+            themeSettings={themeSettings}
             lightMode={lightMode}
             setLightMode={setLightMode}
           />
@@ -217,8 +210,9 @@ const Banner = function Banner({
           <Button
             title={"application info"}
             className={"banner__main__btn"}
-            onClick={() => setAboutPageOpened(!aboutPageOpened)}
-            src={about}
+            onClick={about.toggle}
+            {...about.opener}
+            src={aboutIcon}
           />
         </div>
       </div>

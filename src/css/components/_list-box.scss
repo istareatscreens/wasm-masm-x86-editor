@@ -1,0 +1,32 @@
+@use "../abstracts/variables";
+
+.list-box {
+  padding: 2px;
+  background: variables.$surface;
+  box-shadow: variables.$border-field;
+
+  &.retro-scroll-host--vertical {
+    padding-right: 18px;
+  }
+
+  > .retro-scrollbar--vertical {
+    top: 2px;
+    right: 2px;
+    bottom: 2px;
+  }
+
+  > .retro-scroll-area__surface {
+    overflow-x: hidden;
+  }
+
+  &__rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    padding: 0 2px;
+    overflow-wrap: anywhere;
+  }
+}

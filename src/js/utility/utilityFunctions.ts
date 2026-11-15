@@ -130,10 +130,34 @@ export const syncFileToEmulator = (filename: string, content: string, isBinary: 
 //"emulator-ready" (cold boot or restore — the factory image holds no user file).
 //files: [{filename, content, isBinary}] (content = text, or base64 when isBinary);
 //folders: every folder path ("lab1/io"), empty ones included, created first.
-export const reconcileEmulatorFiles = (files: { filename: string; content: string; isBinary: boolean }[], folders: string[] = []): void => {
+//drives: the other drives [{id, letter, label}], mapped (with their labels) before the files are
+//written. D: has no label.
+export const reconcileEmulatorFiles = (files: { filename: string; content: string; isBinary: boolean }[], folders: string[] = [], drives: GuestDrive[] = []): void => {
   const app = getBwApp();
-  if (app && typeof app.reconcile === "function") return app.reconcile(files, folders);
-  postMessage("reconcile-files", { data: { files, folders } });
+  if (app && typeof app.reconcile === "function") return app.reconcile(files, folders, drives);
+  postMessage("reconcile-files", { data: { files, folders, drives } });
+};
+
+export interface GuestDrive {
+  id: string;
+  letter: string;
+  label: string;
+}
+
+//A drive in the terminal: its folder of the drive store, its label (.windows-label, `vol E:`) and its
+//letter mapped (Module.bwMapDrive). Mapping again writes the label again, and moves the drive when its letter
+//changed (another tab took that letter at the same time).
+export const mapDriveInEmulator = (drive: GuestDrive): void => {
+  const app = getBwApp();
+  if (app && typeof app.mapDrive === "function") return app.mapDrive(drive);
+  postMessage("map-drive", { data: drive });
+};
+
+//A deleted drive: its letter unmapped and its folder of the drive store removed.
+export const removeDriveFromEmulator = (drive: GuestDrive): void => {
+  const app = getBwApp();
+  if (app && typeof app.removeDrive === "function") return app.removeDrive(drive);
+  postMessage("remove-drive", { data: drive });
 };
 
 //Rename a file inside the guest filesystem (Module.bwRenameFile — the node's own
@@ -162,6 +186,14 @@ export const assembleAndRun = (filename: string, content: string, isBase64: bool
   const app = getBwApp();
   if (app && typeof app.build === "function") return app.build(filename, content, isBase64);
   postMessage("build-file", { data: { filename, content, isBase64 } });
+};
+
+//Run the program a build of the .asm `filename` made (bin\<name>.exe), from the source's folder on its own drive
+//(the emulator page composes the command from its own drive map).
+export const runInEmulator = (filename: string): void => {
+  const app = getBwApp();
+  if (app && typeof app.run === "function") return app.run(filename);
+  postMessage("run-file", { data: filename });
 };
 
 //The bytes of entries of the toolchain archive (C:\files in the guest), read in the

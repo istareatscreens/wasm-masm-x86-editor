@@ -34,6 +34,10 @@ $border-window-inner: inset -2px -2px $button-shadow,
 $border-field: inset -1px -1px $button-highlight, inset 1px 1px $button-shadow,
   inset -2px -2px $button-face, inset 2px 2px $window-frame;
 
+/* The group box's etched frame (EDGE_ETCHED): a sunken outer and a raised inner line, in shadow and highlight */
+$border-etched: inset -1px -1px $button-highlight, inset 1px 1px $button-shadow,
+  inset -2px -2px $button-shadow, inset 2px 2px $button-highlight;
+
 //checkbox
 $radio-label-spacing: 6px;
 $checkbox-width: 13px;

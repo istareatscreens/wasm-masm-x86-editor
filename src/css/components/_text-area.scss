@@ -1,0 +1,42 @@
+@use "../abstracts/variables";
+
+.text-area {
+  padding: 2px;
+  background: variables.$button-highlight;
+  box-shadow: variables.$border-field;
+
+  &--read-only {
+    background: variables.$surface;
+  }
+
+  &.retro-scroll-host--vertical {
+    padding-right: 18px;
+  }
+
+  > .retro-scrollbar--vertical {
+    top: 2px;
+    right: 2px;
+    bottom: 2px;
+  }
+
+  &__input {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 1px 2px;
+    border: 0;
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    resize: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    &:focus-visible {
+      outline: 1px dotted #000;
+      outline-offset: -1px;
+    }
+  }
+}

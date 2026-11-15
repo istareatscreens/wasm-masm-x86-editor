@@ -354,6 +354,90 @@
           } catch (err) {}
         });
       })();
+      // Wheel and trackpad: every event over the console becomes console rows by the platform's convention before
+      // SDL sees it, and the rows reach SDL as one emulated wheel press each (the guest scrolls one row a press).
+      // Pixels per row: Windows 100/3, as its own console (Chromium sends 100/3 px per line of the system's lines
+      // per notch); Linux and ChromeOS 40 (Chromium's 120 px notch is 3 rows, as in VTE); macOS and the rest the
+      // console's row height, so the text follows the fingers. Lines are rows, a page is the window less a row.
+      // deltaMode is read first: Firefox then reports lines instead of pixels at 16 px a line.
+      window.bwWheelPlatform = function (nav) {
+        var p = "";
+        try {
+          p = (nav.userAgentData && nav.userAgentData.platform) || nav.platform || "";
+        } catch (e) {}
+        p = String(p).toLowerCase();
+        if (p.indexOf("win") === 0) return "windows";
+        if (p.indexOf("mac") === 0) return "mac";
+        if (p.indexOf("linux") >= 0 || p.indexOf("chrome os") >= 0 || p.indexOf("cros") >= 0) return "linux";
+        return "other";
+      };
+      window.bwWheelRows = function (mode, delta, platform, windowRows, state) {
+        var rows;
+        if (mode === 1) rows = delta;
+        else if (mode === 2) rows = delta * Math.max(1, windowRows - 1);
+        else rows = delta / (platform === "windows" ? 100 / 3 : platform === "linux" ? 40 : (window.BW_CELL && window.BW_CELL.h) || 22);
+        if (state.acc && rows && rows > 0 !== state.acc > 0) state.acc = 0; // a new direction starts afresh
+        state.acc += rows;
+        var whole = state.acc > 0 ? Math.floor(state.acc + 1e-9) : Math.ceil(state.acc - 1e-9);
+        state.acc -= whole;
+        if (Math.abs(state.acc) < 1e-6) state.acc = 0;
+        return whole || 0;
+      };
+      (function () {
+        var canvas = document.getElementById("canvas");
+        if (!canvas) return;
+        var platform = window.bwWheelPlatform(navigator);
+        var state = { acc: 0 },
+          pending = 0,
+          waiting = false,
+          own = false,
+          x = 0,
+          y = 0;
+        // the rows gathered so far, at most 10 a press burst (the emulator's limit per event)
+        var flush = function () {
+          while (pending) {
+            var n = pending > 0 ? Math.min(10, pending) : Math.max(-10, pending);
+            pending -= n;
+            own = true;
+            try {
+              canvas.dispatchEvent(
+                new WheelEvent("wheel", { deltaY: n * 100, deltaMode: 0, clientX: x, clientY: y, bubbles: true, cancelable: true }),
+              );
+            } finally {
+              own = false;
+            }
+          }
+        };
+        var frame = function () {
+          if (!pending) return (waiting = false);
+          flush();
+          requestAnimationFrame(frame);
+        };
+        window.addEventListener(
+          "wheel",
+          function (e) {
+            if (own) return; // the page's own event, for SDL
+            if (e.ctrlKey) return; // Ctrl+wheel and pinch: SDL's, as before
+            var mode = e.deltaMode,
+              delta = e.deltaY;
+            e.preventDefault();
+            e.stopPropagation();
+            if (!delta) return; // horizontal: the console has no horizontal scrolling
+            x = e.clientX;
+            y = e.clientY;
+            var windowRows = window.bwGeometryFor ? window.bwGeometryFor(canvas.width, canvas.height).rows : 2;
+            var rows = window.bwWheelRows(mode, delta, platform, windowRows, state);
+            if (!rows) return;
+            pending += rows;
+            // at once when nothing is waiting, then once per frame
+            if (waiting) return;
+            waiting = true;
+            flush();
+            requestAnimationFrame(frame);
+          },
+          { capture: true, passive: false },
+        );
+      })();
       window.bwOpenInput = function (why) {
         if (window.BW_INPUT_OPEN) return;
         window.BW_INPUT_OPEN = true;

@@ -8,6 +8,17 @@
 
 import * as hf from './filesystem/FSHelperFunctions.js';
 
+// The store's version: a token in localStorage that every tab of the app renews once its writes are in the
+// store. A tab whose cache is from another version reads the store again (utility/session/tabSync.js).
+export const VERSION_KEY = 'masm-files-version';
+const readVersion = () => {
+  try {
+    return window.localStorage.getItem(VERSION_KEY);
+  } catch (error) {
+    return null;
+  }
+};
+
 /**
  * Storage Adapter Wrapper
  * Provides both sync and async interfaces for storage operations
@@ -22,6 +33,75 @@ class StorageAdapterWrapper {
     // legacy files only, which the "download legacy" button detects).
     this.cache = new Map();
     this._initPromise = null;
+    // database writes not finished yet (flush awaits them)
+    this.pending = new Set();
+    // the store's version the cache is from; behind: another tab's list was merged with a write of this tab
+    this.version = null;
+    this.behind = false;
+    this.onBehind = null;
+    // a list key's three-way merge (FileSystem), or null: the write replaces what is stored
+    this.mergerFor = () => null;
+    // writes made while reload() reads the store
+    this.overlay = null;
+  }
+
+  _track(promise) {
+    this.pending.add(promise);
+    const done = () => {
+      this.pending.delete(promise);
+      if (!this.pending.size) this._stamp();
+    };
+    promise.then(done, done);
+    return promise;
+  }
+
+  // a new version, once this tab's writes are in the store (other tabs hear of it through the storage event)
+  _stamp() {
+    const version = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try {
+      window.localStorage.setItem(VERSION_KEY, version);
+      this.version = version;
+    } catch (error) {}
+  }
+
+  async flush() {
+    while (this.pending.size) await Promise.all(Array.from(this.pending, (promise) => promise.catch(() => {})));
+  }
+
+  isBehind() {
+    return this.behind || readVersion() !== this.version;
+  }
+
+  // The cache read again from the store, with this tab's writes made meanwhile on top. A store that cannot
+  // be read leaves the cache as it is. Another tab writing meanwhile leaves this tab behind again.
+  async reload() {
+    await this.init();
+    await this.flush();
+    const version = readVersion();
+    this.behind = false;
+    this.overlay = new Map();
+    try {
+      const storage = await hf.getStorage();
+      const cache = new Map(await storage.readAll());
+      if (!cache.has('/')) throw new Error('the store has no root entry');
+      this.overlay.forEach((value, key) => (value === undefined ? cache.delete(key) : cache.set(key, value)));
+      this.cache = cache;
+      this.version = version;
+    } catch (error) {
+      this.behind = true;
+      throw error;
+    } finally {
+      this.overlay = null;
+    }
+  }
+
+  async _merge(key, base, value, merge) {
+    await this.init();
+    const storage = await hf.getStorage();
+    if (await storage.mergeItem(key, base, value, merge)) {
+      this.behind = true;
+      if (this.onBehind) this.onBehind();
+    }
   }
 
   /**
@@ -42,6 +122,7 @@ class StorageAdapterWrapper {
       }
       // Seed the sync cache with everything already in the durable store.
       try {
+        this.version = readVersion();
         const entries = await hf.getAllEntries();
         for (const [k, v] of entries) this.cache.set(k, v);
       } catch (error) {
@@ -93,8 +174,11 @@ class StorageAdapterWrapper {
       // background. Deliberately does NOT write window.localStorage — the new
       // version keeps files out of localStorage so the "download legacy files"
       // button only fires for genuine pre-migration files.
+      const base = this.cache.has(key) ? this.cache.get(key) : null;
       this.cache.set(key, encoded);
-      this.setInLocalStorageAsync(key, encoded).catch(() => {});
+      if (this.overlay) this.overlay.set(key, encoded);
+      const merge = this.mergerFor(key);
+      this._track(merge ? this._merge(key, base, encoded, merge) : this.setInLocalStorageAsync(key, encoded)).catch(() => {});
     } catch (error) {
       console.error('[FileSystemAdapter] Sync set failed:', error);
     }
@@ -172,8 +256,9 @@ class StorageAdapterWrapper {
   deleteKeySync(key) {
     try {
       this.cache.delete(key);
+      if (this.overlay) this.overlay.set(key, undefined);
       // Keep IndexedDB in sync (non-blocking).
-      this.deleteKeyAsync(key).catch(() => {});
+      this._track(this.deleteKeyAsync(key)).catch(() => {});
     } catch (error) {
       console.error('[FileSystemAdapter] Sync delete failed:', error);
     }
@@ -227,6 +312,15 @@ export const FSAdapter = {
   // when another tab deletes it (the connection is closed first, so the delete goes through)
   closeStore: () => hf.getStorage().then((storage) => storage.close()),
   onStoreDeleted: (fn) => hf.getStorage().then((storage) => { storage.onVersionChange = fn; }),
+
+  // Tabs: every write made so far, in the database; the store read again; whether another tab wrote since
+  // (markBehind: the storage event said so), and its callback when a list write of this tab merged theirs
+  flush: () => storageAdapter.flush(),
+  reload: () => storageAdapter.reload(),
+  isBehind: () => storageAdapter.isBehind(),
+  markBehind: () => { storageAdapter.behind = true; },
+  onBehind: (fn) => { storageAdapter.onBehind = fn; },
+  setMerger: (mergerFor) => { storageAdapter.mergerFor = mergerFor; },
 
   // Initialize storage
   init: (type = 'indexeddb') => storageAdapter.init(type),
