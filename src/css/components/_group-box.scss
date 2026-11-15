@@ -1,0 +1,21 @@
+@use "../abstracts/variables";
+
+.group-box {
+  min-width: 0;
+  margin: 0;
+  padding: 8px 12px 12px;
+  border: 0;
+  box-shadow: variables.$border-etched;
+
+  > .group-box__caption {
+    margin-left: -6px;
+    padding: 2px 1px 0;
+    line-height: normal;
+    background: variables.$surface;
+  }
+
+  // forced colours drop shadows: a plain frame there, which the browser cuts behind the caption
+  @media (forced-colors: active) {
+    border: 1px solid CanvasText;
+  }
+}

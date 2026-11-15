@@ -48,6 +48,7 @@
 			Config.ddrawOverridePath = getDDrawOverridePath();
 			Config.payloadZipFile = "app.zip";
 			Config.d_drive = "/d_drive";
+			Config.drive_store = "/bw_drives"; // masm-editor: the other drives' folders, at /mnt/bw_drives in the guest
         }
         function allowParameterOverride() {
             if(Config.urlParams.length >0) {
@@ -439,8 +440,9 @@
     		console.log("Use Storage mode: "+Config.storageMode);
 			FS.mkdir(ROOT);
 			FS.mkdir(Config.d_drive);
-			// masm-editor: /root and /d_drive are plain MEMFS (the user's files live in the
-			// parent app; the snapshot carries /root). Older builds' IDBFS stores are
+			FS.mkdir(Config.drive_store);
+			// masm-editor: /root, /d_drive and /bw_drives are plain MEMFS (the user's files live in
+			// the parent app; the snapshot carries /root). Older builds' IDBFS stores are
 			// imported once and deleted.
 			bwMigrateLegacyStores(callback);
 		}
@@ -642,6 +644,9 @@
             params.push("-mount_drive"); // -mount_drive "/d_drive" d
             params.push(Config.d_drive);
             params.push("d");
+            params.push("-mount"); // masm-editor: -mount "/bw_drives" /mnt/bw_drives (no letter; the app maps each drive's folder)
+            params.push(Config.drive_store);
+            params.push("/mnt/bw_drives");
             
             if (Config.resolution != null) {
             	params.push("-resolution");

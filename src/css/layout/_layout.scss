@@ -1,27 +1,29 @@
 @use "../abstracts/mixins";
 @use "../abstracts/variables";
 
-// The page is as tall as the initial containing block (html, body and #root are 100 %): on a phone the
-// screen with the browser's toolbars shown, which does not change while they move or the on-screen
-// keyboard opens, so the terminal is not re-fitted for them. No vh or dvh here on purpose.
-//
-// Two pane columns and up to three pane rows, with a track for the splitters between them
-// (layout/AppLayout.jsx puts a SplitHandle in vsplit and hsplit; a layout without one gives its track
-// 0). The first row holds the main bar: as many rows of $banner-height as its controls need
-// (banner/useBannerRows.js sets --banner-rows and data-banner-rows); the file drawer's column starts at
-// the top with its own toolbar. The rows below share the rest by the splitters' fractions
-// (--split-wide-x/y, --split-narrow-x/y from AppLayout), each pane at least 120 px while there is room
-// for two, half each otherwise. An attribute, not a class: the layout modifier is the root's third class.
 .app-layout {
   --banner-height: calc(var(--banner-rows, 1) * #{variables.$banner-height});
   --splitter: 6px;
-  --vbar: var(--splitter);
-  --hbar: var(--splitter);
+  --vbar-size: var(--splitter);
+  --hbar-size: var(--splitter);
+  --shown: 1;
+  --vbar: calc(var(--vbar-size) * var(--shown));
+  --hbar: calc(var(--hbar-size) * var(--shown));
   --x: var(--split-wide-x, 0.6);
   --y: var(--split-wide-y, 0.4);
-  --left: clamp(min(120px, 50%), calc(var(--x) * (100% - var(--vbar))), max(calc(100% - 120px - var(--vbar)), 50%));
-  --rest: calc(100% - var(--banner-height) - var(--hbar));
-  --top: clamp(min(120px, calc(var(--rest) / 2)), calc(var(--y) * var(--rest)), max(calc(var(--rest) - 120px), calc(var(--rest) / 2)));
+  --left-share: clamp(
+    min(120px, 50%),
+    calc(var(--x) * (100% - var(--vbar-size))),
+    max(calc(100% - 120px - var(--vbar-size)), 50%)
+  );
+  --left: calc(var(--left-share) + var(--vbar-size) - var(--vbar));
+  --rest: calc(100% - var(--banner-height) - var(--hbar-size));
+  --top-share: clamp(
+    min(120px, calc(var(--rest) / 2)),
+    calc(var(--y) * var(--rest)),
+    max(calc(var(--rest) - 120px), calc(var(--rest) / 2))
+  );
+  --top: calc(var(--top-share) + var(--hbar-size) - var(--hbar));
   height: 100%;
   // a pane the layout has no area for (the hidden terminal keeps its box) gets zero-sized implicit
   // tracks: it takes no space from the panes and cannot make the page scrollable
@@ -30,12 +32,35 @@
   grid-auto-rows: 0;
   grid-auto-columns: 0;
   grid-template-columns: minmax(0, var(--left)) var(--vbar) minmax(0, 1fr);
-  grid-template-rows: var(--banner-height) minmax(0, var(--top)) var(--hbar) minmax(0, 1fr);
+  grid-template-rows: var(--banner-height) minmax(0, var(--top)) var(
+      --hbar
+    ) minmax(0, 1fr);
   grid-template-areas:
     "banner banner file_drawer"
     "editor vsplit file_drawer"
     "editor vsplit hsplit"
     "editor vsplit cmd";
+
+  // whole pixels where the browser can round them: Firefox resolves a fractional share to different layout units with
+  // and without the handle's track, so hiding the handles would move a boundary
+  @supports (width: round(1.5px, 1px)) {
+    --left-share: round(
+      clamp(
+        min(120px, 50%),
+        calc(var(--x) * (100% - var(--vbar-size))),
+        max(calc(100% - 120px - var(--vbar-size)), 50%)
+      ),
+      1px
+    );
+    --top-share: round(
+      clamp(
+        min(120px, calc(var(--rest) / 2)),
+        calc(var(--y) * var(--rest)),
+        max(calc(var(--rest) - 120px), calc(var(--rest) / 2))
+      ),
+      1px
+    );
+  }
 
   // a finger needs a wider splitter
   @media (pointer: coarse) {
@@ -67,11 +92,11 @@
 
   // the resize handles hidden (the banner's switch): no splitter tracks, the panes meet
   &[data-handles="hidden"] {
-    --splitter: 0px;
+    --shown: 0;
   }
 
   &--no-editor {
-    --hbar: 0px;
+    --hbar-size: 0px;
     grid-template-areas:
       "banner banner file_drawer"
       "cmd vsplit file_drawer"
@@ -80,7 +105,7 @@
   }
 
   &--no-cmd {
-    --hbar: 0px;
+    --hbar-size: 0px;
     grid-template-areas:
       "banner banner file_drawer"
       "editor vsplit file_drawer"
@@ -90,7 +115,7 @@
 
   // the terminal stays where it was: beside the editor when it was under the drawer, under it otherwise
   &--no-file-drawer {
-    --hbar: 0px;
+    --hbar-size: 0px;
     grid-template-areas:
       "banner banner cmd"
       "editor vsplit cmd"
@@ -99,8 +124,8 @@
 
     &[data-terminal="bottom"],
     &[data-terminal="left"] {
-      --vbar: 0px;
-      --hbar: var(--splitter);
+      --vbar-size: 0px;
+      --hbar-size: var(--splitter);
       grid-template-areas:
         "banner banner banner"
         "editor editor editor"
@@ -110,8 +135,8 @@
   }
 
   &--only-editor {
-    --vbar: 0px;
-    --hbar: 0px;
+    --vbar-size: 0px;
+    --hbar-size: 0px;
     grid-template-areas:
       "banner banner banner"
       "editor editor editor"
@@ -120,8 +145,8 @@
   }
 
   &--only-cmd {
-    --vbar: 0px;
-    --hbar: 0px;
+    --vbar-size: 0px;
+    --hbar-size: 0px;
     grid-template-areas:
       "banner banner banner"
       "cmd cmd cmd"

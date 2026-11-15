@@ -1,12 +1,8 @@
 import React from "react";
 import CacheResetWindow from "./CacheResetWindow.jsx";
 
-function About({ close }) {
-  return (
-    <>
-      <CacheResetWindow close={close} />
-    </>
-  );
+function ResetCache(props) {
+  return <CacheResetWindow {...props} />;
 }
 
-export default About;
+export default ResetCache;
