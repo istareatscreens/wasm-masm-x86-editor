@@ -507,6 +507,16 @@
   }
 }
 
+.window .input-box {
+  height: auto;
+}
+
+.file-type-choice {
+  display: flex;
+  flex-direction: column;
+  gap: variables.$grouped-element-spacing;
+}
+
 .title-bar-controls button {
   padding: 0;
   display: block;

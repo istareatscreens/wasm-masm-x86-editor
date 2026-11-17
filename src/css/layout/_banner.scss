@@ -1,5 +1,16 @@
 @use "../abstracts/variables";
 
+// The main bar's collapse button shows only while its controls cannot all stand on one row
+// (data-banner-overflow, useBannerRows.js). Collapsed, the bar shows its first row: the controls go on
+// wrapping, clipped where the second row begins.
+.app-layout:not([data-banner-overflow]) .banner__collapse {
+  display: none;
+}
+.app-layout[data-banner-overflow] .banner__main__group--collapsed {
+  height: variables.$banner-height;
+  overflow: hidden;
+}
+
 // The select-all box: a column of its own at the drawer bar's left, on the bar's last row,
 // where a one-row bar has it (0.75rem above the bar's bottom).
 .checkbox--selectAll {

@@ -6,13 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MASM x86 Editor User Guide | Toolbar and Irvine32 Example</title>
   <meta name="description"
-    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
+    content="Learn to compile, link and run MASM-compatible x86 assembly online. A user manual covering programs in several files, DLLs, toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <link rel="canonical" href="https://masm.isas.dev/guide/" />
   <link rel="icon" href="/favicon.ico" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="MASM x86 Editor User Guide | Toolbar and Irvine32 Example" />
   <meta property="og:description"
-    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
+    content="Learn to compile, link and run MASM-compatible x86 assembly online. A user manual covering programs in several files, DLLs, toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <meta property="og:url" content="https://masm.isas.dev/guide/" />
   <meta property="og:image" content="https://masm.isas.dev/masm-icon-512w.png" />
   <meta property="og:image:alt" content="WASM MASM x86 Editor icon" />
@@ -282,7 +282,9 @@
       <p>Write, compile, link and run MASM (Microsoft Macro Assembler) assembly online with <strong>WASM MASM x86
           Editor</strong>.
         The editor uses JWasm to assemble source code, JWlink to create executables, and BoxedWine
-        to run 32-bit x86 programs. The <strong>Irvine32 library</strong> is included.</p>
+        to run 32-bit x86 programs. The <strong>Irvine32 library</strong> is included.
+        A program split into several files is linked as Microsoft's MASM and LINK link it, with no project file, and
+        a module-definition file builds a DLL: see <a href="#several-files">Programs in several files and DLLs</a>.</p>
       <p>This manual covers the browser editor, its toolbar controls and the steps to build and back up a program.
         Use a browser with JavaScript and WebAssembly enabled; no local assembler installation is required.</p>
       <p><a class="launch" href="/">Launch the MASM editor</a></p>
@@ -293,6 +295,7 @@
       <ol>
         <li><a href="#first-program">Compile and run your first program</a></li>
         <li><a href="#utf8-output">Print text in any language</a></li>
+        <li><a href="#several-files">Programs in several files and DLLs</a></li>
         <li><a href="#toolbar">Toolbar button reference</a></li>
         <li><a href="#files">Manage and back up files</a></li>
         <li><a href="#copy">Copy console text</a></li>
@@ -366,6 +369,100 @@ END main</code></pre>
         library.</p>
     </section>
 
+    <section aria-labelledby="several-files">
+      <h2 id="several-files">Programs in several files and DLLs</h2>
+      <p>A program can be split into modules, with no project file: MASM's own <code>END</code>, <code>PROTO</code>
+        and <code>INCLUDE</code> say what goes together. Make these three files in one folder, open
+        <code>main.asm</code> and select <strong>Compile, link and run .asm file</strong>. It prints
+        <code>42</code>.</p>
+      <pre aria-label="MASM source for math.inc" tabindex="0"><code>; math.inc: what math.asm offers
+INCLUDE Irvine32.inc
+AddTwo PROTO                ; EAX = EAX + EBX</code></pre>
+      <pre aria-label="MASM source for math.asm" tabindex="0"><code>INCLUDE math.inc
+
+.code
+AddTwo PROC
+    add eax, ebx
+    ret
+AddTwo ENDP
+END</code></pre>
+      <pre aria-label="MASM source for main.asm" tabindex="0"><code>INCLUDE math.inc
+
+.code
+main PROC
+    mov eax, 20
+    mov ebx, 22
+    call AddTwo
+    call WriteDec           ; prints EAX
+    call Crlf
+    exit
+main ENDP
+END main</code></pre>
+      <p>To make <code>math.inc</code>, choose <strong>Include file (.inc)</strong> under <strong>Type</strong> in the
+        Create file window.</p>
+      <p>What is linked follows from the sources:</p>
+      <ul>
+        <li>A <strong>module</strong> is an <code>.asm</code> file whose <code>END</code> names no entry point.
+          <code>END main</code> makes a program.</li>
+        <li>A program links the modules that define what it uses (what it calls, or declares with
+          <code>PROTO</code> or <code>EXTERN</code>) and its libraries do not.</li>
+        <li>Modules are found in the program's folder, the folders below it, and the folders of the
+          <code>.inc</code> files it includes.</li>
+        <li>A name a library defines, such as Irvine's <code>WriteString</code>, comes from the library: a module
+          defining its own <code>WriteString</code> is not linked for it.</li>
+      </ul>
+      <p>With a module open, <strong>Compile, link and run .asm file</strong> builds and runs the program that uses
+        it, and <strong>Run compiled binary</strong> runs that program. A module that two programs use is only
+        assembled, and a message names the programs. When two files define a name the program needs, a message
+        names them and nothing is built: keep one, or give the program a folder of its own.</p>
+      <p>In the terminal, <code>assemble main math</code> builds the same program by hand from its folder: each file
+        is assembled into the <code>bin</code> folder beside it, then the objects are linked, the program's first,
+        into <code>bin\main.exe</code>, which runs. <code>assemble /c math</code> only assembles, and an
+        <code>.obj</code> file in the list is linked as it is: <code>assemble main bin\math.obj</code>. Quote a name
+        that holds spaces. A name with <code>%</code> in it cannot be built: the terminal's <code>cmd</code> changes
+        it.</p>
+
+      <h3 id="dll">Build a DLL</h3>
+      <p>A program builds as a DLL when a <code>.def</code> file of the same name beside it starts with
+        <code>LIBRARY</code> and the DLL's name. <strong>Compile, link and run .asm file</strong> then makes
+        <code>bin\mathdll.dll</code> and its import library <code>bin\mathdll.lib</code>, and runs nothing; by hand,
+        <code>assemble /dll mathdll</code> does the same, exporting the procedures marked <code>PROC EXPORT</code>.
+        Give a DLL a name in ASCII characters, in its file names and after <code>LIBRARY</code>: a program finds
+        the DLLs it imports by names that Windows reads in its ANSI code page.
+        Make these files in a folder of their own:</p>
+      <pre aria-label="MASM source for mathdll.asm" tabindex="0"><code>INCLUDE Irvine32.inc
+
+.code
+DllEntry PROC hInst:DWORD, reason:DWORD, reserved:DWORD
+    mov eax, TRUE           ; the DLL loads
+    ret
+DllEntry ENDP
+
+AddTwo PROC a:DWORD, b:DWORD
+    mov eax, a
+    add eax, b
+    ret
+AddTwo ENDP
+END DllEntry</code></pre>
+      <pre aria-label="Module-definition file mathdll.def" tabindex="0"><code>LIBRARY mathdll
+EXPORTS
+    AddTwo</code></pre>
+      <p>A program in the same folder uses the DLL through its import library. Build <code>mathdll.asm</code>
+        first, then <code>usedll.asm</code>, which prints <code>42</code>:</p>
+      <pre aria-label="MASM source for usedll.asm" tabindex="0"><code>INCLUDE Irvine32.inc
+INCLUDELIB bin\mathdll.lib
+AddTwo PROTO, a:DWORD, b:DWORD
+
+.code
+main PROC
+    INVOKE AddTwo, 40, 2
+    call WriteDec
+    call Crlf
+    exit
+main ENDP
+END main</code></pre>
+    </section>
+
     <section aria-labelledby="toolbar">
       <h2 id="toolbar">Toolbar button reference</h2>
       <p> Controls are listed from left to right within each group and exist at the top banner of the page.</p>
@@ -383,16 +480,19 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/buildFile.png" width="22"
                     height="22" alt="" /></span><span>Compile, link and run .asm file</span></span></th>
-            <td>Builds and runs the open <code>.asm</code> file. Select an assembly source file from the file drawer to
-              enable this button. The <code>.obj</code> and <code>.exe</code> go into a <code>bin</code> folder next
-              to the source: <code>lab1\hello.asm</code> builds <code>lab1\bin\hello.exe</code>.
+            <td>Builds and runs the open <code>.asm</code> file, with the modules it uses; with a module open, the
+              program that uses it (see <a href="#several-files">Programs in several files and DLLs</a>). Select an assembly
+              source file from the file drawer to enable this button. The <code>.obj</code> and <code>.exe</code> go
+              into a <code>bin</code> folder next to the source: <code>lab1\hello.asm</code> builds
+              <code>lab1\bin\hello.exe</code>.
             </td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/runBinary.png" width="19"
                     height="19" alt="" /></span><span>Run compiled binary</span></span></th>
-            <td>Runs the <code>.exe</code> associated with the open <code>.asm</code> file (<code>bin\</code> in its
-              folder). A compiled executable must exist. Source edits are not included until you rebuild.</td>
+            <td>Runs the <code>.exe</code> of the open <code>.asm</code> file's program (<code>bin\</code> in the
+              program's folder). A compiled executable must exist. Source edits are not included until you
+              rebuild.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/cmdCancel.png" width="24"
@@ -484,6 +584,15 @@ END main</code></pre>
               buttons on them that move the terminal. Your choice is remembered in this browser.</td>
           </tr>
           <tr>
+            <th scope="row"><span class="control"><span class="icon"><svg width="14" height="8" viewBox="0 0 7 4"
+                    shape-rendering="crispEdges" aria-hidden="true">
+                    <path d="M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z" />
+                  </svg></span><span>Collapse the toolbar / show all toolbar buttons</span></span></th>
+            <td>Shown only when the main toolbar's buttons need more than one row. The up arrow collapses the toolbar
+              to its first row, giving the space to the editor and the terminal; the down arrow shows every row
+              again. Your choice is remembered in this browser.</td>
+          </tr>
+          <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/about.png" width="24" height="24"
                     alt="" /></span><span>Application info</span></span></th>
             <td>Opens information window about the project.</td>
@@ -510,8 +619,11 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/newFile.png" width="15" height="15"
                     alt="" /></span><span>Create new assembly (.asm) text file</span></span></th>
-            <td>Opens the Create file dialog for the selected folder. Enter a filename and press <kbd>Enter</kbd>.
-              The editor adds <code>.asm</code> if needed.
+            <td>Opens the Create file dialog for the selected folder. Enter a filename, choose its type and press
+              <kbd>Enter</kbd>. The type adds its extension if needed: <strong>Assembly source (.asm)</strong>, the
+              first time; <strong>Include file (.inc)</strong>; <strong>Module definition (.def)</strong>; or
+              <strong>Custom name</strong>, which keeps the name as typed. A new <code>.asm</code> file starts with a
+              program to edit, any other file empty. The type you choose is chosen the next time.
             </td>
           </tr>
           <tr>
@@ -524,8 +636,7 @@ END main</code></pre>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/newDrive.png" width="16" height="16"
                     alt="" /></span><span>Create new drive</span></span></th>
             <td>Opens the Create Drive dialog with a free label such as <code>New_Drive</code>. The new drive gets a
-              letter and a new <code>test.asm</code>, which opens in the editor. See
-              <a href="#share">Share files by link</a> for how drives work.</td>
+              letter and a new <code>test.asm</code>, which opens in the editor.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/uploadFile.png" width="16"
@@ -564,8 +675,9 @@ END main</code></pre>
                     height="24" alt="" /></span><span>Delete selected file(s)</span></span></th>
             <td>Removes the checked files and folders from the project and terminal (a folder with everything in it;
               you are asked first when it is not empty), and every drive whose box is checked, empty ones included
-              (<code>D:</code> is only emptied). With no boxes checked, deletes the open file. Download a backup before
-              deleting files you may need.</td>
+              (<code>D:</code> is only emptied). With no boxes checked, deletes the selected file or folder, or the
+              selected drive once you confirm (never <code>D:</code>). Download a backup before deleting files you may
+              need.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/files.png" width="24" height="24"
@@ -591,10 +703,12 @@ END main</code></pre>
         link brought, each with its letter. Click a file to open it.
         Checking its box selects it for download or deletion; it does not open it. Double-click a file to rename it,
         then press <kbd>Enter</kbd>, or press <kbd>F2</kbd> (or right-click and choose <strong>Rename</strong>) to
-        rename a file or a folder. Keep the <code>.asm</code> extension on assembly source files.</p>
+        rename a file, a folder or a drive. As in Windows, clicking the name of the selected one once more, then
+        waiting a moment, renames it too. Keep the <code>.asm</code> extension on assembly source files.</p>
       <p>Files other than <code>.asm</code> show a bar above the editor: <strong>Edit as text</strong> opens them in
         the editor, <strong>View in hex</strong> in the hex viewer. Binary files such as <code>.exe</code> and
-        <code>.obj</code> open in hex; other files open as text.</p>
+        <code>.obj</code> open in hex; other files open as text. Include files (<code>.inc</code>) and module-definition
+        files (<code>.def</code>) always open as text, with their syntax highlighted.</p>
 
       <h3>Folders</h3>
       <p>Click a folder to select it; double-click it, or click its <kbd>+</kbd>/<kbd>-</kbd> box, to open or close
@@ -736,6 +850,21 @@ END main</code></pre>
       <p>The library files are those of Kip Irvine's current distribution. Only <code>Clrscr</code> in
         <code>Irvine32.lib</code> is rewritten to clear the screen faster, with the same result, so a program
         written here links the same way with the standard library.</p>
+      <p><code>INCLUDE</code> finds a file as Microsoft MASM (ML 14) does. A name with a drive letter, or starting
+        with <code>\</code>, is taken as written. A name starting with <code>.\</code> or <code>..\</code> is looked
+        for in the folder the build runs in: the program's. Any other name is looked for beside the file that
+        includes it, then beside each file including that one, out to the program, and then in
+        <code>C:\files\irvine</code>.</p>
+      <p><code>INCLUDELIB</code> finds a library as Microsoft's LINK does: in the program's folder, then in
+        <code>C:\files\irvine</code> and <code>C:\files\lib</code>. A name without an extension gets
+        <code>.lib</code>.</p>
+      <p>Irvine's files are also in <code>C:\Irvine</code>, where Kip Irvine's Visual Studio setup puts them, so a
+        source that writes <code>INCLUDE C:\Irvine\Irvine32.inc</code> builds here unchanged.</p>
+      <p><code>C:\files\lib</code> holds import libraries for the Windows DLLs of the terminal (Wine 6.0), such as
+        <code>gdi32.lib</code>, <code>advapi32.lib</code>, <code>winmm.lib</code> and <code>msvcrt.lib</code> (the C
+        library's <code>printf</code>): declare the function with <code>PROTO</code> and name its library, as in
+        <code>INCLUDELIB gdi32.lib</code>. <code>kernel32.lib</code> and <code>user32.lib</code> come with Irvine32
+        and are always linked.</p>
       <p>The emulated processor is a Pentium 4: the 386 and 486 integer instructions, x87, MMX, SSE and SSE2.
         Instructions of later processors (SSE3 and newer) stop the program with a notice that names them.</p>
     </section>

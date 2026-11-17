@@ -49,6 +49,7 @@ function FileTreeRow({ row, posinset, setsize, icon, check, isOpen, isSelected, 
       onClick={(event) => {
         if (actions.dragJustEnded()) return;
         actions.focus(row);
+        actions.slowClick(event, row);
         if (event.detail <= 1) click();
       }}
       onDoubleClick={() => {

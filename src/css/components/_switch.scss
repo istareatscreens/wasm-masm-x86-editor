@@ -27,6 +27,13 @@
     margin-left: 0;
     // positioning context for absolutely-centered images (see &__image--vim)
     position: relative;
+    // the image is drawn up over the checkbox from its line in the flow, below the box; Chromium hit-tests that line
+    // as this container, which took the clicks meant for the editor and the drawer beneath it
+    pointer-events: none;
+
+    > input {
+      pointer-events: auto;
+    }
   }
 
   &__image {

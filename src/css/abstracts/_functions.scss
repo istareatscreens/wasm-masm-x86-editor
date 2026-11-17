@@ -1,0 +1,23 @@
+@use "sass:list";
+@use "sass:map";
+
+// Windows 98's small arrowheads (its scrollbar arrows'), pixel by pixel: width, height and path
+$arrowheads: (
+  down: (7, 4, "M0 0h7v1H6v1H5v1H4v1H3V3H2V2H1V1H0z"),
+  up: (7, 4, "M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z"),
+  left: (4, 7, "M0 3h1V2h1V1h1V0h1v7H3V6H2V5H1V4H0z"),
+  right: (4, 7, "M0 0h1v1h1v1h1v1h1v1H3v1H2v1H1v1H0z"),
+);
+
+// an arrowhead drawn pixel by pixel, black, as Windows 98 draws its small arrows; $scale draws each of its
+// pixels as that many CSS pixels a side
+@function arrowhead($direction, $scale: 1) {
+  $arrow: map.get($arrowheads, $direction);
+  $width: list.nth($arrow, 1);
+  $height: list.nth($arrow, 2);
+  $size: "width='#{$width * $scale}' height='#{$height * $scale}'";
+  @if $scale != 1 {
+    $size: $size + " viewBox='0 0 #{$width} #{$height}'";
+  }
+  @return url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' #{$size} shape-rendering='crispEdges'%3E%3Cpath d='#{list.nth($arrow, 3)}'/%3E%3C/svg%3E");
+}

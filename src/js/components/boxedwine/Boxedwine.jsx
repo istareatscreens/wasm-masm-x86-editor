@@ -14,6 +14,8 @@ import LoadingScreen from "./LoadingScreen.jsx";
 // The toolchain archive boxedwine.html mounts at C:\files (getAppZipFile): the shell
 // writes it to this page's file system before the mount, and a restore keeps it.
 const TOOLCHAIN_ZIP = "/assembler-dp0.zip";
+// The Irvine library's archive, mounted at C:\files\irvine and C:\Irvine (boxedwine.html: getMountedZips).
+const IRVINE_ZIP = "/irvine.zip";
 // Build artifacts to read back into the app after an assemble (skip any not produced).
 const OUTPUT_EXTS = [".obj", ".exe", ".lst", ".map"];
 // Guest -> drawer import: files and folders the guest creates on D: that the drawer
@@ -99,6 +101,45 @@ const readBackBuildOutputs = (name, onDone) => {
   }, 500);
 };
 
+// A plan's build (banner/build/buildRequest.ts): once its last output (the program's .exe or .dll, or the one
+// module's .obj) is complete, or at the plan's ceiling, every output it lists that the build left is read back.
+const readBackPlanOutputs = (request, onDone) => {
+  let tries = 0,
+    lastSize = -1;
+  const maxTries = Math.ceil(request.ceilingMs / 500);
+  const timer = setInterval(() => {
+    tries++;
+    let ready = false;
+    try {
+      const size = Module.FS.stat(nativePathOf(request.waitFor)).size;
+      ready = size > 0 && size === lastSize; // complete: as above
+      lastSize = size;
+    } catch (e) {
+      lastSize = -1;
+    }
+    if (!ready && tries < maxTries) return;
+    clearInterval(timer);
+    const outputs = [];
+    for (const path of request.read) {
+      try {
+        const bytes = Module.FS.readFile(nativePathOf(path));
+        if (bytes.length) outputs.push({ filename: path, base64: uint8ToBase64(bytes), size: bytes.length });
+      } catch (e) {
+        /* not produced by this build */
+      }
+    }
+    postToParent("build-outputs", { name: request.waitFor.replace(/\.[^./]*$/, ""), outputs, ok: ready, removed: request.remove });
+    if (onDone) onDone(ready);
+  }, 500);
+};
+
+// A toolchain archive in this page's file system, loaded with JSZip once: the page never changes it.
+const archives = new Map();
+const toolchainArchive = (archive) => {
+  if (!archives.has(archive)) archives.set(archive, window.JSZip.loadAsync(Module.FS.readFile(archive)));
+  return archives.get(archive);
+};
+
 function Boxedwine() {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -124,6 +165,7 @@ function Boxedwine() {
       "sync-file",
       "rename-file",
       "build-file",
+      "build-plan",
       "run-file",
       "delete-file",
       "make-dir",
@@ -148,6 +190,7 @@ function Boxedwine() {
       "sync-file",
       "rename-file",
       "build-file",
+      "build-plan",
       "run-file",
       "delete-file",
       "make-dir",
@@ -445,6 +488,41 @@ function Boxedwine() {
     );
   };
 
+  // A program's build plan: every file of the plan written to the guest as stored (a save still on its way
+  // cannot race the build), its stale outputs deleted, then `assemble` typed in the program's folder.
+  const doBuildPlan = (request) => {
+    if (!request || !request.files) return;
+    gated(() =>
+      whenModuleReady(["bwWriteFile", "sendText"], () => {
+        const command = inFolder(request.folder, "call C:\\files\\assemble " + request.args);
+        if (!command) return postToParent("run-refused", { filename: request.file });
+        for (const file of request.files) {
+          importState.drawer.add(file.path);
+          const slash = file.path.lastIndexOf("/");
+          if (slash > 0 && typeof Module.bwMakeDir === "function") Module.bwMakeDir(guestPathOf(file.path.slice(0, slash)));
+          const rc = writeGuestFile(file.path, file.base64, true).rc;
+          if (rc !== 0) {
+            console.error("[Boxedwine] build sync failed rc=" + rc + ": " + file.path);
+            return;
+          }
+        }
+        if (typeof Module.bwDeleteFile === "function") {
+          for (const path of request.remove) {
+            try {
+              Module.bwDeleteFile(guestPathOf(path));
+            } catch (e) {}
+          }
+        }
+        freezeState.buildInFlight = true;
+        Module.sendText(command + "\r");
+        readBackPlanOutputs(request, () => {
+          freezeState.buildInFlight = false;
+          importScan();
+        });
+      }),
+    );
+  };
+
   // The program a build of `filename` made (bin\<name>.exe), run from the source's folder.
   const doRun = (filename) => {
     if (!filename) return;
@@ -477,20 +555,32 @@ function Boxedwine() {
     return "pushd " + dir + " & if not errorlevel 1 (" + body + " & popd)";
   };
 
-  // The named entries of the toolchain archive, read with this page's JSZip once input
-  // is open; rejects when one is missing.
-  const doReadToolchainFiles = (names) =>
+  // The named entries of a toolchain archive (the toolchain's, or Irvine's), read with this page's JSZip once
+  // input is open; rejects when one is missing.
+  const doReadToolchainFiles = (names, archive = TOOLCHAIN_ZIP) =>
     new Promise((resolve, reject) =>
       gated(async () => {
         try {
-          const zip = await window.JSZip.loadAsync(Module.FS.readFile(TOOLCHAIN_ZIP));
+          const zip = await toolchainArchive(archive);
           const files = {};
           for (const name of names) {
             const entry = zip.file(name);
-            if (!entry) throw new Error(name + " is not in " + TOOLCHAIN_ZIP);
+            if (!entry) throw new Error(name + " is not in " + archive);
             files[name] = await entry.async("uint8array");
           }
           resolve(files);
+        } catch (e) {
+          reject(e);
+        }
+      }),
+    );
+  // The toolchain's folders for the build plan: C:\files\irvine (and C:\Irvine), and C:\files\lib.
+  const doListToolchain = () =>
+    new Promise((resolve, reject) =>
+      gated(async () => {
+        try {
+          const names = (zip, prefix) => Object.keys(zip.files).filter((n) => !zip.files[n].dir && n.indexOf(prefix) === 0 && n.indexOf("/", prefix.length) < 0).map((n) => n.slice(prefix.length));
+          resolve({ irvine: names(await toolchainArchive(IRVINE_ZIP), ""), lib: names(await toolchainArchive(TOOLCHAIN_ZIP), "lib/") });
         } catch (e) {
           reject(e);
         }
@@ -873,6 +963,8 @@ function Boxedwine() {
         const d = event.detail || {};
         return doBuild(d.filename, d.content, !!d.isBase64);
       }
+      case "build-plan":
+        return doBuildPlan(event.detail);
       case "run-file":
         return doRun(typeof event.detail === "string" ? event.detail : (event.detail || {}).filename);
       case "delete-file":
@@ -911,8 +1003,10 @@ function Boxedwine() {
       renameFile: (oldName, newName, content, isBinary) =>
         doRenameFile(oldName, newName, content, !!isBinary),
       build: (filename, content, isBase64) => doBuild(filename, content, !!isBase64),
+      buildPlan: (request) => doBuildPlan(request),
       run: (filename) => doRun(filename),
-      readToolchainFiles: (names) => doReadToolchainFiles(names),
+      readToolchainFiles: (names, archive) => doReadToolchainFiles(names, archive),
+      listToolchain: () => doListToolchain(),
       deleteFile: (filename) => doDeleteFile(filename),
       makeDir: (path) => doMakeDir(path),
       removeDir: (path) => doRemoveDir(path),

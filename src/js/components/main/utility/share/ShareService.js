@@ -8,6 +8,7 @@ import {
   SHARE_KEY, MAX_SHARE_URL, MAX_CONTAINER, canMakeLinks, makeLink, readLink, planShare, checkIncludes, dropLetters, checkLink,
   compareWithDrive, containerSize, mergeStep, reachOf, workspaceNameFrom, keepBothName, baseRoute,
 } from "./shareLink";
+import { toolchainView } from "../build/BuildService";
 
 // The desktop app (file://) has no address of its own: its links open the web app. On the web, links start with
 // the page's base route.
@@ -26,7 +27,8 @@ export async function prepareShare(targets, workspaceName, openFile) {
   const plan = planShare(targets, files, folders, (path) => FileSystem.getBytes(path), workspaceName, openFile);
   if (plan.problem) return { plan, problem: plan.problem };
   const driveFiles = files.filter((path) => rootOf(path) === plan.root).map((path) => splitDrive(path).rel);
-  const findings = checkIncludes(plan.content, driveFiles, letterOf(plan.root));
+  const toolchain = await toolchainView().catch(() => undefined); // C:\files\lib's libraries too, once the terminal is up
+  const findings = checkIncludes(plan.content, driveFiles, letterOf(plan.root), toolchain);
   const content = dropLetters(plan.content, findings);
   const unpacked = containerSize(content);
   if (unpacked > MAX_CONTAINER) return { plan, findings, link: null, unpacked, problem: null };

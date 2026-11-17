@@ -129,8 +129,8 @@
         function pasteText(text, how) {
           if (!text) return;
           lastPasteAt = performance.now();
-          pendingImport = text;
           var typed = text.replace(/\r\n?/g, "\r").replace(/\n/g, "\r"); // a line end is one Enter for the console
+          pendingImport = typed; // the emulator reports back the text it was given, line ends and all
           try {
             Module.bwSetClipboardText(typed);
           } catch (e) {}
@@ -576,6 +576,19 @@
       };
       getAppZipFile = function () {
         return "assembler-dp0.zip";
+      };
+      // The Irvine library's files (irvine.zip), mounted where the toolchain looks for them and where
+      // course code names them: C:\files\irvine and C:\Irvine.
+      getMountedZips = function () {
+        return [
+          {
+            zip: "irvine.zip",
+            at: [
+              "/home/username/.wine/dosdevices/c:/files/irvine",
+              "/home/username/.wine/dosdevices/c:/Irvine",
+            ],
+          },
+        ];
       };
       getEnvProp = function () {
         return "WINEDLLOVERRIDES=mscoree=d;mshtml=d";
@@ -1038,6 +1051,11 @@
         window.BWCache.prefetch(Config.locateAppBaseUrl + getAppZipFile(), {
           method: "GET",
         });
+        getMountedZips().forEach(function (mounted) {
+          window.BWCache.prefetch(Config.locateAppBaseUrl + mounted.zip, {
+            method: "GET",
+          });
+        });
         window.BWCache.prefetch(window.BW_GLUE_URL, {
           credentials: "same-origin",
         });
@@ -1060,6 +1078,11 @@
           window.BW_USE_MT ? "mt" : "st",
           DEFAULT_ROOT_ZIP_FILE,
           getAppZipFile(),
+          getMountedZips()
+            .map(function (mounted) {
+              return mounted.zip + "@" + mounted.at.join(",");
+            })
+            .join(";"),
           getExecutable(),
           getProgramArgs().join(","),
           "livescreen",

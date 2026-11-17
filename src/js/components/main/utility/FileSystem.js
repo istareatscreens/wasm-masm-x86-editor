@@ -13,8 +13,8 @@ import { saveAs } from "file-saver";
 
 import { crlf } from "eol";
 import dataURItoBlob from "./filesystem/dataURItoBlob.js";
-import { toAsciiJson, joinPath, parentOf, baseOf, ancestorsOf, isWithin, splitPath, nameKey } from "./filesystem/paths";
-import { splitDrive, driveRoot, withRoot, rootOf, isRootPath, registryKey, driveListKey, driveFoldersKey, parseRegistry, setDriveLetters, chooseLetter, newDriveId, exportPath } from "./filesystem/drives";
+import { toAsciiJson, joinPath, parentOf, baseOf, ancestorsOf, isWithin, splitPath, nameKey, isAsm } from "./filesystem/paths";
+import { splitDrive, driveRoot, withRoot, rootOf, isRootPath, registryKey, driveListKey, driveFoldersKey, parseRegistry, setDriveLetters, chooseLetter, newDriveId, exportFolders, exportPath } from "./filesystem/drives";
 import { mergeFileMap, mergeNames, mergeDrives, diffViews } from "./filesystem/storeSync";
 import { detectEncoding, decodeText, encodeText, canEncode, byteOrderMark, ASSEMBLER_SOURCE, bytesToBase64, base64ToBytes, bytesToBinaryString } from "./filesystem/textEncoding";
 import { isBinary, BINARY_SNIFF_BYTES } from "./filesystem/binaryDetect";
@@ -648,6 +648,12 @@ export default class FileSystem {
     callback(); //refresh code if file is already selected
   }
 
+  // A file made in the drawer: a new .asm gets the program template, any other file starts empty (an .inc
+  // holding the template's main would define it again in every program including it).
+  static createNewFile(filename) {
+    FileSystem.createFile(filename, isAsm(filename) ? ASM_TEMPLATE : "", new Date().getTime(), false);
+  }
+
   static createAssemblyFile(filename, isInitial = false) {
     //if (!(`${filename}.asm` in fileList)) { //turn this into a call back or something
     // always placed on the guest D: too (before the emulator is up the sync is a
@@ -889,20 +895,26 @@ export default class FileSystem {
     );
   }
 
-  // Download entries ({files, folders}: a folder with everything in it) as one zip that
-  // keeps the folder structure: files under their paths relative to their drive's root (under a
-  // folder per drive letter when the entries span drives), every folder (empty ones included) as a
-  // directory entry. JSZip writes non-ASCII names in UTF-8.
+  // Download entries ({files, folders}: a folder with everything in it; drives: the drives ticked whole) as one zip
+  // that keeps the folder structure: files under their paths relative to their drive's root (under a folder per
+  // drive when the entries span drives: exportFolders, by label), every folder (empty ones, and a ticked drive
+  // with nothing on it, included) as a directory entry. JSZip writes non-ASCII names in UTF-8. Resolves to false,
+  // downloading nothing, when there is nothing to put in the zip.
   static async saveEntries(targets) {
     const plan = planExport(targets, FileSystem.getFileList(), FileSystem.getAllFolders());
-    const perDrive = new Set(plan.files.concat(plan.folders).map(rootOf)).size > 1;
+    const drives = targets.drives || [];
+    const roots = Array.from(new Set(plan.files.concat(plan.folders).map(rootOf).concat(drives)));
+    if (!plan.files.length && !plan.folders.length && roots.length < 2) return false;
+    const folders = roots.length > 1 ? exportFolders(roots, FileSystem.getDrives()) : null;
     const JSZip = await FileSystem._getJSZip();
     if (!JSZip) throw new Error("JSZip unavailable");
     const zip = new JSZip();
-    plan.folders.forEach((folder) => zip.folder(exportPath(folder, perDrive)));
-    plan.files.forEach((file) => zip.file(exportPath(file, perDrive), FileSystem._fileBase64(file), { base64: true }));
+    if (folders) drives.forEach((root) => zip.folder(folders.get(root)));
+    plan.folders.forEach((folder) => zip.folder(exportPath(folder, folders)));
+    plan.files.forEach((file) => zip.file(exportPath(file, folders), FileSystem._fileBase64(file), { base64: true }));
     const blob = await zip.generateAsync({ type: "blob" });
     saveAs(blob, (plan.name || "MASMProjectFiles") + "_" + getFormatedDate() + ".zip");
+    return true;
   }
 
   // Import a .zip under `folder` keeping its folders (planImport: safe names, existing

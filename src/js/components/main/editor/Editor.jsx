@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from "react";
 import TextEditor from "./TextEditor.jsx";
 import ViewModeBanner from "./ViewModeBanner.jsx";
 import FileSystem from "../utility/FileSystem.js";
-import { isAsm } from "../utility/filesystem/paths";
+import { isAsm, isToolchainText } from "../utility/filesystem/paths";
 
 // Lazy load the HexViewer component
 const HexViewer = lazy(() => import("./HexViewer.jsx"));
@@ -12,8 +12,9 @@ const BINARY_EXTENSIONS = /\.(exe|bin|dll|obj)$/i;
 // each non-.asm file's "text"/"hex" choice, for the session
 const viewChoices = new Map();
 
-// .asm files are always edited as text. Any other file gets the view-mode banner and opens
-// in hex when its content is binary (isbinaryfile's verdict), as text otherwise.
+// .asm files are always edited as text. Any other file gets the view-mode banner; the toolchain's
+// other text files (.inc, .def) open as text, and the rest in hex when their content is binary
+// (isbinaryfile's verdict), as text otherwise.
 const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fontSize, selectedFont, disabled, lightMode, vimMode }) {
   const [code, setCode] = useState("");
   const [view, setView] = useState("text");
@@ -25,7 +26,7 @@ const Editor = function Editor({ filename, shouldRefreshFile, selectedTheme, fon
   };
 
   useEffect(() => {
-    const isBinaryFile = !isAsm(filename) && (BINARY_EXTENSIONS.test(filename) || FileSystem.isBinaryFile(filename));
+    const isBinaryFile = !isToolchainText(filename) && (BINARY_EXTENSIONS.test(filename) || FileSystem.isBinaryFile(filename));
     setBinary(isBinaryFile);
     load(isAsm(filename) ? "text" : viewChoices.get(filename) || (isBinaryFile ? "hex" : "text"), isBinaryFile);
   }, [filename, shouldRefreshFile]);

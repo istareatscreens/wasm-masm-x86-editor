@@ -12,6 +12,9 @@ import { pathProblem, nameKey, parentOf, baseOf, splitPath, joinPath, utf8Length
 import { isBinary, BINARY_SNIFF_BYTES } from "../filesystem/binaryDetect";
 import { detectEncoding, decodeText } from "../filesystem/textEncoding";
 import { splitDrive } from "../filesystem/drives";
+import { Statement, sourceStatements } from "../build/sourceFile";
+import { DrawerView, Location, Target, ToolchainView, locationOf, resolveInclude, resolveLibrary } from "../build/resolver";
+import { fileName } from "../build/fileNames";
 
 export const SHARE_KEY = "share";
 export const EVERY_BROWSER_URL = 1000000; // links up to this open in every browser (Firefox opens at most 1,048,576)
@@ -432,61 +435,71 @@ const latin1 = (bytes: Uint8Array): string => {
   return s;
 };
 
-// Every INCLUDE / INCLUDELIB of the shared .asm and .inc text files: the argument is a <...> literal or the rest of
-// the line before ";", trimmed (JWasm's IncludeDirective). It is resolved as JWasm's SearchFile does: an
-// absolute path as written; a relative one beside the including file, then in the folder of a shared .asm
-// (the folder a build runs in), then in C:\files\irvine. `driveFiles` are every file of the sharing drive, from
-// its root; `letter` is its letter.
-export function checkIncludes(content: ShareContent, driveFiles: string[], letter: string): IncludeFinding[] {
-  const shared: { [key: string]: string } = {}, onDrive: { [key: string]: string } = {};
-  content.files.forEach((file) => (shared[nameKey(file.path)] = file.path));
+// Every INCLUDE / INCLUDELIB line of the shared .asm and .inc text files, resolved as the build resolves it
+// (build/resolver.ts: ML 14.44's search for INCLUDE, LINK's for INCLUDELIB). Each shared .asm is followed through
+// what it includes, as its build would read it: a .\ or ..\ name from the .asm's folder (the build's current
+// folder), any other through the folders of the files including it, innermost first, then C:\files\irvine. A
+// shared .inc no shared .asm reaches is read on its own, from its own folder. `driveFiles` are every file of the
+// sharing drive, from its root; `letter` is its letter; `toolchain` the toolchain's folders (Irvine's files when
+// the terminal cannot tell them).
+export function checkIncludes(content: ShareContent, driveFiles: string[], letter: string, toolchain: ToolchainView = { irvine: TOOLCHAIN_FILES, lib: [] }): IncludeFinding[] {
+  const shared: { [key: string]: ShareFile } = {}, onDrive: { [key: string]: string } = {};
+  content.files.forEach((file) => (shared[nameKey(file.path)] = file));
   driveFiles.forEach((path) => (onDrive[nameKey(path)] = path));
-  const asmFolders = content.files.filter((f) => /\.asm$/i.test(f.path)).map((f) => parentOf(f.path));
-  const findings: IncludeFinding[] = [];
+  const own = (letter || "?").toUpperCase(); // a drive without a letter: only its own root names it
+  const drawer: DrawerView = {
+    find: (path) => (shared[nameKey(path)] ? shared[nameKey(path)].path : onDrive[nameKey(path)] || null),
+    rootOf: (l) => (l === own ? "" : null),
+    letterOf: () => own,
+  };
+  const textOf = (path: string): string | null => {
+    const file = shared[nameKey(path)];
+    return file && /\.(asm|inc)$/i.test(file.path) && !isBinary(sniff(file.bytes)) ? latin1(file.bytes) : null;
+  };
+  const found = new Map<string, IncludeFinding>(); // one finding per line, the first build reaching it
+  const kindOf = (target: Target, argument: string): IncludeKind => {
+    if (target.kind === "toolchain") return "toolchain";
+    if (target.kind !== "drawer") return "missing";
+    if (!shared[nameKey(target.path)]) return "outside";
+    return /^[a-zA-Z]:/.test(argument.trim()) ? "letter" : "shared";
+  };
+  const walk = (file: string, text: string, includers: string[], cwd: Location) => {
+    for (const statement of includeStatements(sourceStatements(text))) {
+      const isInclude = statement.kind === "include";
+      const argument = fileName(statement.argument); // as the guest's assembler reads it
+      const target = isInclude ? resolveInclude(argument, includers, cwd, drawer, toolchain) : resolveLibrary(argument, cwd, drawer, toolchain);
+      const key = file + "\n" + statement.line;
+      if (!found.has(key))
+        found.set(key, { file, line: statement.line, directive: isInclude ? "INCLUDE" : "INCLUDELIB", argument, kind: kindOf(target, argument),
+          target: target.kind === "drawer" ? target.path : "" });
+      const nested = isInclude && target.kind === "drawer" ? textOf(target.path) : null;
+      if (nested !== null && target.kind === "drawer" && includers.indexOf(target.path) < 0) walk(target.path, nested, includers.concat([target.path]), cwd);
+    }
+  };
+  const reached = new Set<string>();
   for (const file of content.files) {
-    if (!/\.(asm|inc)$/i.test(file.path) || isBinary(sniff(file.bytes))) continue;
-    const lines = latin1(file.bytes).split(/\r\n|\r|\n/);
-    lines.forEach((text, i) => {
-      const m = /^\s*(INCLUDE|INCLUDELIB)\s+(.*)$/i.exec(text);
-      if (!m) return;
-      const rest = m[2];
-      const argument = rest.charAt(0) === "<" ? rest.slice(1, rest.indexOf(">") < 0 ? rest.length : rest.indexOf(">")) : rest.split(";")[0].trim();
-      if (!argument) return;
-      const directive = m[1].toUpperCase() as "INCLUDE" | "INCLUDELIB";
-      const slashed = argument.replace(/\\/g, "/");
-      const lettered = /^([a-zA-Z]):\//.exec(slashed);
-      const candidates: string[] = [];
-      let otherDrive = false;
-      if (lettered) {
-        if (lettered[1].toUpperCase() === letter.toUpperCase()) candidates.push(slashed.slice(3));
-        else otherDrive = true;
-      } else if (slashed.charAt(0) === "/") candidates.push(slashed.slice(1));
-      else {
-        candidates.push(joinPath(parentOf(file.path), slashed));
-        asmFolders.forEach((folder) => candidates.push(joinPath(folder, slashed)));
-      }
-      const norm = (p: string) => splitPath(p).filter((s) => s && s !== ".").join("/");
-      // the first candidate that exists, shared or not; the toolchain's folder comes last
-      let kind: IncludeKind = "missing", target = "";
-      for (const c of candidates) {
-        const key = nameKey(norm(c));
-        if (shared[key]) {
-          kind = lettered ? "letter" : "shared";
-          target = shared[key];
-          break;
-        }
-        if (onDrive[key]) {
-          kind = "outside";
-          target = onDrive[key];
-          break;
-        }
-      }
-      const toolchainName = TOOLCHAIN_FILES.indexOf(baseOf(slashed).toLowerCase()) >= 0;
-      if (kind === "missing" && toolchainName && (/^c:\/files\/irvine\/[^/]+$/i.test(slashed) || (!lettered && slashed.indexOf("/") < 0))) kind = "toolchain";
-      findings.push({ file: file.path, line: i + 1, directive, argument, kind, target });
-    });
+    const text = /\.asm$/i.test(file.path) ? textOf(file.path) : null;
+    if (text === null) continue;
+    walk(file.path, text, [file.path], locationOf(drawer, file.path));
   }
-  return findings;
+  found.forEach((finding) => reached.add(finding.target));
+  for (const file of content.files) {
+    const text = /\.inc$/i.test(file.path) && !reached.has(file.path) ? textOf(file.path) : null;
+    if (text !== null) walk(file.path, text, [file.path], locationOf(drawer, file.path));
+  }
+  const order = content.files.map((file) => file.path);
+  return Array.from(found.values()).sort((a, b) => order.indexOf(a.file) - order.indexOf(b.file) || a.line - b.line);
+}
+
+// INCLUDE and INCLUDELIB statements, those in macro bodies too: each line names a file, used or not.
+type IncludeStatement = Extract<Statement, { kind: "include" | "includelib" }>;
+function includeStatements(statements: Statement[]): IncludeStatement[] {
+  const out: IncludeStatement[] = [];
+  for (const statement of statements) {
+    if (statement.kind === "macro") out.push(...includeStatements(statement.body));
+    else if (statement.kind === "include" || statement.kind === "includelib") out.push(statement);
+  }
+  return out;
 }
 
 // The link's copy of each file whose INCLUDE names a shared file with the sharing drive's letter: the letter

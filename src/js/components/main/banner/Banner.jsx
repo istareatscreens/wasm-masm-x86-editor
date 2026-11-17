@@ -7,13 +7,10 @@ import {
   resetEmulator,
   interruptEmulator,
   checkFileExtension,
-  assembleAndRun,
-  runInEmulator,
   focusTerminal,
 } from "../../../utility/utilityFunctions.ts";
 
-import FileSystem from "../utility/FileSystem.js";
-import { outputPath } from "../utility/filesystem/paths";
+import useBuild from "./build/useBuild.jsx";
 
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
@@ -30,6 +27,7 @@ import ThemeControlGroup from "./themecontrols/ThemeControlGroup.jsx";
 import ThemeControlWindow from "./themecontrols/ThemeControlWindow.jsx";
 import FullscreenSwitch from "./viewcontrols/FullScreenSwitch.jsx";
 import HandlesSwitch from "./viewcontrols/HandlesSwitch.jsx";
+import CollapseButton from "./viewcontrols/CollapseButton.jsx";
 
 const Banner = function Banner({
   filename,
@@ -55,6 +53,9 @@ const Banner = function Banner({
   //resize handles
   handlesHidden,
   setHandlesHidden,
+  //collapsing the toolbar to one row
+  bannerCollapsed,
+  setBannerCollapsed,
   //drives (Hard Reset Everything)
   drives,
   deleteExtraDrives,
@@ -63,27 +64,8 @@ const Banner = function Banner({
   const hardReset = useWindowToggle();
   const themeSettings = useWindowToggle();
 
-  const build = () => {
-    if (/.asm$/.test(filename)) {
-      // Sync the current .asm directly into the guest (D:, no echo) and
-      // assemble->link->run it in one atomic iframe step. The guest gets the stored
-      // bytes exactly (the editor saves through the same storage), with a localStorage
-      // fallback for legacy-stored files.
-      FileSystem.stripByteOrderMarks();
-      FileSystem.useDriveToRun(filename); // a drive without a letter gets one first
-      const bytes = FileSystem.getRawFileData(filename);
-      if (bytes) assembleAndRun(filename, bytes, true);
-      else assembleAndRun(filename, FileSystem.getFileContentSync(filename), false);
-      viewMode.showTerminal();
-      focusTerminal(); // the program's input is typed next
-    } else {
-      console.log("not an assembly file: " + filename);
-    }
-  };
-
-  const checkForFile = () => {
-    return !fileList.includes(outputPath(filename, ".exe"));
-  };
+  // Build and Run: the open file's build plan (its program's when it is a module)
+  const builder = useBuild({ filename, fileList, viewMode });
 
   const reset = () => {
     resetEmulator();
@@ -96,17 +78,6 @@ const Banner = function Banner({
     focusTerminal();
   };
 
-  // The user may have cd'd anywhere in the terminal, so the binary (bin\<name>.exe) runs FROM its
-  // source's folder on the source's own drive, as a build does (emulator page: Boxedwine.jsx).
-  const run = () => {
-    if (/.asm$/.test(filename)) {
-      FileSystem.useDriveToRun(filename);
-      runInEmulator(filename);
-      viewMode.showTerminal();
-      focusTerminal();
-    }
-  };
-
   const checkIfAsm = () => {
     return !checkFileExtension(".asm", filename);
   };
@@ -115,6 +86,7 @@ const Banner = function Banner({
   return (
     <>
       {about.isOpen && <About close={about.close} />}
+      {builder.element}
       {hardReset.isOpen && <ResetCache close={hardReset.close} drives={drives} fileList={fileList} deleteExtraDrives={deleteExtraDrives} />}
       {themeSettings.isOpen && (
         <ThemeControlWindow
@@ -129,21 +101,21 @@ const Banner = function Banner({
       <div className={"banner__patch"} />
       <div className={"banner"} />
       <div className={"banner__main"}>
-        <div className={"banner__main__group banner__main__group--start"}>
+        <div className={"banner__main__group banner__main__group--start" + (bannerCollapsed ? " banner__main__group--collapsed" : "")}>
           <Button
             className={"banner__main__btn"}
-            onClick={build}
+            onClick={builder.build}
             title={"compile, link and run .asm file"}
             id={"pushData"}
             disabled={checkIfAsm()}
             src={buildFile}
           />
           <Button
-            onClick={run}
+            onClick={builder.run}
             className={"banner__main__btn"}
             title={"run compiled binary"}
             id={"runEXE"}
-            disabled={checkForFile()}
+            disabled={!builder.canRun}
             src={runBinary}
           />
           <Button
@@ -207,6 +179,7 @@ const Banner = function Banner({
           <HandlesSwitch hidden={!!handlesHidden} onChange={setHandlesHidden} />
         </div>
         <div className={"banner__main__group banner__main__group--end"}>
+          <CollapseButton collapsed={!!bannerCollapsed} onChange={setBannerCollapsed} />
           <Button
             title={"application info"}
             className={"banner__main__btn"}

@@ -4,6 +4,7 @@
 // "drive:<id>/<path from that drive's root>" (drives.ts); a drive's root is like D:'s.
 import { invalidFilenameReason } from "../../../../utility/utilityFunctions";
 import { splitDrive, isDrivePath, driveRoot, withRoot, driveSpec } from "./drives";
+import { nameKey } from "../build/fileNames";
 
 export const ROOT = "";
 // MAX_PATH (260) minus the terminating NUL, counted in UTF-16 code units like Windows.
@@ -19,8 +20,13 @@ export const parentOf = (path: string): string => path.slice(0, Math.max(path.la
 export const baseOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 export const depthOf = (path: string): number => splitPath(splitDrive(path).rel).length;
 export const isAsm = (path: string): boolean => /\.asm$/.test(path);
-// a MASM source or include file: the editor highlights these as MASM, any other file as plain text
+// a MASM source or include file: the editor highlights these as MASM
 export const isMasmSource = (path: string): boolean => /\.(asm|inc)$/i.test(path);
+// a module-definition file (LINK's /DEF input): the editor highlights its statements
+export const isModuleDefinition = (path: string): boolean => /\.def$/i.test(path);
+// a text file the toolchain reads: opened as text whatever its bytes look like (a comment in a legacy code page can
+// look binary to the sniffing that decides other files)
+export const isToolchainText = (path: string): boolean => isMasmSource(path) || isModuleDefinition(path);
 // path is folder itself or lies anywhere below it; D:'s root contains everything on D:
 export const isWithin = (path: string, folder: string): boolean =>
   folder === ROOT ? !isDrivePath(path) : path === folder || path.startsWith(folder + "/");
@@ -45,8 +51,8 @@ export const outputPath = (source: string, ext: string): string =>
   joinPath(parentOf(source), BIN, baseOf(source).replace(/\.asm$/i, "") + ext);
 
 export const normalizeName = (name: string): string => name.normalize("NFC");
-// Names compare case-insensitively, as Wine compares them on D:.
-export const nameKey = (name: string): string => name.toLowerCase();
+// Names compare case-insensitively, as Wine compares them on D: (the build plan's rule, fileNames.ts).
+export { nameKey };
 export const utf8Length = (text: string): number => utf8.encode(text).length;
 export const guestPath = (path: string): string => driveSpec(path) + "\\" + splitPath(splitDrive(path).rel).join("\\");
 // how long the path is in the terminal, as Windows counts it: "X:\" and the path from the drive's root (a drive

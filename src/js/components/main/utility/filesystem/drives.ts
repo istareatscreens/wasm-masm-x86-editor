@@ -164,9 +164,30 @@ export function randomSuffix(bytes: Uint8Array, length: number = 4): string | nu
   return out.length === length ? out : null;
 }
 
-// A drawer path in a download: from its drive's root, or, when the download spans drives, under a folder named
-// after the drive's letter, or its label when it has none.
-export const exportPath = (path: string, perDrive: boolean): string => {
+// The folders of a download that spans drives, by drive root: D:'s "D", every other drive's its label, never its
+// letter (letters move between drives, and past 21 drives some have none). A name the download already uses, in
+// any letter case, gets "_2", "_3", ...: labels can repeat, and a drive may be labelled D. The drives are named in
+// the order they were made, so the same drives get the same folders every time.
+export function exportFolders(roots: string[], drives: Drive[]): Map<string, string> {
+  const folders = new Map<string, string>();
+  const taken = new Set<string>();
+  const claim = (root: string, name: string) => {
+    let folder = name;
+    for (let n = 2; taken.has(folder.toLowerCase()); n++) folder = name + "_" + n;
+    taken.add(folder.toLowerCase());
+    folders.set(root, folder);
+  };
+  if (roots.includes("")) claim("", "D");
+  const byAge = drives.filter((drive) => roots.includes(driveRoot(drive.id))).sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  byAge.forEach((drive) => claim(driveRoot(drive.id), drive.label));
+  // a drive gone from the registry while the download was planned keeps its id
+  roots.filter((root) => !folders.has(root)).forEach((root) => claim(root, splitDrive(root).id || "drive"));
+  return folders;
+}
+
+// A drawer path in a download: from its drive's root, under its drive's folder (exportFolders) when the download
+// spans drives.
+export const exportPath = (path: string, folders: Map<string, string> | null = null): string => {
   const { rel } = splitDrive(path);
-  return perDrive ? driveSpec(path).slice(0, -1) + (rel ? "/" + rel : "") : rel;
+  return folders ? folders.get(rootOf(path)) + (rel ? "/" + rel : "") : rel;
 };

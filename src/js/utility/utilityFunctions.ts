@@ -196,11 +196,28 @@ export const runInEmulator = (filename: string): void => {
   postMessage("run-file", { data: filename });
 };
 
-//The bytes of entries of the toolchain archive (C:\files in the guest), read in the
-//emulator page once its input is open: { [entry name]: Uint8Array }.
-export const readToolchainFiles = (names: string[]): Promise<{ [name: string]: Uint8Array }> => {
+//Build a program by its build plan (components/main/banner/build/buildRequest.ts): the emulator page writes the
+//plan's files as stored, deletes their stale outputs, types assemble in the program's folder and reads the outputs
+//back.
+export const buildPlanInEmulator = (request: object): void => {
   const app = getBwApp();
-  if (app && typeof app.readToolchainFiles === "function") return app.readToolchainFiles(names);
+  if (app && typeof app.buildPlan === "function") return app.buildPlan(request);
+  postMessage("build-plan", { data: request });
+};
+
+//The bytes of entries of a toolchain archive (the toolchain's, at C:\files in the guest, by default; or
+//"/irvine.zip"), read in the emulator page once its input is open: { [entry name]: Uint8Array }.
+export const readToolchainFiles = (names: string[], archive?: string): Promise<{ [name: string]: Uint8Array }> => {
+  const app = getBwApp();
+  if (app && typeof app.readToolchainFiles === "function") return app.readToolchainFiles(names, archive);
+  return Promise.reject(new Error("the emulator page is not loaded"));
+};
+
+//The toolchain's folders' file names, read in the emulator page once its input is open: C:\files\irvine (and
+//C:\Irvine) and C:\files\lib.
+export const listToolchain = (): Promise<{ irvine: string[]; lib: string[] }> => {
+  const app = getBwApp();
+  if (app && typeof app.listToolchain === "function") return app.listToolchain();
   return Promise.reject(new Error("the emulator page is not loaded"));
 };
 

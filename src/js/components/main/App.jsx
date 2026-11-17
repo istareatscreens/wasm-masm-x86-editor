@@ -28,6 +28,7 @@ import { getFromLocalStorage } from "./utility/filesystem/FSHelperFunctions.js";
 import { postMessage, createMessageListner, reconcileEmulatorFiles } from "../../utility/utilityFunctions.ts";
 import { labelProblem, driveRoot, driveName, rootOf, isDrivePath } from "./utility/filesystem/drives";
 import { guestPath } from "./utility/filesystem/paths";
+import { DEFAULT_FILE_TYPE, parseFileType } from "./filedrawer/model/fileTypes";
 import { themeList as cmThemeList, normalizeThemeId } from "./editor/library/themes";
 
 // the page's cover (#app-splash in the HTML) stays at most this long: a picture or font that
@@ -122,6 +123,8 @@ function App() {
     lightMode: false,
     vimMode: false,
     handlesHidden: false,
+    bannerCollapsed: false, // the main toolbar clipped to its first row while its controls need more
+    newFileType: DEFAULT_FILE_TYPE, // the type the Create file window chose last (filedrawer/model/fileTypes.ts)
     workspaceName: "", // the name links from D: carry (generated at the first share; D: has no label)
   });
   // Stored JSON -> a valid settings object (null when unusable).
@@ -143,6 +146,8 @@ function App() {
       selectedNightTheme: migrateThemeSetting(parsed.selectedNightTheme, true),
       vimMode: !!parsed.vimMode,
       handlesHidden: !!parsed.handlesHidden,
+      bannerCollapsed: !!parsed.bannerCollapsed,
+      newFileType: parseFileType(parsed.newFileType),
       workspaceName: typeof parsed.workspaceName === "string" && !labelProblem(parsed.workspaceName) ? parsed.workspaceName : "",
     };
   };
@@ -188,6 +193,14 @@ function App() {
     setSettings({ ...settings, handlesHidden });
   };
 
+  const setBannerCollapsed = (bannerCollapsed) => {
+    setSettings({ ...settings, bannerCollapsed });
+  };
+
+  const setNewFileType = (newFileType) => {
+    setSettings({ ...settings, newFileType });
+  };
+
   const setWorkspaceName = useCallback((workspaceName) => {
     setSettings((current) => ({ ...current, workspaceName }));
   }, []);
@@ -229,7 +242,7 @@ function App() {
   }, [filename]);
 
   const refApp = useRef(null);
-  useBannerRows(refApp);
+  useBannerRows(refApp, settings.bannerCollapsed);
   const viewMode = useViewMode();
 
   // the drawer read again; with no .asm left, test.asm is made and opened (unless `create` is false: a link is
@@ -413,13 +426,16 @@ function App() {
   useEffect(() => {
     createMessageListner();
     const handleBuildOutputs = (event) => {
-      const { name, outputs, ok } = event.detail || {};
+      const { name, outputs, ok, removed } = event.detail || {};
       const existing = FileSystem.getFileList();
       const produced = new Set((outputs || []).map((o) => o && o.filename).filter(Boolean));
       // Artifacts of THIS source that the build did not (re)produce are stale: the
       // emulator deleted them from D: before assembling, so drop them from the
       // drawer too — a failed build must not leave yesterday's .exe looking current.
-      if (name) {
+      // A build plan names every output it deleted (each module's and the program's).
+      if (removed) {
+        for (const f of removed) if (!produced.has(f) && existing.includes(f)) FileSystem.deleteFile(f);
+      } else if (name) {
         for (const ext of [".obj", ".exe", ".lst", ".map"]) {
           const f = name + ext;
           if (!produced.has(f) && existing.includes(f)) FileSystem.deleteFile(f);
@@ -675,9 +691,9 @@ function App() {
 
   const createFile = useCallback(
     (filename) => {
-      // createAssemblyFile -> FileSystem.createFile places the file on the guest
+      // createNewFile -> FileSystem.createFile places the file on the guest
       // D: directly (bwWriteFile) — no `echo.>name` command is typed any more.
-      FileSystem.createAssemblyFile(filename);
+      FileSystem.createNewFile(filename);
       switchFile(filename);
       refreshFileList();
     },
@@ -757,6 +773,8 @@ function App() {
           setEditorLock={setEditorLock}
           forceUpdate={{ refreshFile, setRefreshFile }}
           lightMode={!settings.lightMode} //flip boolean so light is true, dark is false
+          newFileType={settings.newFileType}
+          setNewFileType={setNewFileType}
         />
         <Banner
           //theme variables
@@ -773,6 +791,9 @@ function App() {
           //resize handles
           handlesHidden={settings.handlesHidden}
           setHandlesHidden={setHandlesHidden}
+          //collapsing the toolbar to one row
+          bannerCollapsed={settings.bannerCollapsed}
+          setBannerCollapsed={setBannerCollapsed}
           //drives
           drives={drives}
           deleteExtraDrives={deleteExtraDrives}

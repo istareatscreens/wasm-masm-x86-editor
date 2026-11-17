@@ -16,6 +16,8 @@
     "test:shell": "node --test scripts/boxedwine-shell.test.cjs",
     "test:file-drawer": "node --test scripts/file-drawer.test.cjs",
     "test:share-link": "node --test scripts/share-link.test.cjs",
+    "test:build-plan": "node --test scripts/build-plan.test.cjs",
+    "test:module-definition": "node --test scripts/module-definition.test.cjs",
     "test:guide": "node --test scripts/guide.test.cjs",
     "test:crash-report": "node --test scripts/crash-report.test.cjs",
     "test:pane-layout": "node --test scripts/pane-layout.test.cjs",

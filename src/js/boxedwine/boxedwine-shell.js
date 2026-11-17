@@ -31,6 +31,7 @@
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
+            Config.mountedZips = getMountedZips(); // masm-editor
             Config.appPayload = getPayload("app-payload"); 
             Config.extraPayload = getPayload("overlay-payload"); 
             Config.Program = getExecutable(); //MANUAL:"CHOMP.EXE";
@@ -393,6 +394,7 @@
             tryLoad();
 		}
         function buildAppFileSystem(callback) {
+            callback = loadMountedZips.bind(null, callback); // masm-editor: the zips the page mounts come next
             if(Config.appPayload.length > 0){
             	let uint8Array = getBase64Data(Config.appPayload);
             	createFile("/", Config.payloadZipFile, uint8Array);
@@ -415,6 +417,24 @@
             }else{
                 callback();
             }
+        }
+        // masm-editor: zips mounted besides the app zip, as the page lists them (getMountedZips):
+        // [{ zip: "<name>", at: ["<guest folder>", ...] }]. Each is loaded once into this page's file
+        // system, also before a restore, and mounted at every folder it names (getEmulatorParams).
+        function getMountedZips() {
+            return [];
+        }
+        function loadMountedZips(callback) {
+            var zips = Config.mountedZips.slice();
+            var next = function () {
+                var zip = zips.shift();
+                if (!zip) { callback(); return; }
+                loadFile(Config.locateAppBaseUrl, zip.zip, function (bytes) {
+                    createFile("/", zip.zip, bytes);
+                    next();
+                });
+            };
+            next();
         }
         function buildExtraFileSystems(callback) {
 	        let extraFSs = [];
@@ -641,6 +661,13 @@
     			params.push(Config.appDirPrefix);          			
             }
                         
+            (Config.mountedZips || []).forEach(function (zip) { // masm-editor: -mount <zip> <folder>, at each folder
+                zip.at.forEach(function (folder) {
+                    params.push("-mount");
+                    params.push(zip.zip);
+                    params.push(folder);
+                });
+            });
             params.push("-mount_drive"); // -mount_drive "/d_drive" d
             params.push(Config.d_drive);
             params.push("d");
