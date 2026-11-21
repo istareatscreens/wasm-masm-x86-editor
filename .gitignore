@@ -19,7 +19,7 @@ debug.log
 #Ignore performance testing file
 performance
 #Testing Reports
-report*
+/report*
 coverage
 .nyc_output
 nyc
