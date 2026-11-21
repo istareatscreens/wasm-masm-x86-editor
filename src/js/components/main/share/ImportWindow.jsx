@@ -4,6 +4,7 @@ import Window from "../../common/Window.jsx";
 import RetroScrollArea from "../../common/RetroScrollArea.jsx";
 import GroupBox from "../../common/GroupBox.jsx";
 import ListBox from "../../common/ListBox.jsx";
+import TextField from "../../common/TextField.jsx";
 import iconImport from "../../../../images/importLink32.png";
 import { plural, fileSize } from "./format.js";
 import { driveName } from "../utility/filesystem/drives";
@@ -189,9 +190,8 @@ function ImportWindow({ ui, before, onStart, onImported, close }) {
                         )}
                       </span>
                       <div className="window__import__main">
-                        <input
-                          type="text"
-                          className="input-box window__import__text"
+                        <TextField
+                          className="window__import__text"
                           value={row.text}
                           aria-label={"link " + (i + 1)}
                           placeholder="https://…#share=…"

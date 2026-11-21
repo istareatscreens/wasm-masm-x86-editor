@@ -6,22 +6,14 @@
   box-sizing: border-box;
   border: none;
   border-radius: 0;
-  // min-width: 75px;
-  // min-height: 23px;
   padding: 0.3rem;
   max-height: variables.$banner-height;
   width: calc(#{variables.$banner-height} - 0.5rem);
   height: calc(#{variables.$banner-height} - 0.5rem);
 
+  // pressed only while pressed: touch browsers keep :hover on the last tapped element
   &:not(:disabled):active {
     box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
-    //padding: 2px 11px 0 13px;
-  }
-
-  @media (hover: none) {
-    &:not(:disabled):hover {
-      box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
-    }
   }
 
   &:focus {

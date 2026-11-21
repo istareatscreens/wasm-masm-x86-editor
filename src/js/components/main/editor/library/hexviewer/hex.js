@@ -1,149 +1,199 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useMemo, useCallback } from 'react';
-import { List } from 'react-window';
-import { Row } from './row';
-import useRetroScrollbars from '../../../../common/useRetroScrollbars.js';
+import React, { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { List } from "react-window";
+import { useEditing } from "./editing/useEditing.js";
+import { Header } from "./header.js";
+import { useRowLength } from "./layout/useRowLength.js";
+import { Row } from "./row.js";
 
-const ROW_HEIGHT = 25; // Height of each row in pixels
-const OVERSCAN_COUNT = 5; // Number of items to render outside of the visible area
-const PAD = "000000";
+const OVERSCAN_COUNT = 5;
+const LIST_STYLE = { flex: "1 1 0", minHeight: 0, maxHeight: "none" };
 
-// Define RowRenderer OUTSIDE component to keep it stable across renders
-// This is CRITICAL for react-window to work properly
-// v2.2.0 spreads rowProps directly, NOT as a 'data' prop
-const RowRenderer = ({ index, style, rows, bytesper }) => {
-    
-    // Safety checks
-    if (!style || !rows || !Array.isArray(rows) || index < 0 || index >= rows.length) {
-        return null;
-    }
-    
-    const row = rows[index];
-    if (!row || !Array.isArray(row)) {
-        return null;
-    }
-
-    let heading = `${index * bytesper}`;
-    heading = PAD.substring(0, PAD.length - heading.length) + heading;
-
-    // as wide as the row needs: a pane narrower than a row scrolls sideways instead of clipping it
-    return (
-        <div style={{ ...style, width: 'max-content', minWidth: '100%' }}>
-            <Row sets={row} heading={heading} />
-        </div>
-    );
+// react-window draws each row with this, and the row's own props
+const RowRenderer = ({ index, style, ...props }) => {
+  const offset = index * props.rowLength;
+  const count = Math.min(props.rowLength, props.source.length - offset);
+  if (count <= 0) return null;
+  const inRow = (at) => (at !== null && at >= offset && at < offset + props.rowLength ? at - offset : -1);
+  const caret = props.caret ? inRow(props.caret.offset) : -1;
+  const selection = props.selection;
+  const selStart = selection && selection.start < offset + count && selection.end > offset ? Math.max(0, selection.start - offset) : -1;
+  const selEnd = selStart >= 0 ? Math.min(count, selection.end - offset) : -1;
+  return (
+    <Row
+      index={index}
+      style={{ ...style, width: "max-content", minWidth: "100%", lineHeight: props.rowHeight + "px" }}
+      source={props.source}
+      version={props.version}
+      offset={offset}
+      count={count}
+      rowLength={props.rowLength}
+      setLength={props.setLength}
+      unit={props.unit}
+      showAscii={props.showAscii}
+      showOffsets={props.showOffsets}
+      headingWidth={props.headingWidth}
+      caret={caret}
+      caretColumn={caret >= 0 ? props.caret.column : ""}
+      selStart={selStart}
+      selEnd={selEnd}
+      pending={caret >= 0 ? props.pending : ""}
+      hoverable={props.hoverable}
+      idOf={props.idOf}
+    />
+  );
 };
 
-const Hex = ({ rows = [], bytesper }) => {
-    const [windowHeight, setWindowHeight] = useState(0);
-    const containerRef = useRef(null);
-    const heightRef = useRef(0);
-    const resizeObserverRef = useRef(null);
-    // Windows 98 scrollbars on react-window's list element, drawn in this container
-    const [host, setHost] = useState(null);
-    const [listApi, setListApi] = useState(null);
-    const setContainer = useCallback((element) => {
-        containerRef.current = element;
-        setHost(element);
-    }, []);
-    useRetroScrollbars(listApi ? listApi.element : null, host, 'Hex view');
+// The viewer: a header row over a virtual list of rows, a grid with a caret. Only the rows on screen exist.
+export const Hex = forwardRef(function Hex(props, ref) {
+  const {
+    source,
+    rowLength: requested = 16,
+    setLength = 4,
+    unit = 1,
+    rowHeight = 25,
+    showHeader = true,
+    offsetHeader,
+    showAscii = true,
+    showOffsets = true,
+    highlightOnHover = true,
+    disabled = false,
+    historyKey,
+    onVisibleRangeChange,
+    onEditError,
+    attachScrollbars,
+    label = "Bytes",
+    hostRef,
+  } = props;
+  const version = useSyncExternalStore(source.subscribe, source.getVersion, source.getVersion);
+  const [list, setList] = useState(null);
+  const listElement = list ? list.element : null;
+  const header = useRef(null);
+  const templates = useMemo(() => ({ eight: React.createRef(), sixteen: React.createRef() }), []);
+  const rowLength = useRowLength(requested, listElement, templates);
+  const rows = Math.ceil(source.length / rowLength);
+  const visible = useRef({ start: 0, stop: 0 });
+  const prefix = useId().replace(/:/g, "");
+  const idOf = useCallback((column, offset) => prefix + column + offset, [prefix]);
 
-    // Use LayoutEffect to measure synchronously before paint
-    useLayoutEffect(() => {
-        if (containerRef.current) {
-            const height = containerRef.current.offsetHeight;
-            if (height > 0 && height !== heightRef.current) {
-                heightRef.current = height;
-                setWindowHeight(height);
-            }
-        }
-    }, [rows]); // Update when rows change
+  // the heading column is as wide as the longest label
+  const headingWidth = useMemo(
+    () => (source.length ? Math.max(source.label(0).length, source.label((rows - 1) * rowLength).length) : 8),
+    [source, rows, rowLength, version],
+  );
 
-    useEffect(() => {
-        const updateHeight = () => {
-            if (containerRef.current) {
-                const height = containerRef.current.offsetHeight;
-                if (height > 0 && height !== heightRef.current) {
-                    heightRef.current = height;
-                    setWindowHeight(height);
-                }
-            }
-        };
+  const view = useMemo(
+    () => ({
+      firstVisible: () => Math.min(visible.current.start * rowLength, Math.max(0, source.length - 1)),
+      pageRows: () => Math.max(1, visible.current.stop - visible.current.start),
+      showAscii: () => showAscii,
+      reveal: (offset) => {
+        if (list && rows) list.scrollToRow({ index: Math.min(rows - 1, Math.floor(offset / rowLength)), align: "auto" });
+      },
+    }),
+    [list, rows, rowLength, source, showAscii],
+  );
+  const editing = useEditing({ source, rowLength, unit, disabled, historyKey, onEditError, view });
 
-        // Delayed initial update
-        const initialTimer = setTimeout(updateHeight, 0);
-        const fallbackTimer = setTimeout(updateHeight, 100);
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToOffset(offset, align = "start") {
+        if (list && rows) list.scrollToRow({ index: Math.max(0, Math.min(rows - 1, Math.floor(offset / rowLength))), align });
+      },
+      setCaret(offset, column = "hex") {
+        editing.placeCaret(offset, column);
+      },
+      getCaret() {
+        return editing.caret;
+      },
+      get rowLength() {
+        return rowLength;
+      },
+      focus() {
+        if (listElement) listElement.focus({ preventScroll: true });
+      },
+      get element() {
+        return listElement;
+      },
+    }),
+    [list, listElement, rows, rowLength, editing.placeCaret, editing.caret],
+  );
 
-        // DELAY ResizeObserver attachment to avoid interfering with initial render
-        const observerTimer = setTimeout(() => {
-            if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-                resizeObserverRef.current = new ResizeObserver(updateHeight);
-                resizeObserverRef.current.observe(containerRef.current);
-            }
-        }, 300); // Wait 300ms after mount
+  // the host's scrollbars, if it gives any; the browser's otherwise
+  useEffect(() => {
+    if (!attachScrollbars || !listElement || !hostRef.current) return undefined;
+    const attached = attachScrollbars(listElement, hostRef.current);
+    return () => attached && attached.destroy();
+  }, [attachScrollbars, listElement, hostRef]);
 
-        const resizeHandler = () => updateHeight();
-        const resizeTimer = setTimeout(() => {
-            window.addEventListener('resize', resizeHandler);
-        }, 300);
-
-        return () => {
-            clearTimeout(initialTimer);
-            clearTimeout(fallbackTimer);
-            clearTimeout(observerTimer);
-            clearTimeout(resizeTimer);
-            window.removeEventListener('resize', resizeHandler);
-            if (resizeObserverRef.current) {
-                resizeObserverRef.current.disconnect();
-                resizeObserverRef.current = null;
-            }
-        };
-    }, []); // Only run once!
-
-    // Memoize data passed to row renderer for performance
-    const itemData = useMemo(() => ({
-        rows,
-        bytesper
-    }), [rows, bytesper]);
-
-    // Validate all required props
-    const validHeight = typeof windowHeight === 'number' && windowHeight > 0;
-    const validRows = Array.isArray(rows) && rows.length > 0;
-    const validBytesper = typeof bytesper === 'number' && bytesper > 0;
-    const hasContainer = !!containerRef.current;
-    
-    // Check if we're ready to render - all conditions must be met
-    const isReady = hasContainer && validHeight && validRows && validBytesper;
-    
-    const listProps = {
-        height: Math.floor(windowHeight),
-        itemCount: rows.length,
-        itemSize: ROW_HEIGHT,
-        width: "100%"
+  // the header scrolls sideways with the rows
+  useEffect(() => {
+    if (!listElement) return undefined;
+    const follow = () => {
+      if (header.current) header.current.scrollLeft = listElement.scrollLeft;
     };
+    listElement.addEventListener("scroll", follow, { passive: true });
+    return () => listElement.removeEventListener("scroll", follow);
+  }, [listElement]);
 
-    return (
-        <div className="hexviewer retro-scroll-host" ref={setContainer} style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
-            <div className="hex" style={{ height: '100%', position: 'relative' }}>
-                {!isReady ? (
-                    <div style={{ padding: '10px', color: '#888' }}>
-                        {!validRows ? 'Preparing view...' : !validHeight ? 'Calculating dimensions...' : 'Initializing...'}
-                    </div>
-                ) : (
-                    <List
-                        listRef={setListApi}
-                        rowComponent={RowRenderer}
-                        rowCount={listProps.itemCount}
-                        rowHeight={listProps.itemSize}
-                        height={listProps.height}
-                        width={listProps.width}
-                        rowProps={itemData}
-                        overscanCount={OVERSCAN_COUNT}
-                        style={{ outline: 'none' }}
-                    />
-                )}
-            </div>
+  const onRowsRendered = useCallback(
+    (shown) => {
+      visible.current = { start: shown.startIndex, stop: shown.stopIndex };
+      if (onVisibleRangeChange) onVisibleRangeChange({ start: shown.startIndex * rowLength, end: Math.min(source.length, (shown.stopIndex + 1) * rowLength) });
+    },
+    [onVisibleRangeChange, rowLength, source],
+  );
+
+  const caret = editing.caret;
+  const rowProps = useMemo(
+    () => ({
+      source,
+      version,
+      rowLength,
+      setLength,
+      unit,
+      showAscii,
+      showOffsets,
+      headingWidth,
+      caret,
+      selection: editing.selection,
+      pending: editing.pending,
+      hoverable: highlightOnHover && !disabled,
+      idOf,
+      rowHeight,
+    }),
+    [source, version, rowLength, setLength, unit, showAscii, showOffsets, headingWidth, caret, editing.selection, editing.pending, highlightOnHover, disabled, idOf, rowHeight],
+  );
+  const shape = { setLength, unit, showAscii, showOffsets, headingWidth, offsetHeader, height: rowHeight };
+
+  return (
+    <>
+      {showHeader && <Header ref={header} rowLength={rowLength} {...shape} />}
+      <List
+        listRef={setList}
+        className="hexviewer__list"
+        rowComponent={RowRenderer}
+        rowCount={rows}
+        rowHeight={rowHeight}
+        rowProps={rowProps}
+        overscanCount={OVERSCAN_COUNT}
+        onRowsRendered={onRowsRendered}
+        style={LIST_STYLE}
+        role="grid"
+        aria-label={label}
+        aria-rowcount={rows + 1}
+        aria-readonly={!source.write || disabled || undefined}
+        aria-disabled={disabled || undefined}
+        aria-activedescendant={caret ? idOf(caret.column === "hex" ? "h" : "a", caret.offset) : undefined}
+        tabIndex={0}
+        {...editing.handlers}
+      />
+      {requested === "auto" && (
+        <div className="hexviewer__measure" aria-hidden="true">
+          <Header ref={null} rowRef={templates.eight} rowLength={8} {...shape} offsetHeader={{ text: "" }} />
+          <Header ref={null} rowRef={templates.sixteen} rowLength={16} {...shape} offsetHeader={{ text: "" }} />
         </div>
-    );
-};
-
-export { Hex };
+      )}
+    </>
+  );
+});

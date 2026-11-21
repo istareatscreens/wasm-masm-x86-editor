@@ -4,9 +4,10 @@ import useRetroScrollbars from "../../../common/useRetroScrollbars.js";
 import { parentOf, baseOf } from "../../utility/filesystem/paths";
 import { PAGE_ROWS, pageCount, pageOf } from "../model/tree";
 import FileTreeRow, { ROW_HEIGHT, INDENT } from "./FileTreeRow.jsx";
-import TreeContextMenu from "./TreeContextMenu.jsx";
+import TreeContextMenu from "../../../common/TreeContextMenu.jsx";
 import usePointerDrag from "../hooks/usePointerDrag.js";
 import useMarquee from "../hooks/useMarquee.js";
+import useSlowClickRename from "../hooks/useSlowClickRename.js";
 
 // scrollIntoView({ block: "nearest" }) within the list alone: scrollIntoView also scrolls
 // every scrollable ancestor, the page itself when the row lies outside the window
@@ -20,14 +21,9 @@ const showInList = (scroller, element) => {
   else if (box.right > left + scroller.clientWidth) scroller.scrollLeft += box.right - left - scroller.clientWidth;
 };
 
-// The drawer's tree (WAI-ARIA tree pattern): rows from model/tree.ts, one roving tab stop,
-// Explorer's keys, the context menu (a row's, or the drawer's on empty space), drag-to-folder
-// and the selection rectangle. The list keeps one scroll range
-// for every row, but draws only the rows near the view: the pages (PAGE_ROWS rows) the
-// view shows and one page before and after them, in normal flow between two spacers that
-// stand for the rest; scrolling loads and unloads pages. All file operations go
-// through `ops` (FileDrawer.jsx); this component only presents and routes input. Its
-// ref's focus() puts the DOM focus on the row that holds the tab stop.
+// The drawer's tree (WAI-ARIA tree pattern, one roving tab stop). The list keeps one scroll range
+// for every row but draws only the pages near the view, between two spacers that stand for the rest.
+// File operations go through `ops` (FileDrawer.jsx); the ref's focus() focuses the tab stop's row.
 const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFile, selected, focused, setFocused, cut, renaming, lightMode, targetFolder, ops }, ref) {
   const scrollHost = useRef(null);
   const list = useRef(null);
@@ -50,10 +46,8 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   }, []);
   useRetroScrollbars(listElement, hostElement, "Files", { horizontal: "always" });
 
-  // The view's pages follow the scroll position and the list's size. Scrolling into a
-  // page next to the view finds it drawn already, and the page beyond is drawn as a
-  // transition (in slices, so scrolling keeps its frame rate); a jump past the drawn pages
-  // (dragging the thumb) is drawn before the browser paints.
+  // The view's pages follow the scroll position: the page beyond is drawn as a transition (so
+  // scrolling keeps its frame rate); a jump past the drawn pages is drawn before the browser paints.
   const viewRef = useRef(view);
   viewRef.current = view;
   useEffect(() => {
@@ -82,9 +76,8 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   const drawn = useMemo(() => rows.slice(first, last), [rows, first, last]);
   const indexOf = useMemo(() => new Map(rows.map((row, i) => [row.path, i])), [rows]);
 
-  // A row's label: its tick box, indent, icon and name, as wide as Explorer's hit area for the row. Its width is
-  // worked out from the row's depth and its name measured in the label's font (bold for the open file), so rows
-  // not drawn are measured too.
+  // A row's label is Explorer's hit area for the row. Its width comes from the row's depth and its name measured
+  // in the label's font (bold for the open file), so rows not drawn are measured too.
   const labelBox = useRef({ start: 0, font: "", widths: new Map(), context: null });
   const labelWidth = (row) => {
     const box = labelBox.current;
@@ -145,6 +138,16 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
     return path;
   }, [indexOf, focused]);
   const focusIndex = indexOf.has(focusPath) ? indexOf.get(focusPath) : 0;
+
+  // the slow double click (D:\ has no name to edit); a press that ends a rename or closes a menu does only that, as
+  // in Windows (the menu closes before the row sees the press: menuJustClosed)
+  const menuJustClosed = useRef(false);
+  const { pointerDown: slowPress, click: slowClick, cancel: slowCancel } = useSlowClickRename({
+    list: listElement,
+    canArm: (row) => row.path === selected && renaming === null && !menu && !menuJustClosed.current && (row.kind !== "root" || !!row.path),
+    canStart: (path) => path === selected && path === focusPath && indexOf.has(path) && renaming === null && !menu && !drag,
+    start: (path) => ops.renameStart(path),
+  });
 
   // each row's place among its siblings (aria-posinset of aria-setsize): only the rows
   // near the view are in the DOM, so assistive technology cannot count them itself
@@ -238,6 +241,10 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   // rename box moves it on from there)
   const closeMenu = () => {
     setMenu(null);
+    menuJustClosed.current = true;
+    setTimeout(() => {
+      menuJustClosed.current = false;
+    }, 0);
     const active = document.activeElement;
     if (!active || active === document.body || active.closest(".tree-menu")) focusRow();
   };
@@ -245,13 +252,18 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
   const actions = useMemo(
     () => ({
       activate: (row) => ops.activate(row),
-      doubleActivate: (row) => ops.doubleActivate(row),
+      doubleActivate: (row) => {
+        slowCancel();
+        ops.doubleActivate(row);
+      },
+      slowClick: (event, row) => slowClick(event, row),
       toggle: (path) => ops.toggle(path),
       check: (row, value) => ops.check(row, value),
       focus: (row) => setFocused(row.path),
       contextMenu: (row, x, y) => openMenu(row, x, y),
       // a press on a row's blank part, right of its label, draws a selection rectangle instead (a touch keeps the row's)
       pointerDown: (event, row) => {
+        slowPress(event, row);
         const label = event.currentTarget.querySelector(".file-tree__label, .file-tree__rename");
         if (event.pointerType !== "touch" && label && event.clientX > label.getBoundingClientRect().right) return;
         onPointerDown(event, row);
@@ -261,11 +273,12 @@ const FileTree = forwardRef(function FileTree({ rows, iconFor, checkFor, openFil
       renameCancel: () => ops.renameCancel(),
       renameProblem: (path, name) => ops.renameProblem(path, name),
     }),
-    // ops is memoised by FileDrawer; onPointerDown reads its handlers through a ref
-    [ops, setFocused, onPointerDown],
+    // ops is memoised by FileDrawer; onPointerDown and the slow click read their handlers through refs
+    [ops, setFocused, onPointerDown, slowPress, slowClick, slowCancel],
   );
 
   const onKeyDown = (event) => {
+    slowCancel();
     if (menu || renaming !== null) return;
     const at = focusIndex;
     const row = rows[at];

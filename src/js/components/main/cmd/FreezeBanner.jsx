@@ -1,12 +1,8 @@
 import React from "react";
 import RetroNotice from "../../common/RetroNotice.jsx";
 
-// Retro-Windows banner shown when the emulator hardlocks (see Boxedwine.jsx
-// startFreezeDetector -> "emulator-frozen"; App hides it again on
-// "emulator-recovered", i.e. when the guest turns out to be alive after all).
-// Floats over the top edge of the cmd window and is dismissable (RetroNotice). The
-// reset action ONLY reloads the emulator iframe — it does NOT touch the user's
-// files (IndexedDB in this parent app) or the editor (parent React state).
+// Shown when the emulator hardlocks (Boxedwine.jsx startFreezeDetector); App hides it on "emulator-recovered".
+// Reset only reloads the emulator iframe: the user's files and the editor are in the parent app.
 function FreezeBanner({ onReset, onDismiss }) {
   return (
     <RetroNotice

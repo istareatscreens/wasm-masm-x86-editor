@@ -48,14 +48,13 @@
     min-height: 0;
   }
 
-  // the content shrinks and scrolls once the window is as tall as the page allows; the buttons
-  // below it never do
+  // in a full-height window the content shrinks and scrolls; the buttons never do
   &__scroll {
     flex: 0 1 auto;
   }
 
-  // a scroll area of window content (the body, Import by URL's links): what it holds keeps 98.css's 8 px
-  // window margin from the vertical bar (list boxes and text fields have the bar inside their own field)
+  // keeps 98.css's 8 px window margin clear of the vertical bar (list boxes and text fields have the bar
+  // inside their own field)
   &__scroll-area {
     &.retro-scroll-host--vertical {
       padding-right: 16px + 8px;
@@ -80,12 +79,10 @@
     }
   }
 
-  // the hard reset window (banner/about/CacheResetWindow.jsx): the image beside the text, both in the
-  // window's scroll area, as in the About window
+  // the hard reset window (banner/about/CacheResetWindow.jsx)
   &__reset-cache {
     text-align: center;
 
-    // its buttons: Windows 98's push buttons, a 16 px icon before the label
     &--btn,
     &__action {
       @include mixins.push-button;
@@ -102,8 +99,7 @@
       padding: 0;
     }
 
-    // Restore Default Layout and Delete Extra Drives...: 12 px under the option (7 dialog units), 6 px apart
-    // (4 dialog units), from the text's left edge
+    // 12 px under the option (7 dialog units), 6 px apart (4 dialog units)
     &__actions {
       display: flex;
       flex-wrap: wrap;
@@ -152,8 +148,7 @@
     }
   }
 
-  // Windows 98 message boxes (filedrawer/dialogs/ConfirmWindow.jsx): the icon beside the text, the box as wide
-  // as its text needs (up to 40rem) and as its buttons; nothing in it scrolls sideways
+  // Windows 98 message boxes (filedrawer/dialogs/ConfirmWindow.jsx)
   &__confirm {
     min-width: min(24rem, calc(100% - 16px));
 
@@ -229,8 +224,7 @@
     }
   }
 
-  // Share by URL and Import by URL (main/share/): their icon beside what they hold, as in the About window;
-  // nothing in them scrolls sideways
+  // Share by URL and Import by URL (main/share/)
   &__share,
   &__import {
     .retro-scroll-area__surface {
@@ -505,6 +499,16 @@
   &--createFile {
     height: 100%;
   }
+}
+
+.window .input-box {
+  height: auto;
+}
+
+.file-type-choice {
+  display: flex;
+  flex-direction: column;
+  gap: variables.$grouped-element-spacing;
 }
 
 .title-bar-controls button {

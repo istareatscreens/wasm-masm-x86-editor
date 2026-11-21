@@ -5,21 +5,16 @@ import RetroScrollArea from "./RetroScrollArea.jsx";
 
 const MARGIN = 8;
 
-// The position `to` moved so that the window's corner lands on whole device pixels, `rect` being the window drawn at
-// `from`: centred by translate(-50%), a window of fractional size sits between pixels, and draws every 1-px line in it
-// (bevels, frames) blurred or faint.
+// `to`, moved so the window's corner lands on whole device pixels (`rect` is the window drawn at `from`): centred by
+// translate(-50%), a window of fractional size draws its 1-px bevels and frames blurred.
 const onPixels = (rect, from, to) => {
   const ratio = window.devicePixelRatio || 1;
   const snap = (edge) => Math.round(edge * ratio) / ratio - edge;
   return { x: to.x + snap(rect.left + to.x - from.x), y: to.y + snap(rect.top + to.y - from.y) };
 };
 
-// Every window of the app: a Windows 98 title bar with the close button, the body and, when given, a
-// row of buttons that never scrolls. It is rendered into <body>, sized by `size` (fit: as wide as its
-// content, medium) or by the `width` it asks for (a CSS length), never wider than the page, and kept
-// inside the visible page while it is dragged, while the page changes size and while its content grows.
-// A body with `scrollLabel` is a text region whose vertical bar is always shown (the About window's);
-// any other body only gets a bar when it does not fit.
+// Every window of the app, rendered into <body> and kept inside the visible page while it is dragged, the page
+// resizes or its content grows. A body with `scrollLabel` is a text region whose vertical bar is always shown.
 const Window = ({ title, onClose, size = "medium", width, className = "", scrollLabel, footer = null, children }) => {
   const windowRef = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });

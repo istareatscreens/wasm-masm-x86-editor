@@ -1,0 +1,81 @@
+@use "../abstracts/variables";
+
+// a dark editor theme: the fields follow it, as the file drawer's list does
+.debug-sidebar--dark {
+  --debug-secondary-text: #{variables.$button-shadow}; // 5.3:1 on black
+  .debug-section__body,
+  .debug-section[data-section="breakpoints"] .debug-section__body > .debug-list,
+  .debug-section[data-section="breakpoints"] .debug-section__body > .debug-section__empty {
+    background: black;
+    color: silver;
+  }
+
+  .debug-section[data-section="breakpoints"] .debug-section__body,
+  .debug-section[data-section="memory"] .debug-section__body {
+    background: variables.$surface;
+    color: variables.$black-color;
+  }
+
+  .debug-memory__field {
+    background: black;
+  }
+
+  .debug-tree__toggle {
+    background: black;
+
+    &::before,
+    &::after {
+      background: silver;
+    }
+  }
+
+  .debug-tree__row--selected .debug-tree__name,
+  .debug-list__row--selected .debug-list__text {
+    color: black;
+  }
+
+  .debug-tree:focus-within .debug-tree__row--selected .debug-tree__name,
+  .debug-list:focus .debug-list__row--selected .debug-list__text,
+  .debug-list:focus-within .debug-list__row--selected .debug-list__text {
+    color: variables.$button-highlight;
+  }
+
+  .debug-tree__value--changed,
+  .debug-console__row--error {
+    color: variables.$changed-red-dark;
+  }
+
+  .debug-disasm__row--current {
+    background-color: variables.$current-line;
+    color: variables.$black-color;
+  }
+}
+
+@media (forced-colors: active) {
+  .debug-tree__row--selected .debug-tree__name,
+  .debug-list__row--selected .debug-list__text {
+    background-color: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+
+  .debug-tree__value--changed {
+    color: CanvasText;
+    font-weight: bold;
+  }
+
+  // the mark is drawn by its background, which forced colours would turn into the field's
+  .debug-tree__value--changed::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .debug-disasm__row--current {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+
+  .debug-section__body {
+    border: 1px solid CanvasText;
+  }
+}

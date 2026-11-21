@@ -1,3 +1,5 @@
+@use "variables";
+
 //Media query mixin
 @mixin respond($breakpoint) {
   @if $breakpoint ==half-width {
@@ -16,6 +18,79 @@
   }
 }
 
+// A tree's 1-px dotted connectors (rows are 20 px: the dots stay in phase from row to row), as modifiers of the
+// class that includes this: --through, --up, --down and --across.
+@mixin tree-lines($color) {
+  position: absolute;
+  pointer-events: none;
+
+  &--through,
+  &--up,
+  &--down {
+    width: 0;
+    border-left: 1px dotted $color;
+  }
+
+  &--through {
+    top: 0;
+    bottom: 0;
+  }
+
+  &--up {
+    top: 0;
+    height: 10px;
+  }
+
+  &--down {
+    top: 10px;
+    bottom: 0;
+  }
+
+  &--across {
+    top: 10px;
+    width: 10px;
+    height: 0;
+    border-top: 1px dotted $color;
+  }
+}
+
+// A tree's 9-px +/- box (common/TreeToggle.jsx): a 5-px minus, plus a 5-px bar while collapsed.
+@mixin tree-toggle($frame, $face) {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1px solid $frame;
+  background: $face;
+  cursor: pointer;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    background: #000;
+  }
+
+  &::before {
+    left: 1px;
+    top: 3px;
+    width: 5px;
+    height: 1px;
+  }
+
+  &::after {
+    left: 3px;
+    top: 1px;
+    width: 1px;
+    height: 5px;
+  }
+
+  &--open::after {
+    display: none;
+  }
+}
+
 @mixin push-button {
   flex: 0 0 auto;
   min-width: 75px;
@@ -30,5 +105,22 @@
   &:disabled {
     color: #808080;
     text-shadow: 1px 1px #ffffff;
+  }
+}
+
+// A text field that takes no input is grey, as Windows 98 draws a read-only or disabled edit control.
+@mixin field-inactive {
+  background: variables.$surface;
+}
+
+// A disabled field's text and placeholder (Safari fades disabled fields and fills their text itself).
+@mixin field-disabled-text {
+  color: variables.$button-shadow;
+  -webkit-text-fill-color: variables.$button-shadow;
+  opacity: 1;
+
+  &::placeholder {
+    color: variables.$button-shadow;
+    -webkit-text-fill-color: variables.$button-shadow;
   }
 }

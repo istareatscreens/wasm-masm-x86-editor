@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Dragging rows onto folders with Pointer Events (mouse, pen and touch alike; HTML5
-// drag-and-drop has no touch support and loses the pointer over the terminal iframe).
-// A mouse or pen drag starts after DRAG_PX of movement; a touch drag after a LONG_PRESS_MS
-// press (a swipe before that scrolls the list natively; a press released without moving
-// opens the context menu). The pointer is captured, so a drag survives leaving the
-// drawer, the iframe or the window. A collapsed folder hovered for HOVER_EXPAND_MS opens;
-// the list scrolls while the pointer is near its top or bottom edge; Escape cancels.
+import holdTextSelection from "./holdTextSelection.js";
+
+// Dragging rows onto folders with Pointer Events: HTML5 drag-and-drop has no touch support and loses the pointer
+// over the terminal iframe. A touch drag starts after a LONG_PRESS_MS press (a swipe before that scrolls the list;
+// a press released without moving opens the menu). The pointer is captured, so a drag survives leaving the window.
 const DRAG_PX = 4;
 const TOUCH_SLOP_PX = 8;
 const LONG_PRESS_MS = 400;
@@ -34,6 +32,7 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
     const s = session.current;
     session.current = null;
     if (!s) return;
+    if (s.release) s.release();
     clearTimeout(s.pressTimer);
     clearTimeout(s.hoverTimer);
     stopScroll(s);
@@ -78,9 +77,8 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
     setDrag({ items: s.items, row: s.row, x, y, target: null, problem: null });
   };
 
-  // the drop target under the pointer: a folder row, a drive's row, or the empty list
-  // area below the rows (= D:\); a file row, and the space of rows not drawn yet
-  // (data-spacer), are no target
+  // the drop target under the pointer: a folder or drive row, or the empty area below the rows (= D:\);
+  // a file row and the space of rows not drawn yet (data-spacer) are no target
   const targetAt = (x, y) => {
     const list = listRef.current;
     const hit = document.elementFromPoint(x, y);
@@ -136,7 +134,6 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
       const { target, rowEl } = targetAt(e.clientX, e.clientY);
       s.target = target;
       s.problem = target === null ? "Drop on a folder or on a drive." : handlers.current.check(s.items, target);
-      // hover over a collapsed folder opens it
       const collapsed = rowEl && rowEl.getAttribute("aria-expanded") === "false" ? rowEl.getAttribute("data-path") : null;
       if (collapsed !== s.hover) {
         clearTimeout(s.hoverTimer);
@@ -184,6 +181,7 @@ export default function usePointerDrag({ list, itemsFor, check, onDrop, onRefuse
         }
       }, LONG_PRESS_MS);
     }
+    if (!s.touch) s.release = holdTextSelection();
     session.current = s;
     window.addEventListener("pointermove", s.onMove, true);
     window.addEventListener("pointerup", s.onUp, true);

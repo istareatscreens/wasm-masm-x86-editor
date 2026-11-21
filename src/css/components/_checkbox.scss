@@ -1,11 +1,8 @@
 @use "../abstracts/variables";
 
-// 98.css's tick box (https://github.com/jdan/98.css, MIT), drawn on the input itself: the
-// browser's own control shows otherwise (a rounded box in Firefox, a blue fill in Chrome).
-// Each state is one 13x13 image of 98.css's pixels, its field bevel (the four inset shadows
-// of $border-field) and its checkmark.svg 3px in, over the box's colour: an image is snapped
-// to the screen's pixels as one piece, where Firefox snaps inset shadows and a background
-// image apart at half-pixel positions on 2x screens.
+// 98.css's tick box (https://github.com/jdan/98.css, MIT), drawn on the input itself.
+// Each state is one 13x13 image (field bevel and checkmark): an image snaps to the screen's pixels as one
+// piece, where Firefox snaps inset shadows and a background image apart at half-pixel positions on 2x screens.
 @function box($tick-fill: null) {
   $tick: "";
   @if $tick-fill {

@@ -13,6 +13,29 @@ $dialog-blue-light: #a5c9ef;
 $dialog-gray: #808080;
 $dialog-gray-light: #b5b5b5;
 $link-blue: #0000ff;
+$info-background: #ffffe1; // COLOR_INFOBK: tooltips and notices
+$secondary-text: #707070; // grey text that informs, on a white field (4.9:1; $button-shadow's 3.9:1 is for disabled text)
+
+//the debugger: a value that changed since the last stop (on a light and on a dark field), the current statement
+//in the sidebar's lists, and the editor's tints of the current statement and of the caller (VS Code's defaults:
+//editor.stackFrameHighlightBackground and editor.focusedStackFrameHighlightBackground)
+$changed-red: #a00000;
+$changed-red-dark: #ff6b6b;
+$current-line: #ffff80;
+$statement-light: #ffff6673;
+$statement-dark: #ffff0033;
+$caller-light: #cee7ce73;
+$caller-dark: #7abd7a4d;
+
+//a binary file in the editor pane, in a light and a dark editor theme: background, text, offsets, header row
+$document-background: #ffffff;
+$document-color: #000000;
+$document-heading: #0000ff;
+$document-header: #f3f3f3;
+$document-background-dark: #1e1e1e;
+$document-color-dark: #d4d4d4;
+$document-heading-dark: #9cdcfe;
+$document-header-dark: #252526;
 
 //98.css boarders
 //https://github.com/jdan/98.css

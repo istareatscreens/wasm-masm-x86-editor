@@ -1,7 +1,16 @@
 @use "../abstracts/variables";
 
-// The select-all box: a column of its own at the drawer bar's left, on the bar's last row,
-// where a one-row bar has it (0.75rem above the bar's bottom).
+// The collapse button shows only while the main bar's controls overflow one row (data-banner-overflow,
+// useBannerRows.js); collapsed, the bar is clipped to its first row.
+.app-layout:not([data-banner-overflow]) .banner__collapse {
+  display: none;
+}
+.app-layout[data-banner-overflow] .banner__main__group--collapsed {
+  height: variables.$banner-height;
+  overflow: hidden;
+}
+
+// The select-all box sits on the drawer bar's last row, where a one-row bar has it.
 .checkbox--selectAll {
   flex: none;
   align-self: flex-end;
@@ -9,10 +18,8 @@
   margin-bottom: 0.75rem;
 }
 
-// Both bars' controls are 2.5rem tall. Their lines start where a one-row bar has them
-// (0.15rem down) and are one row ($banner-height) apart; nothing is centred vertically. Each bar
-// is as many rows tall as its own controls need (useBannerRows): the main bar's count sets the
-// grid's first row, the drawer's toolbar is that tall at the top of the drawer's column.
+// Both bars' controls are 2.5rem tall, start 0.15rem down and wrap one row ($banner-height) apart; nothing
+// is centred vertically. Each bar is as many rows tall as its controls need (useBannerRows).
 .banner {
   &__file-drawer {
     flex: none;

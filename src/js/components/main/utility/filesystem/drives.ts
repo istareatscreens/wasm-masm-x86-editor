@@ -1,7 +1,6 @@
-// The extra drives. Each is a folder of the store the terminal mounts at /mnt/bw_drives (native /bw_drives),
-// mapped to a letter of E: to Y: while it has one, with file lists of its own in the drawer's storage. There can be
-// any number of drives: past 21, the letters go to the drives in use (FileSystem.useDrive). In the app a drive's
-// files are paths under "drive:<id>/"; ":" is never part of a D: name, so no D: path can take that form.
+// The extra drives: folders of the store the terminal mounts at STORE_GUEST, each with a letter of E: to Y: while it
+// has one (past 21 drives, the drives in use get them: FileSystem.useDrive). App paths are "drive:<id>/..."; ":" is
+// never part of a D: name, so no D: path can take that form.
 export const DRIVE_PREFIX = "drive:";
 export const D_GUEST = "/mnt/drive_d";
 export const D_NATIVE = "/d_drive";
@@ -164,9 +163,29 @@ export function randomSuffix(bytes: Uint8Array, length: number = 4): string | nu
   return out.length === length ? out : null;
 }
 
-// A drawer path in a download: from its drive's root, or, when the download spans drives, under a folder named
-// after the drive's letter, or its label when it has none.
-export const exportPath = (path: string, perDrive: boolean): string => {
+// The folders of a download that spans drives, by drive root: "D" for D:, else the drive's label, never its letter
+// (letters move, and some drives have none). A name taken in any letter case (labels repeat, a drive may be labelled
+// D) gets "_2", "_3", ...; drives go in creation order, so the same drives always get the same folders.
+export function exportFolders(roots: string[], drives: Drive[]): Map<string, string> {
+  const folders = new Map<string, string>();
+  const taken = new Set<string>();
+  const claim = (root: string, name: string) => {
+    let folder = name;
+    for (let n = 2; taken.has(folder.toLowerCase()); n++) folder = name + "_" + n;
+    taken.add(folder.toLowerCase());
+    folders.set(root, folder);
+  };
+  if (roots.includes("")) claim("", "D");
+  const byAge = drives.filter((drive) => roots.includes(driveRoot(drive.id))).sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  byAge.forEach((drive) => claim(driveRoot(drive.id), drive.label));
+  // a drive gone from the registry while the download was planned keeps its id
+  roots.filter((root) => !folders.has(root)).forEach((root) => claim(root, splitDrive(root).id || "drive"));
+  return folders;
+}
+
+// A drawer path in a download: from its drive's root, under its drive's folder (exportFolders) when the download
+// spans drives.
+export const exportPath = (path: string, folders: Map<string, string> | null = null): string => {
   const { rel } = splitDrive(path);
-  return perDrive ? driveSpec(path).slice(0, -1) + (rel ? "/" + rel : "") : rel;
+  return folders ? folders.get(rootOf(path)) + (rel ? "/" + rel : "") : rel;
 };

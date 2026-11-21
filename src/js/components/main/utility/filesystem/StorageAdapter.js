@@ -1,8 +1,5 @@
 /**
- * Storage Adapter Pattern - Provides unified interface for LocalStorage and IndexedDB
- * 
- * This adapter allows seamless switching between storage backends without
- * modifying the FileSystem.js code.
+ * One async interface over IndexedDB and its localStorage fallback.
  */
 
 const DB_NAME = 'BoxedwineFileSystem';
@@ -16,11 +13,6 @@ class StorageAdapter {
     this.onVersionChange = null; // runs when another tab deletes the store (see close)
   }
 
-  /**
-   * Initialize the storage adapter
-   * @param {string} type - 'localstorage' or 'indexeddb'
-   * @returns {Promise<void>}
-   */
   async init(type = 'indexeddb') {
     this.storageType = type.toLowerCase();
     
@@ -32,10 +24,6 @@ class StorageAdapter {
     }
   }
 
-  /**
-   * Initialize IndexedDB connection
-   * @private
-   */
   async _initIndexedDB() {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) {
@@ -49,7 +37,6 @@ class StorageAdapter {
 
       request.onerror = () => {
         console.error('[StorageAdapter] IndexedDB open error:', request.error);
-        // Fallback to LocalStorage
         this.storageType = 'localstorage';
         resolve();
       };
@@ -68,8 +55,7 @@ class StorageAdapter {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
-        // Create object store if it doesn't exist
+
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'key' });
           console.log('[StorageAdapter] Created object store:', STORE_NAME);
@@ -89,11 +75,6 @@ class StorageAdapter {
     this.db = null;
   }
 
-  /**
-   * Get item from storage
-   * @param {string} key
-   * @returns {Promise<string|null>}
-   */
   async getItem(key) {
     if (this.storageType === 'indexeddb') {
       return this._getItemIndexedDB(key);
@@ -102,12 +83,6 @@ class StorageAdapter {
     }
   }
 
-  /**
-   * Set item in storage
-   * @param {string} key
-   * @param {string} value
-   * @returns {Promise<void>}
-   */
   async setItem(key, value) {
     if (this.storageType === 'indexeddb') {
       return this._setItemIndexedDB(key, value);
@@ -116,11 +91,6 @@ class StorageAdapter {
     }
   }
 
-  /**
-   * Remove item from storage
-   * @param {string} key
-   * @returns {Promise<void>}
-   */
   async removeItem(key) {
     if (this.storageType === 'indexeddb') {
       return this._removeItemIndexedDB(key);
@@ -129,10 +99,6 @@ class StorageAdapter {
     }
   }
 
-  /**
-   * Get all keys from storage
-   * @returns {Promise<string[]>}
-   */
   async keys() {
     if (this.storageType === 'indexeddb') {
       return this._keysIndexedDB();
@@ -141,10 +107,6 @@ class StorageAdapter {
     }
   }
 
-  /**
-   * Clear all storage
-   * @returns {Promise<void>}
-   */
   async clear() {
     if (this.storageType === 'indexeddb') {
       return this._clearIndexedDB();
@@ -154,9 +116,7 @@ class StorageAdapter {
   }
 
   /**
-   * Get ALL [key, value] entries. Used to seed a synchronous in-memory cache from
-   * IndexedDB on startup so the existing synchronous FileSystem code can read
-   * without awaiting.
+   * Every [key, value] entry, [] when the store cannot be read (seeds FileSystemAdapter's cache).
    * @returns {Promise<Array<[string, string]>>}
    */
   async getAll() {
@@ -376,20 +336,10 @@ class StorageAdapter {
   }
 }
 
-// Singleton: memoize the INIT PROMISE, not the instance. The previous version
-// published the instance synchronously and then awaited init(), so a second
-// concurrent caller (App settings save / file-list seed both run at mount)
-// received an adapter whose `db` was still null and threw
-// "Cannot read properties of null (reading 'transaction')" — an unhandled
-// rejection that silently dropped that read/write. Every caller now awaits the
-// same fully-initialised adapter.
+// The init promise is shared, not the instance: a concurrent caller (several run at mount) must never get an
+// adapter whose `db` is still null.
 let storageAdapterPromise = null;
 
-/**
- * Get the storage adapter instance
- * @param {string} type - 'localstorage' or 'indexeddb'
- * @returns {Promise<StorageAdapter>}
- */
 export function getStorageAdapter(type = 'indexeddb') {
   if (!storageAdapterPromise) {
     const instance = new StorageAdapter();

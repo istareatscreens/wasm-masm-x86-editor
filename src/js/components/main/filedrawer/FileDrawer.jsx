@@ -1,13 +1,15 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import FileSystem from "../utility/FileSystem";
-import { joinPath, parentOf, baseOf, isAsm, isWithin, nameProblem, folderLabel, rebase, guestPath } from "../utility/filesystem/paths";
+import { joinPath, parentOf, baseOf, isWithin, nameProblem, folderLabel, rebase, guestPath } from "../utility/filesystem/paths";
 import { driveRoot, driveName, D_NAME, splitDrive, rootOf, isRootPath, normalizeLabel, labelProblem, NO_LETTER_TIP } from "../utility/filesystem/drives";
 import { indexTree, buildRows, reuseRows, checkState, toggleChecked, resolveTargets, planMove, allDescendants, selectAllState, checkAll, marqueeTicks } from "./model/tree";
+import { fileIconKind } from "./model/fileIcons.js";
 import useTreeState from "./hooks/useTreeState.js";
 import FileTree from "./tree/FileTree.jsx";
 import FileDrawerToolbar from "./toolbar/FileDrawerToolbar.jsx";
 import NameWindow from "./dialogs/NameWindow.jsx";
+import NewFileWindow from "./dialogs/NewFileWindow.jsx";
 import ConfirmWindow from "./dialogs/ConfirmWindow.jsx";
 import { windowToggle } from "../../common/useWindowToggle.js";
 
@@ -17,8 +19,37 @@ import iconFolderOpen from "../../../../images/folderOpen.png";
 import iconFileAsm from "../../../../images/fileAsm.png";
 import iconFileText from "../../../../images/fileText.png";
 import iconFileBinary from "../../../../images/fileBinary.png";
+import iconFileInclude from "../../../../images/fileInclude.png";
+import iconFileMacro from "../../../../images/fileMacro.png";
+import iconFileDefinition from "../../../../images/fileDefinition.png";
+import iconFileDll from "../../../../images/fileDll.png";
+import iconFileObject from "../../../../images/fileObject.png";
+import iconFileLibrary from "../../../../images/fileLibrary.png";
+import iconFileListing from "../../../../images/fileListing.png";
+import iconFileError from "../../../../images/fileError.png";
+import iconFileBatch from "../../../../images/fileBatch.png";
+import iconFileImage from "../../../../images/fileImage.png";
+import iconFileArchive from "../../../../images/fileArchive.png";
+import iconFileData from "../../../../images/fileData.png";
 
-const BINARY_EXTENSIONS = /\.(exe|obj|dll|bin)$/i;
+// model/fileIcons.js's kinds
+const FILE_ICONS = {
+  asm: iconFileAsm,
+  include: iconFileInclude,
+  macro: iconFileMacro,
+  definition: iconFileDefinition,
+  program: iconFileBinary,
+  dll: iconFileDll,
+  object: iconFileObject,
+  library: iconFileLibrary,
+  listing: iconFileListing,
+  error: iconFileError,
+  batch: iconFileBatch,
+  image: iconFileImage,
+  archive: iconFileArchive,
+  text: iconFileText,
+  data: iconFileData,
+};
 const plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
 
 // Drive labels are unique in any letter case; a new drive is New_Drive, or New_Drive_<n> when that is taken.
@@ -33,7 +64,7 @@ const freeDriveLabel = (drives) => {
   return label;
 };
 
-// Upload helper (as before): a File -> {fileMetaData, data: data URL}.
+// Upload helper: a File -> {fileMetaData, data: data URL}.
 const readAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -42,10 +73,9 @@ const readAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
-// The file drawer: the Windows 98 Explorer tree of D: and the other drives, its toolbar and its
-// dialogs. Every change goes through FileSystem (storage + the guest drives together) and then
+// Every change goes through FileSystem (storage + the guest drives together) and then
 // refreshFileList; the tree is rebuilt from storage (model/tree.ts).
-const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, closeShare, importLinks, reveal, fileSelected, switchFile, createFile, refreshFileList, setEditorLock, forceUpdate, lightMode }) {
+const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, closeShare, importLinks, reveal, fileSelected, switchFile, createFile, refreshFileList, setEditorLock, forceUpdate, lightMode, newFileType, setNewFileType }) {
   const files = useMemo(() => fileList.filter((name) => name && name !== "/"), [fileList]);
   const roots = useMemo(
     () =>
@@ -108,16 +138,17 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
   // the toolbar's select-all box mirrors the whole view, every drive (checked, partly, or not)
   const selectAll = useMemo(() => selectAllState(checked, index, asmOnly), [checked, index, asmOnly]);
 
-  // a row's icon, worked out when the row is drawn; binary or not decides a file's icon,
-  // and only a file that is not .asm and has no known binary extension is sniffed
+  // a row's icon, worked out when the row is drawn; only a file whose extension has no icon of its own is sniffed
   const iconFor = useMemo(() => {
     const binary = new Map();
+    const isBinary = (path) => {
+      if (!binary.has(path)) binary.set(path, FileSystem.isBinaryFile(path));
+      return binary.get(path);
+    };
     return (row) => {
       if (row.kind === "root") return iconDrive;
       if (row.kind === "folder") return row.expanded ? iconFolderOpen : iconFolderClosed;
-      if (isAsm(row.path)) return iconFileAsm;
-      if (!binary.has(row.path)) binary.set(row.path, BINARY_EXTENSIONS.test(row.path) || FileSystem.isBinaryFile(row.path));
-      return binary.get(row.path) ? iconFileBinary : iconFileText;
+      return FILE_ICONS[fileIconKind(row.path, () => isBinary(row.path))];
     };
   }, [fileList]);
 
@@ -127,13 +158,12 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
 
   // Everything the stable ops below need, current at each render.
   const live = useRef({});
-  live.current = { index, rows, files, allPaths, checked, cut, asmOnly, fileSelected, switchFile, createFile, refreshFileList, setEditorLock, forceUpdate, drives, onShare };
+  live.current = { index, rows, files, allPaths, checked, cut, asmOnly, selected, fileSelected, switchFile, createFile, refreshFileList, setEditorLock, forceUpdate, drives, onShare };
 
   const ops = useMemo(() => {
     const current = () => live.current;
     const rerenderEditor = () => current().forceUpdate.setRefreshFile(!current().forceUpdate.refreshFile);
     const notice = (message, details) => setDialog({ kind: "notice", message, details });
-    // the entries a checkbox selection stands for, as a flat list of paths
     const checkedTargets = () => {
       const { files, folders } = resolveTargets(current().checked, current().index, current().asmOnly);
       return folders.concat(files);
@@ -194,8 +224,8 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
           forget(paths);
         },
       );
-    // a drive and everything on it, after "Confirm Drive Delete"
-    const requestDriveDelete = (row) => {
+    // a drive and everything on it, after "Confirm Drive Delete"; `opener` as for requestDelete
+    const requestDriveDelete = (row, opener) => {
       const { id } = splitDrive(row.path);
       if (id === null) return;
       const count = current().files.filter((file) => rootOf(file) === row.path).length;
@@ -211,6 +241,7 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
         );
       setDialog({
         kind: "confirm",
+        opener,
         title: "Confirm Drive Delete",
         message: "Delete the drive '" + row.name + "' and the " + plural(count, "file") + " on it?",
         choices: [{ label: "Yes", onSelect: doDeleteDrive }, { label: "No" }],
@@ -258,6 +289,12 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
           ? "Delete the folder '" + baseOf(folders[0]) + "' and the " + plural(fileCount, "file") + " in it?"
           : "Delete " + plural(folders.length, "folder") + " and the " + plural(fileCount, "file") + " in them" + (loose ? ", and " + plural(loose, "other file") : "") + "?";
       setDialog({ kind: "confirm", opener, title: "Confirm Folder Delete", message, choices: [{ label: "Yes", onSelect: () => doDelete(paths) }, { label: "No" }] });
+    };
+    // a row's Delete (its key and its menu): the drive, or the checked items, else the row's own
+    const deleteRow = (row, opener) => {
+      if (row.kind === "root") return requestDriveDelete(row, opener);
+      const marked = checkedTargets();
+      requestDelete(marked.length ? marked : [row.path], opener);
     };
     return {
       notice,
@@ -331,17 +368,17 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
         FileSystem.useDrive(splitDrive(row.path).id);
         current().refreshFileList();
       },
-      deleteRow: (row) => {
-        if (row.kind === "root") return requestDriveDelete(row);
-        const marked = checkedTargets();
-        requestDelete(marked.length ? marked : [row.path]);
-      },
+      deleteRow,
+      // The toolbar's Delete: the checked items, else the highlighted row as its own Delete deletes it (a drive
+      // after "Confirm Drive Delete"); D:\ itself is never deleted, and a row the tree does not show is not taken.
       deleteSelection: () => {
-        const { files, folders, drives } = resolveTargets(current().checked, current().index, current().asmOnly);
+        const { checked, index, asmOnly, rows, selected } = current();
+        const { files, folders, drives } = resolveTargets(checked, index, asmOnly);
         if (drives.length) return requestDrivesDelete(drives, folders.concat(files));
         const marked = folders.concat(files);
-        const open = current().fileSelected;
-        requestDelete(marked.length ? marked : open ? [open] : [], "delete");
+        if (marked.length) return requestDelete(marked, "delete");
+        const row = rows.find((r) => r.path === selected);
+        if (row && (row.kind !== "root" || row.path)) deleteRow(row, "delete");
       },
       // Share by URL: the download button's selection (the checked entries, else the open file); from a row's
       // menu, that row's item, or every checked item when the row is one of them; a drive's row, the drive
@@ -364,11 +401,14 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
       save: () => {
         const { checked, index, asmOnly, fileSelected } = current();
         const targets = resolveTargets(checked, index, asmOnly);
-        if (!targets.folders.length && targets.files.length <= 1) {
+        // a ticked drive is downloaded as a folder is, in a zip
+        if (!targets.folders.length && !targets.drives.length && targets.files.length <= 1) {
           const file = targets.files[0] || fileSelected;
           if (file) FileSystem.saveFile(file);
         } else {
-          FileSystem.saveEntries(targets).catch((error) => notice("The archive could not be created: " + error.message));
+          FileSystem.saveEntries(targets)
+            .then((saved) => saved || notice("The ticked drive is empty: there is nothing to download."))
+            .catch((error) => notice("The archive could not be created: " + error.message));
         }
       },
     };
@@ -387,7 +427,7 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
       const replacingOpen = list.some((file) => joinPath(folder, file.name.normalize("NFC")).toLowerCase() === (open || "").toLowerCase());
       FileSystem.createDataFile(await Promise.all(list.map(readAsDataUrl)), () => {
         if (folder) toggle(folder, true);
-        refreshFileList(); // the uploaded files show in the drawer at once
+        refreshFileList();
         if (replacingOpen) {
           switchFile(open);
           live.current.forceUpdate.setRefreshFile(!live.current.forceUpdate.refreshFile);
@@ -486,18 +526,18 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
     shareLink: windowToggle(shareOpen, () => ops.share(null), closeShare),
     remove: windowToggle(dialogIs("confirm", "delete"), ops.deleteSelection, closeDialog),
   };
-  const assemblyName = (name) => (isAsm(name) ? name : name + ".asm"); // a name typed without .asm gets it
 
   return (
     <>
       {dialog && dialog.kind === "newFile" && (
-        <NameWindow
-          title={"Create file in " + folderLabel(dialog.folder)}
-          label="create file(s)"
-          problemFor={(name) => nameProblem(assemblyName(name), dialog.folder, allPaths)}
-          onCreate={(name) => {
+        <NewFileWindow
+          folder={dialog.folder}
+          allPaths={allPaths}
+          fileType={newFileType}
+          onFileType={setNewFileType}
+          onCreate={(path) => {
             if (dialog.folder) toggle(dialog.folder, true);
-            createFile(joinPath(dialog.folder, assemblyName(name)));
+            createFile(path);
           }}
           close={closeDialog}
         />

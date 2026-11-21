@@ -1,11 +1,8 @@
 @use "../abstracts/variables";
 
-// #app-splash (index.html) covers the page until its images and fonts are there (App.jsx):
-// the window grey and, once the wait passes a second, the Windows 98 progress control (a
-// thin sunken trough in the same grey, highlight-blue blocks 16 px wide with 2 px gaps)
-// drifting to the right, nothing else. A load that ends within the second never shows the
-// bar, the bar fades in rather than popping, and the cover fades out grey into the same
-// grey, so neither a refresh nor a slow start flashes.
+// #app-splash (index.html) covers the page until its images and fonts are there (App.jsx). The progress bar
+// fades in only after a second and the cover fades out grey into grey, so neither a refresh nor a slow start
+// flashes.
 .app-splash {
   position: fixed;
   inset: 0;

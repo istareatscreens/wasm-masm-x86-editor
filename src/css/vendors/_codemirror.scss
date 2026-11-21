@@ -1,9 +1,4 @@
-// CodeMirror 6 editor sizing.
-//
-// CM6 themes are JavaScript Extensions (see editor/library/themes.js), so there
-// are NO CSS theme imports here — the 64 CM5 `@import`s were removed with the
-// v5 -> v6 migration. We only size the editor so it fills the flex layout,
-// targeting the CM6 DOM (.cm-editor / .cm-scroller), not the CM5 `.CodeMirror`.
+// CodeMirror 6 editor sizing; its themes are JavaScript extensions (editor/library/themes.js).
 
 .editor__code-mirror {
   height: 100%;

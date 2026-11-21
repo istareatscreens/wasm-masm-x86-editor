@@ -1,8 +1,6 @@
 import { useCallback, useState } from "react";
 
-// A button that opens a window toggles it: pressed while its window is open, it does what the window's close
-// button does. The button says that it opens a dialog and whether the dialog is open (aria-haspopup,
-// aria-expanded). `isOpen`: the window is open; `open` opens it; `dismiss` is its close button.
+// A button that opens a window toggles it: pressed while the window is open, it acts as the close button.
 export const windowToggle = (isOpen, open, dismiss) => ({
   toggle: () => (isOpen ? dismiss() : open()),
   opener: { "aria-haspopup": "dialog", "aria-expanded": !!isOpen },

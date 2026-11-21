@@ -13,10 +13,8 @@ function createWindow() {
     height: 800,
     icon: path.join(__dirname, "icon.png"), // build/icon.png (src/images/masm-icon-512w.png)
     webPreferences: {
-      // The renderer loads everything from file:// (fetch of the 112MB guest
-      // zip + wasm needs webSecurity off) and index-update.js uses
-      // require("electron"). Electron >= 12 defaults contextIsolation to true,
-      // which would hide `require` from the page, so it is disabled explicitly.
+      // file:// fetches of the guest zip and wasm need webSecurity off; the page's
+      // require("electron") needs contextIsolation off (on by default since Electron 12).
       webSecurity: false,
       nodeIntegration: true,
       contextIsolation: false,

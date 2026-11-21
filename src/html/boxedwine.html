@@ -21,9 +21,8 @@
 
     <script src="jszip.min.js"></script>
     <script>
-      // Chunk-assembly service worker (web only): Cloudflare Pages rejects files over
-      // 25 MiB, so the guest image ships in chunks that bw-chunk-sw.js reassembles.
-      // __swReady resolves once the worker controls the page (at once without one).
+      // Web only: Cloudflare Pages takes no file over 25 MiB, so the guest image ships in chunks that
+      // bw-chunk-sw.js reassembles. __swReady resolves once the worker controls the page (at once without one).
       window.__swReady = new Promise(function (resolve) {
         var done = false;
         var finish = function (why) {
@@ -129,8 +128,8 @@
         function pasteText(text, how) {
           if (!text) return;
           lastPasteAt = performance.now();
-          pendingImport = text;
           var typed = text.replace(/\r\n?/g, "\r").replace(/\n/g, "\r"); // a line end is one Enter for the console
+          pendingImport = typed; // the emulator reports back the text it was given, line ends and all
           try {
             Module.bwSetClipboardText(typed);
           } catch (e) {}
@@ -279,10 +278,9 @@
           );
         };
       })();
-      // Text in any language: a key that types a character the US keymap does not give for that
-      // key (another keyboard layout, AltGr, Caps Lock, a dead-key composition) is typed as text
-      // through the console's text channel (Module.bwTypeText); every other key reaches SDL
-      // unchanged. US maps each key code to its unshifted and shifted US characters.
+      // Text in any language: a key whose character the US keymap does not give for that key
+      // (another layout, AltGr, Caps Lock, a dead key) is typed through Module.bwTypeText; every
+      // other key reaches SDL unchanged. US: each key code's unshifted and shifted characters.
       (function () {
         var US = {
           Backquote: "`~", Digit1: "1!", Digit2: "2@", Digit3: "3#", Digit4: "4$", Digit5: "5%",
@@ -338,9 +336,8 @@
         var canvas = document.getElementById("canvas");
         if (!canvas || !canvas.setPointerCapture) return;
         canvas.addEventListener("pointerdown", function (e) {
-          // a click on the terminal gives it the keyboard: SDL cancels the mouse-down's default
-          // action, which is also the focus change, so keys typed after a click on the terminal
-          // kept going to whatever had the focus in the page
+          // a click gives the terminal the keyboard: SDL cancels the mouse-down's default action,
+          // which is also the focus change
           try {
             window.focus();
           } catch (err) {}
@@ -354,12 +351,9 @@
           } catch (err) {}
         });
       })();
-      // Wheel and trackpad: every event over the console becomes console rows by the platform's convention before
-      // SDL sees it, and the rows reach SDL as one emulated wheel press each (the guest scrolls one row a press).
-      // Pixels per row: Windows 100/3, as its own console (Chromium sends 100/3 px per line of the system's lines
-      // per notch); Linux and ChromeOS 40 (Chromium's 120 px notch is 3 rows, as in VTE); macOS and the rest the
-      // console's row height, so the text follows the fingers. Lines are rows, a page is the window less a row.
-      // deltaMode is read first: Firefox then reports lines instead of pixels at 16 px a line.
+      // Wheel and trackpad: each event over the console becomes rows, one emulated SDL wheel press per row. Pixels
+      // per row: Windows 100/3 (Chromium's px per line), Linux/ChromeOS 40 (a 120 px notch is 3 rows, as in VTE),
+      // else the row height. A page is the window less a row. Read deltaMode first: Firefox then reports lines.
       window.bwWheelPlatform = function (nav) {
         var p = "";
         try {
@@ -417,7 +411,7 @@
           "wheel",
           function (e) {
             if (own) return; // the page's own event, for SDL
-            if (e.ctrlKey) return; // Ctrl+wheel and pinch: SDL's, as before
+            if (e.ctrlKey) return; // Ctrl+wheel and pinch: left to SDL
             var mode = e.deltaMode,
               delta = e.deltaY;
             e.preventDefault();
@@ -497,7 +491,7 @@
 
       // Runtime selection: 1. ?bw=mt|st (testing; clears a failure record); 2. ST when MT
       // failed its watchdog under this build; 3. localStorage "bw-runtime-pref"; 4. ST
-      // (MT works, but measured slower than ST for this app's workloads).
+      // (MT works, but is slower than ST for this app's workloads).
       (function () {
         var MT_DEFAULT_ENABLED = false;
         var canMT =
@@ -577,31 +571,40 @@
       getAppZipFile = function () {
         return "assembler-dp0.zip";
       };
+      // The Irvine library's files (irvine.zip), mounted where the toolchain looks for them and where
+      // course code names them: C:\files\irvine and C:\Irvine.
+      getMountedZips = function () {
+        return [
+          {
+            zip: "irvine.zip",
+            at: [
+              "/home/username/.wine/dosdevices/c:/files/irvine",
+              "/home/username/.wine/dosdevices/c:/Irvine",
+            ],
+          },
+        ];
+      };
       getEnvProp = function () {
         return "WINEDLLOVERRIDES=mscoree=d;mshtml=d";
       };
-      // Extra guest environment. LC_CTYPE=en_US.UTF-8, the locale the guest image carries
-      // (Boxedwine/guest-image/locale-utf8.py): Wine converts native file names as UTF-8,
-      // so a name in any language keeps its name on D: (with no locale it read them as
-      // 7-bit ASCII). Only the character type is set: the system locale stays en-US, the
-      // code pages 1252/437. ?bwwinedebug=<channels> (debug, cold boot) adds WINEDEBUG.
+      // LC_CTYPE=en_US.UTF-8 (the guest image carries it, Boxedwine/guest-image/locale-utf8.py): Wine
+      // converts native file names as UTF-8, so a name in any language keeps its name on D:. The system
+      // locale stays en-US, code pages 1252/437. ?bwwinedebug=<channels> (debug, cold boot) adds WINEDEBUG.
       window.BW_EXTRA_ENV = ["LC_CTYPE=en_US.UTF-8"];
       (function () {
         var m = /[?&]bwwinedebug=([^&]+)/.exec(location.search);
         if (m) window.BW_EXTRA_ENV.push("WINEDEBUG=" + decodeURIComponent(m[1]));
       })();
-      // Screen geometry = the terminal panel in CSS pixels (the canvas is 100vw x 100vh, so
-      // 1:1). The console fills it with whole 11x22 px cells (Liberation Mono 22 px, the
-      // original console font) inside a 24 px wide / 27 px high frame: bwPatchGuestConsole
-      // writes rows/cols into the guest registry before Wine starts, and bwSyncScreenToPanel
-      // resizes the screen when the panel changes.
+      // Screen geometry = the terminal panel in CSS pixels (the canvas is 100vw x 100vh). The console
+      // fills it with whole Liberation Mono 22 px cells inside its frame: bwPatchGuestConsole writes
+      // rows/cols into the guest registry before Wine starts, bwSyncScreenToPanel follows the panel.
       var BW_CELL_W = 11,
         BW_CELL_H = 22,
         BW_FRAME_W = 8 + 16,
         BW_FRAME_H = 27,
         BW_BUF_ROWS = 500;
       var BW_MIN_COLS = 8,
-        BW_MIN_ROWS = 2; // conhost v15 minimum (window.c WM_SIZE)
+        BW_MIN_ROWS = 2; // conhost's minimum (window.c WM_SIZE)
       // the console's smallest window: on a smaller screen it is clipped and cannot fill it
       var BW_CONSOLE_MIN_W = BW_FRAME_W + BW_MIN_COLS * BW_CELL_W,
         BW_CONSOLE_MIN_H = BW_FRAME_H + BW_MIN_ROWS * BW_CELL_H;
@@ -820,13 +823,9 @@
           var g = window.bwGeometryFor(w, h);
           return g.width + "x" + g.height;
         }
-        // While the app page's on-screen keyboard is up (its visual viewport, unzoomed, well short of
-        // its layout viewport), the terminal is behind the keyboard and the panel's size follows the
-        // browser's toolbar and inset changes, not the user (Chrome hides a bottom address bar for the
-        // keyboard): the guest screen keeps its size, and a panel that still differs once the
-        // keyboard is gone is fitted then. The keyboard leaves the visual viewport before the
-        // browser puts its toolbar back, so for AFTER_KEYBOARD_MS after that a resize only moves
-        // the fit to the end of that time.
+        // While the app page's on-screen keyboard is up (unzoomed visual viewport well short of the layout
+        // viewport) the panel follows the browser's toolbar, not the user, so the screen keeps its size. The
+        // keyboard goes before Chrome puts its toolbar back: for AFTER_KEYBOARD_MS after that a resize waits.
         function keyboardUp() {
           try {
             var page = window.parent,
@@ -893,8 +892,7 @@
             if (el.style.display !== "block") {
               copy.width = frame.width;
               copy.height = frame.height;
-              // Firefox privacy protection can replace canvas extraction with noise.
-              // Paint our own frame bytes without encoding/decoding a PNG.
+              // SDL's own frame bytes: Firefox privacy protection can turn a canvas extraction into noise
               copy.getContext("2d").putImageData(frame, 0, 0);
               el.style.display = "block";
               holdSince = Date.now();
@@ -1038,6 +1036,11 @@
         window.BWCache.prefetch(Config.locateAppBaseUrl + getAppZipFile(), {
           method: "GET",
         });
+        getMountedZips().forEach(function (mounted) {
+          window.BWCache.prefetch(Config.locateAppBaseUrl + mounted.zip, {
+            method: "GET",
+          });
+        });
         window.BWCache.prefetch(window.BW_GLUE_URL, {
           credentials: "same-origin",
         });
@@ -1060,6 +1063,11 @@
           window.BW_USE_MT ? "mt" : "st",
           DEFAULT_ROOT_ZIP_FILE,
           getAppZipFile(),
+          getMountedZips()
+            .map(function (mounted) {
+              return mounted.zip + "@" + mounted.at.join(",");
+            })
+            .join(";"),
           getExecutable(),
           getProgramArgs().join(","),
           "livescreen",
@@ -1067,16 +1075,15 @@
         ].join("|");
         var _bwMarker = "bwsnapmark|" + _bwId;
         var _bwSnapAllowed = !window.BW_USE_MT || window.BW_MT_SNAPSHOT_ENABLED;
-        // Suppress emscripten's automatic main() only when a snapshot marker exists, decided
-        // synchronously: a cold boot must use auto-main (calling callMain after noInitialRun
-        // deadlocks MT under PROXY_TO_PTHREAD). begin() still validates the snapshot; a stale
-        // marker makes the shell discard it and reload into a cold boot.
+        // Suppress emscripten's automatic main() only when a snapshot marker exists, decided synchronously:
+        // a cold boot must use auto-main (callMain after noInitialRun deadlocks MT under PROXY_TO_PTHREAD).
+        // begin() still validates the snapshot; a stale marker makes the shell discard it and cold-boot.
         var _bwHasSnap = false;
         try {
           _bwHasSnap = localStorage.getItem(_bwMarker) === "1";
         } catch (e) {}
         if (_bwHasSnap && !_bwSnapAllowed) {
-          // A marker from a build that armed MT restore: never take that path now.
+          // MT restore is off: never take the restore path
           try {
             localStorage.removeItem(_bwMarker);
           } catch (e) {}
@@ -1097,11 +1104,9 @@
       }
     </script>
     <script>
-      // SDL exposes the ImageData it has just presented in BOTH shipped runtimes.
-      // Inspect these app-owned bytes, never a canvas extraction: Firefox privacy
-      // protection can deny/randomize getImageData and toDataURL. That noise used
-      // to pass the boot gate on blank/Wine-loading frames and became colored
-      // stripes in the resize hold. No canvas permission is needed here.
+      // SDL exposes the ImageData it has just presented (ST and MT). Inspect these bytes, never a
+      // canvas extraction: Firefox privacy protection can deny/randomize getImageData and toDataURL,
+      // and that noise passes the boot gate on blank frames and paints stripes in the resize hold.
       (function () {
         window.bwConsoleFrame = function () {
           try {

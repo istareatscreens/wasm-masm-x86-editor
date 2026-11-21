@@ -1,20 +1,20 @@
-import React from 'react';
-const ItemComponent = ({ activate, byte, index, active, clear }) => {
-    const getClasses = () => {
-        return (active ? "active" : "") + (byte === "--" ? " none" : "");
-    };
+import React from "react";
 
-    return (
-        <li
-            className={getClasses()}
-            onMouseOver={() => activate(index)}
-            onFocus={() => { }}
-            onMouseLeave={clear}
-        >
-            {byte}
-        </li>
-    );
-};
+// One cell: a byte, word or dword in the hex column (`kind` "cell"), or one byte in the character column
+// ("char"). Its states are classes of the viewer's stylesheet; `id` lets the grid name it as the active cell.
+const ItemComponent = ({ kind, id, offset, text, states, changed, onHover }) => (
+  <span
+    role="gridcell"
+    id={id}
+    data-offset={offset}
+    data-column={kind === "cell" ? "hex" : "ascii"}
+    className={"hexviewer__" + kind + states}
+    aria-selected={states.indexOf("--selected") >= 0 || undefined}
+    aria-description={changed ? "changed" : undefined}
+    onMouseEnter={onHover}
+  >
+    {text}
+  </span>
+);
 
-// Memoize for performance in virtual scrolling
 export const Item = React.memo(ItemComponent);

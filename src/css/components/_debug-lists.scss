@@ -1,0 +1,242 @@
+@use "../abstracts/mixins";
+@use "../abstracts/variables";
+
+// The sections' trees and lists (debugger/tree, sections), drawn as the file tree is.
+
+// the Breakpoints section's tools and group frame stand on the window grey, outside the white field
+.debug-section[data-section="breakpoints"] .debug-section__body {
+  background: variables.$surface;
+  box-shadow: none;
+  padding: 0;
+
+  > .debug-list,
+  > .debug-section__empty {
+    background: variables.$button-highlight;
+    box-shadow: variables.$border-field;
+    padding: 2px;
+  }
+}
+
+.debug-tree,
+.debug-list {
+  list-style: none;
+  margin: 0;
+  outline: none;
+}
+
+.debug-tree {
+  &__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 20px;
+    white-space: nowrap;
+    outline: none;
+    cursor: default;
+  }
+
+  &__indent {
+    position: relative;
+    flex: none;
+    height: 100%;
+  }
+
+  &__line {
+    @include mixins.tree-lines(variables.$button-shadow);
+  }
+
+  &__toggle-slot {
+    position: absolute;
+    top: 6px;
+    width: 9px;
+    height: 9px;
+  }
+
+  &__toggle {
+    @include mixins.tree-toggle(variables.$button-shadow, variables.$button-highlight);
+  }
+
+  &__name {
+    flex: 0 1 auto;
+    min-width: 3ch;
+    max-width: 50%;
+    padding: 0 2px;
+    line-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__value {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 1ch;
+    padding: 0 2px;
+    line-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    // changed since the last stop: the red, and a mark that does not depend on colour
+    &--changed {
+      color: variables.$changed-red;
+
+      &::before {
+        content: "";
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        margin-right: 3px;
+        vertical-align: 1px;
+        background: currentColor;
+      }
+    }
+  }
+
+  &__row--selected &__name {
+    background-color: variables.$selected-blue;
+  }
+
+  &:focus-within &__row--selected &__name {
+    background-color: variables.$dialog-blue;
+    color: variables.$button-highlight;
+  }
+
+  &__row:focus-visible &__name {
+    outline: 1px dotted currentColor;
+    outline-offset: -1px;
+  }
+
+  &__editor {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+    margin-left: 1ch;
+  }
+
+  &__input {
+    width: 100%;
+    height: 18px;
+    padding: 0 2px;
+    line-height: 16px;
+  }
+
+  &__problem {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 5;
+    max-width: 100%;
+    padding: 0 0.4rem;
+    background: variables.$info-background;
+    color: variables.$black-color;
+    border: 1px solid variables.$window-frame;
+    white-space: normal;
+    line-height: 1.7rem;
+  }
+
+  &__memory {
+    flex: none;
+    width: auto;
+    min-width: 0;
+    height: 18px;
+    padding: 0 0.5rem;
+    line-height: 12px;
+  }
+
+  &__note {
+    height: 20px;
+    color: var(--debug-secondary-text);
+    white-space: nowrap;
+  }
+
+  // while the program runs, the values are the last stop's
+  &--stale &__value {
+    color: variables.$button-shadow;
+  }
+}
+
+.debug-list {
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 20px;
+    padding: 0 2px;
+    line-height: 16px;
+    cursor: default;
+
+    &--subtle .debug-list__text {
+      color: var(--debug-secondary-text);
+    }
+  }
+
+  &__mark,
+  &__check {
+    flex: none;
+    width: 13px;
+    margin: 0;
+  }
+
+  &__mark {
+    display: flex;
+    align-items: center;
+  }
+
+  &__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__detail,
+  &__place {
+    color: var(--debug-secondary-text);
+  }
+
+  &__place {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  &__button {
+    flex: none;
+    width: auto;
+    min-width: 0;
+    height: 18px;
+    padding: 0 0.5rem;
+    line-height: 12px;
+  }
+
+  &__row--selected &__text {
+    background-color: variables.$selected-blue;
+  }
+
+  &:focus &__row--selected &__text,
+  &:focus-within &__row--selected &__text {
+    background-color: variables.$dialog-blue;
+    color: variables.$button-highlight;
+  }
+
+  &:focus-visible &__row--selected &__text {
+    outline: 1px dotted currentColor;
+    outline-offset: -1px;
+  }
+}
+
+.debug-threads {
+  list-style: none;
+  margin: 0 0 2px;
+  padding: 0 2px 2px;
+  border-bottom: 1px dotted variables.$button-shadow;
+
+  &__thread {
+    line-height: 20px;
+    color: var(--debug-secondary-text);
+
+    &--stopped {
+      color: inherit;
+    }
+  }
+}

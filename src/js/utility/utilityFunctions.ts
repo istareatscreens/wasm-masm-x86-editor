@@ -86,13 +86,9 @@ export const sleepUntil = async () => (
   });
 };
 
-//Direct control API published by the iframe (Boxedwine.jsx: window.bwApp). The
-//iframe is same-origin, so the parent can call these embind-backed handlers as
-//plain cross-frame function calls — no JSON (de)serialization, no CustomEvent hop,
-//and no entanglement with BoxedWine's own internal postMessage traffic. Returns
-//null until the iframe has booted far enough to publish the API, in which case the
-//callers fall back to the postMessage bridge (which drives the identical handlers).
-const getBwApp = (): any => {
+//The iframe's direct control API (Boxedwine.jsx: window.bwApp), called cross-frame (same origin). null until the
+//iframe publishes it; the callers then fall back to the postMessage bridge, which runs the same handlers.
+export const getBwApp = (): any => {
   try {
     const iframe = <HTMLIFrameElement>document.getElementById("boxedwine");
     return iframe && iframe.contentWindow ? (<any>iframe.contentWindow).bwApp : null;
@@ -101,9 +97,6 @@ const getBwApp = (): any => {
   }
 };
 
-//Send a command to the console. Delivered as a raw string into the emulator's
-//direct-input embind API (Module.sendText) — no synthetic DOM KeyboardEvents, no
-//per-character key map. Prefers the direct bwApp call; falls back to postMessage.
 // Quote a file name for a cmd command line when it needs it (spaces or characters
 // cmd treats specially); a plain name is passed through unchanged.
 export const quoteForCmd = (name: string): string =>
@@ -115,23 +108,17 @@ export const writeCommandToCMD = (command: string): void => {
   postMessage("write-command", { data: command });
 };
 
-//Sync a file's content directly into the guest filesystem (writable D: drive)
-//via Module.bwWriteFile (text) / bwWriteFileBytes (isBinary: base64 content), so
-//the running cmd sees it in `dir` with NO echo. The iframe verifies the guest
-//tree afterwards and posts "file-synced" {op, filename, ok}.
+//Writes a file into the guest (content is base64 when isBinary); the iframe verifies it and posts "file-synced"
+//{op, filename, ok}.
 export const syncFileToEmulator = (filename: string, content: string, isBinary: boolean = false): void => {
   const app = getBwApp();
   if (app && typeof app.syncFile === "function") return app.syncFile(filename, content, isBinary);
   postMessage("sync-file", { data: { filename, content, isBinary } });
 };
 
-//Hand the WHOLE drawer to the emulator: the iframe rebuilds D: from
-//it, verifies the tree and only then opens its input gate. Called on every
-//"emulator-ready" (cold boot or restore — the factory image holds no user file).
-//files: [{filename, content, isBinary}] (content = text, or base64 when isBinary);
-//folders: every folder path ("lab1/io"), empty ones included, created first.
-//drives: the other drives [{id, letter, label}], mapped (with their labels) before the files are
-//written. D: has no label.
+//Hands the whole drawer to the emulator on every "emulator-ready": the iframe rebuilds D: from it, then opens its
+//input gate. files: [{filename, content, isBinary}] (base64 when isBinary); folders: every folder path, empty ones
+//included; drives: the other drives [{id, letter, label}], mapped before the files are written (D: has no label).
 export const reconcileEmulatorFiles = (files: { filename: string; content: string; isBinary: boolean }[], folders: string[] = [], drives: GuestDrive[] = []): void => {
   const app = getBwApp();
   if (app && typeof app.reconcile === "function") return app.reconcile(files, folders, drives);
@@ -160,9 +147,7 @@ export const removeDriveFromEmulator = (drive: GuestDrive): void => {
   postMessage("remove-drive", { data: drive });
 };
 
-//Rename a file inside the guest filesystem (Module.bwRenameFile — the node's own
-//rename, so cmd's next `dir` shows the new name and not the old one; falls back
-//to delete+write with `content`). No `ren`/`echo` keystrokes.
+//Renames a file in the guest (Module.bwRenameFile; falls back to delete + write of `content`).
 export const renameFileInEmulator = (oldName: string, newName: string, content: string, isBinary: boolean = false): void => {
   const app = getBwApp();
   if (app && typeof app.renameFile === "function") return app.renameFile(oldName, newName, content, isBinary);
@@ -176,12 +161,8 @@ export const getEmulatorFileTree = (): any[] | null => {
   try { return app && typeof app.verifyTree === "function" ? app.verifyTree() : null; } catch { return null; }
 };
 
-//Atomically place a .asm on D: and assemble->link->run it. Sequenced in the
-//iframe (write then type the assemble command) so there is no write/run race, and
-//the .obj/.exe readback runs in the iframe where Module.FS is local. Toolchain
-//lives read-only at C:\files (drive-agnostic assemble.bat via %~dp0); cwd is D:.
-//content is the source's stored bytes as base64 when isBase64 (the guest gets exactly
-//those bytes), else text.
+//Writes the .asm to D: and types the build in one step in the iframe (no write/run race); content is the
+//source's stored bytes as base64 when isBase64, else text.
 export const assembleAndRun = (filename: string, content: string, isBase64: boolean = false): void => {
   const app = getBwApp();
   if (app && typeof app.build === "function") return app.build(filename, content, isBase64);
@@ -196,13 +177,45 @@ export const runInEmulator = (filename: string): void => {
   postMessage("run-file", { data: filename });
 };
 
-//The bytes of entries of the toolchain archive (C:\files in the guest), read in the
-//emulator page once its input is open: { [entry name]: Uint8Array }.
-export const readToolchainFiles = (names: string[]): Promise<{ [name: string]: Uint8Array }> => {
+//Build a program by its build plan (components/main/banner/build/buildRequest.ts): the emulator page writes the
+//plan's files as stored, deletes their stale outputs, types assemble in the program's folder and reads the outputs
+//back.
+export const buildPlanInEmulator = (request: object): void => {
   const app = getBwApp();
-  if (app && typeof app.readToolchainFiles === "function") return app.readToolchainFiles(names);
-  return Promise.reject(new Error("the emulator page is not loaded"));
+  if (app && typeof app.buildPlan === "function") return app.buildPlan(request);
+  postMessage("build-plan", { data: request });
 };
+
+//A question the emulator page answers once its input is open. It fails as soon as the frame shows another page (a
+//reset): the page that would answer is gone, and its promise would never settle.
+const askPage = <T>(method: string, args: unknown[]): Promise<T> => {
+  const frame = <HTMLIFrameElement>document.getElementById("boxedwine");
+  const app = getBwApp();
+  if (!frame || !app || typeof app[method] !== "function") return Promise.reject(new Error("the emulator page is not loaded"));
+  return new Promise<T>((resolve, reject) => {
+    const settle = () => frame.removeEventListener("load", onLoad);
+    const onLoad = () => {
+      let same = false;
+      try { same = (<any>frame.contentWindow).bwApp === app; } catch {}
+      if (same) return; // the asking page's own load event
+      settle();
+      reject(new Error("the emulator page was reloaded"));
+    };
+    frame.addEventListener("load", onLoad);
+    app[method](...args).then(
+      (value: T) => { settle(); resolve(value); },
+      (error: unknown) => { settle(); reject(error); }
+    );
+  });
+};
+
+//The bytes of entries of a toolchain archive (the toolchain's, at C:\files in the guest, by default; or
+//"/irvine.zip"): { [entry name]: Uint8Array }.
+export const readToolchainFiles = (names: string[], archive?: string): Promise<{ [name: string]: Uint8Array }> =>
+  askPage("readToolchainFiles", [names, archive]);
+
+//The toolchain's folders' file names: C:\files\irvine (and C:\Irvine) and C:\files\lib.
+export const listToolchain = (): Promise<{ irvine: string[]; lib: string[] }> => askPage("listToolchain", []);
 
 //Give the terminal the keyboard: SDL reads keys on the emulator page's window.
 export const focusTerminal = (): void => {
@@ -212,10 +225,7 @@ export const focusTerminal = (): void => {
   } catch {}
 };
 
-//Delete a file directly from the guest filesystem via Module.bwDeleteFile so the
-//running cmd's `dir` stops showing it — WITHOUT typing a `del` command (keystrokes).
-//More efficient + reliable, and stays cmd-synced (the FsNode leaves the parent tree).
-//Direct call with postMessage fallback, matching the other controls.
+//Deletes a file from the guest (Module.bwDeleteFile): cmd's next `dir` no longer shows it.
 export const deleteFileFromEmulator = (filename: string): void => {
   const app = getBwApp();
   if (app && typeof app.deleteFile === "function") return app.deleteFile(filename);
@@ -238,27 +248,12 @@ export const removeDirFromEmulator = (path: string): void => {
   postMessage("remove-dir", { data: path });
 };
 
-//Interrupt whatever runs in the terminal (Ctrl+C): the emulator injects the key
-//transitions through the same X11 path as the keyboard, conhost turns them into a
-//CTRL_C_EVENT for the console's processes (a MASM program without a handler exits,
-//cmd returns to the prompt). Nothing is reloaded, nothing is lost.
+//Ctrl+C in the terminal: conhost raises CTRL_C_EVENT (a MASM program without a handler exits, cmd returns to the
+//prompt). Nothing is reloaded or lost.
 export const interruptEmulator = (): void => {
   const app = getBwApp();
   if (app && typeof app.interrupt === "function") return app.interrupt();
   postMessage("interrupt", {});
-};
-
-//Reset the terminal by RELOADING the emulator iframe from the parent.
-//One implementation for ST and MT that works even when the emulator's JS is wedged
-//(the browser tears the wasm instance down); the reload lands on the watchdog-
-//protected instant-restore / cold-boot path. Data-safe: the user's files live in
-//this parent app's IndexedDB, never inside the iframe. The old in-iframe
-//restartBW()+callMain() path deadlocked thread 0 under PROXY_TO_PTHREAD (MT).
-export const resetEmulator = (): void => {
-  const iframe = <HTMLIFrameElement>document.getElementById("boxedwine");
-  if (!iframe) return;
-  try { iframe.contentWindow.location.reload(); }
-  catch { try { iframe.src = iframe.src; } catch { postMessage("reset", {}); } }
 };
 
 //Is the emulator currently detected as frozen/hardlocked? (heartbeat stalled).
@@ -309,12 +304,8 @@ export const renameObjectKey = (object: any, key: string, newKey: string) => {
   return clonedObj;
 };
 
-// Windows file-name rules (the files live on the guest's D: drive and are typed
-// into cmd): spaces are fine anywhere inside the name; not allowed are the
-// characters \ / : * ? " < > |, control characters, a leading/trailing space, a
-// trailing dot, the reserved device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9,
-// with or without an extension) and names over 255 characters. Returns null for
-// a valid name, else a short reason for the UI.
+// Windows file-name rules (the files live on the guest's D: and are typed into cmd; spaces inside a name are fine).
+// Returns null for a valid name, else a short reason for the UI.
 export const invalidFilenameReason = (name: string): string | null => {
   if (!name) return "enter a name";
   if (name.length > 255) return "name is too long";

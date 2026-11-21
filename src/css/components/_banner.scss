@@ -1,3 +1,4 @@
+@use "../abstracts/functions";
 @use "../abstracts/variables";
 
 // The top bars' face. Only the lower bevel is visible. A side bevel leaves a dark corner beside
@@ -43,5 +44,16 @@
 
   &__btn {
     padding-left: 2px;
+  }
+
+  // the collapse button (viewcontrols/CollapseButton.jsx): the scrollbar arrowhead at twice its size
+  &__collapse {
+    background-image: functions.arrowhead(up, 2);
+    background-position: center;
+    background-repeat: no-repeat;
+
+    &--collapsed {
+      background-image: functions.arrowhead(down, 2);
+    }
   }
 }

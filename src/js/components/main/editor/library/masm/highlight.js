@@ -1,15 +1,6 @@
-// Highlight contract for the MASM Lezer grammar: node name (or node path) ->
-// standard @lezer/highlight tag. Only standard tags are used so that every
-// CodeMirror theme colors MASM tokens through its own HighlightStyle (no
-// color-carrying HighlightStyle is defined by the app).
-//
-// The node names come from masm-lezer-grammar/grammar/masm.grammar (see
-// the grammar README for the full contract).
-// Boxedwine/scripts/check-grammar.mjs verifies that every key below
-// names an existing node and that a fixture highlights as expected.
-//
-// This module deliberately imports only @lezer/highlight so it can be loaded
-// by node (the check script) as well as by the editor bundle.
+// masm.grammar node name (or path) -> standard @lezer/highlight tag, so each theme's own HighlightStyle colours MASM.
+// Boxedwine/scripts/check-grammar.mjs checks every key names a node; this module imports only @lezer/highlight so
+// that node can load it too.
 import { styleTags, tags as t } from "@lezer/highlight";
 
 export const masmHighlightSpec = {

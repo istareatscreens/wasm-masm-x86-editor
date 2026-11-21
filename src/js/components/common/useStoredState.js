@@ -22,10 +22,8 @@ export function removeStoredState(key) {
   tell(key, null);
 }
 
-// A value kept in localStorage under `key`. It is read once, synchronously, so the first render already
-// has it (`parse` turns the stored text, or null, into a valid value). `set` changes it for this page
-// only; `commit` changes it and stores it (`serialize` makes the text), and this tab's other stored states
-// of the key read it again. Both take a value or a function of the current value.
+// A value kept in localStorage under `key`, read synchronously so the first render has it. `set` changes it
+// for this page only; `commit` also stores it, and this tab's other stored states of the key read it again.
 export default function useStoredState(key, parse, serialize) {
   const [value, setValue] = useState(() => parse(read(key)));
   const latest = useRef(value);

@@ -1,106 +1,43 @@
-import React, { Suspense, useEffect, useState } from 'react';
-import { HexViewer } from './library/hexviewer/hex-viewer.js';
-import FileSystem from "../utility/FileSystem.js";
+import React, { useMemo } from "react";
+import useStoredState from "../../common/useStoredState.js";
+import { retroScrollbarHost } from "../../common/retroScrollbarHost.js";
+import { HexViewer, byteSource, decimalOffset, decodeData, hexOffset } from "./library/hexviewer/index.js";
+import { HEX_OFFSETS_KEY, parseOffsets, serializeOffsets } from "./hexOffsets.js";
 
-const HexViewerComponent = ({ data, lightMode, fontSize = 14, selectedFont = 'monospace' }) => {
-  const [loadingState, setLoadingState] = useState('idle');
-  const [progress, setProgress] = useState(0);
+const scrollbars = retroScrollbarHost("Hex view");
 
-  const theme = {
-    background: lightMode ? '#ffffff' : '#1e1e1e',
-    color: lightMode ? '#000000' : '#d4d4d4',
-    offsetColor: lightMode ? '#0000ff' : '#9cdcfe',
-    selectionColor: lightMode ? '#add6ff' : '#264f78',
-    selectionTextColor: lightMode ? '#000000' : '#ffffff',
-  };
-
-  const handleLoadingStateChange = (state) => {
-    setLoadingState(state);
-  };
-
-  const handleProgressChange = (percent) => {
-    setProgress(percent);
-  };
-
-  const getLoadingMessage = () => {
-    switch (loadingState) {
-      case 'processing':
-        return `Processing data... ${progress}%`;
-      case 'preparing':
-        return `Preparing view... ${progress}%`;
-      case 'rendering':
-        return 'Rendering...';
-      case 'error':
-        return 'Error loading data';
-      default:
-        return '';
-    }
+// Read-only hex view in the editor's font and size, coloured by the `editor-document` themes
+// (css/components/_hex-themes.scss). The header's offset cell switches offsets between hexadecimal and decimal.
+const HexViewerComponent = ({ data, lightMode, fontSize = 16, selectedFont }) => {
+  const [offsets, , setOffsets] = useStoredState(HEX_OFFSETS_KEY, parseOffsets, serializeOffsets);
+  const decimal = offsets === "decimal";
+  const bytes = useMemo(() => decodeData(data, { base64: true }), [data]);
+  const source = useMemo(() => {
+    if (!bytes) return null;
+    const digits = Math.max(8, String(Math.max(0, bytes.length - 1)).length);
+    return byteSource(bytes, { label: decimal ? decimalOffset(digits) : hexOffset });
+  }, [bytes, decimal]);
+  const size = Number(fontSize) || 16;
+  const family = (selectedFont && (selectedFont.fontFamily || selectedFont.text)) || "monospace";
+  const theme = useMemo(
+    () => ({ preset: lightMode ? "editor-document" : "editor-document-dark", fontFamily: '"' + family + '", monospace', fontSize: size + "px" }),
+    [lightMode, family, size],
+  );
+  const offsetHeader = {
+    text: decimal ? "Offset(d)" : "Offset(h)",
+    title: decimal ? "Offsets in decimal: show them in hexadecimal" : "Offsets in hexadecimal: show them in decimal",
+    onClick: () => setOffsets(decimal ? "hex" : "decimal"),
   };
 
   return (
-    <div
-      className="hex-viewer-container editor"
-      style={{
-        overflow: 'hidden',
-        padding: 0,
-        margin: 0,
-        boxSizing: 'border-box',
-        position: 'relative',
-        background: lightMode ? '#ffffff' : '#1e1e1e'
-      }}
-    >
-      {loadingState !== 'idle' && (
-        <div
-          className="loading-indicator"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000
-          }}
-        >
-          <div className="loading-indicator__title-bar">
-            <div className="loading-indicator__title-bar__text">Please Wait...</div>
-          </div>
-          <div className="loading-indicator__body">
-            <div className="loading-indicator__message">
-              {loadingState === 'processing' ? 'Processing data...' : 'Preparing display...'}
-            </div>
-            {(loadingState === 'processing' || loadingState === 'preparing') && (
-              <div className="loading-indicator__progress-container">
-                <div
-                  className="loading-indicator__progress-bar"
-                  style={{ width: `${progress}%` }}
-                >
-                  <div className="loading-indicator__progress-text">{progress}%</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      <div style={{
-        height: '100%',
-        fontSize: `${Number(fontSize) || 16}px`,
-        fontFamily: (selectedFont && (selectedFont.fontFamily || selectedFont.text)) || 'monospace',
-        ...theme,
-        margin: 0,
-        padding: 0
-      }}>
-        <HexViewer
-          base64
-          showAscii={true}
-          showHeader={true}
-          showOffsets={true}
-          bytesPerLine={16}
-          onLoadingStateChange={handleLoadingStateChange}
-          onProgressChange={handleProgressChange}
-          darkMode={!lightMode}
-        >
+    <div className="hex-viewer-container editor">
+      {source ? (
+        <HexViewer source={source} theme={theme} rowHeight={Math.max(25, Math.round(size * 1.25))} offsetHeader={offsetHeader} attachScrollbars={scrollbars} label="Bytes of the file" />
+      ) : (
+        <HexViewer theme={theme} errorData={<p className="hex-viewer-container__message">This file's bytes cannot be read.</p>}>
           {data}
         </HexViewer>
-      </div>
+      )}
     </div>
   );
 };

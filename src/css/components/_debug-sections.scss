@@ -1,0 +1,119 @@
+@use "../abstracts/mixins";
+@use "../abstracts/variables";
+
+// The debug sidebar's sections (debugger/sections). What they hold is styled in _debug-memory, _debug-lists
+// and _debug-views; the dark editor theme and forced colours in _debug-themes.
+.debug-section {
+  &__header {
+    display: flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0 0.2rem;
+  }
+
+  &__title {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    height: 2rem;
+    margin: 0;
+    padding: 0 0.4rem;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: bold;
+    text-align: left;
+    cursor: default;
+
+    &:focus-visible {
+      outline: 1px dotted variables.$black-color;
+      outline-offset: -1px;
+    }
+  }
+
+  &__toggle {
+    @include mixins.tree-toggle(variables.$button-shadow, variables.$button-highlight);
+    flex: none;
+  }
+
+  &__body {
+    margin: 0 0.2rem 0.2rem;
+    padding: 2px;
+    background: variables.$button-highlight;
+    box-shadow: variables.$border-field;
+
+    &--scrolls {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+
+  &__resize {
+    height: 7px;
+    margin: -0.2rem 0.2rem 0;
+
+    @media (pointer: coarse) {
+      height: 15px;
+    }
+  }
+
+  &__empty {
+    padding: 0.2rem 0.5rem;
+    color: var(--debug-secondary-text);
+    line-height: 1.8rem;
+  }
+
+  &__input {
+    display: block;
+    height: 2.4rem;
+    margin-top: 2px;
+  }
+
+  &__tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 2px;
+    background: variables.$surface;
+    padding-top: 0.3rem;
+
+    .debug-section__input {
+      flex: 1 1 14rem;
+      width: auto;
+      margin-top: 0;
+    }
+
+    // the commands for every item, above the list
+    &--head {
+      margin: 0 0 0.3rem;
+      padding-top: 0;
+    }
+  }
+
+  &__button {
+    flex: none;
+    padding: 0 0.8rem;
+    white-space: nowrap;
+
+    &:disabled {
+      color: variables.$button-shadow;
+      text-shadow: 1px 1px variables.$button-highlight;
+    }
+  }
+
+  &__group {
+    display: flex;
+    flex-direction: column;
+    margin: 0.6rem 0.2rem 0.2rem;
+    background: variables.$surface;
+
+    .select-all-switch {
+      align-self: flex-start;
+    }
+  }
+}

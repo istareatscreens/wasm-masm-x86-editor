@@ -1,6 +1,5 @@
-// A file's bytes are the truth; the editor sees them decoded and saves them encoded the
-// same way, so editing a file never rewrites bytes the user did not touch (an assembler
-// source with a byte order mark excepted: see ASSEMBLER_SOURCE).
+// A file's bytes are the truth: the editor saves text encoded as it was read, so an edit never rewrites bytes
+// the user did not touch (an assembler source's byte order mark excepted: see ASSEMBLER_SOURCE).
 //   utf-8 / utf-8-bom          new files, and any valid UTF-8
 //   utf-16le / utf-16be        with a BOM (Notepad's "Unicode")
 //   windows-1252               8-bit text that is not valid UTF-8 (what Windows tools wrote),
@@ -12,7 +11,7 @@ const BOM_UTF8 = [0xef, 0xbb, 0xbf];
 // Microsoft MASM (ML.exe) reads an assembler source as bytes and rejects a byte order mark
 // ("invalid character in file"), as the shipped JWasm does: one with a mark is saved as
 // plain UTF-8, the same text.
-export const ASSEMBLER_SOURCE = /[.](asm|inc)$/i;
+export const ASSEMBLER_SOURCE = /[.](asm|inc|mac)$/i;
 
 // The encoding a byte order mark at the start of `bytes` names, if there is one.
 export function byteOrderMark(bytes: Uint8Array): TextEncodingName | null {

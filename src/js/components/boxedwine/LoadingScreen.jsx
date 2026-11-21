@@ -5,17 +5,9 @@ import masmwatch from "../../../images/masmwatch.png";
 Modified from https://codepen.io/duptitung
 https://codepen.io/duptitung/pen/XMVNyZ
 */
-// Shown over the console canvas until the console is visible (isLoading in
-// Boxedwine.jsx). The stage line mirrors window.bwBootStage(...) calls made by
-// boxedwine.html / the shell / the snapshot layer ("Loading emulator",
-// "Restoring your session", "Loading system image", "Booting Windows console").
-//
-// The composition (_loading-screen.scss) is the original artwork at its designed
-// size; when the cmd iframe cannot hold it, the WHOLE group is scaled by one factor
-// (transform: scale) so every offset stays proportional - it is never re-laid out.
-// DESIGN_W/H = the group's visible bounds at 1x (measured 2026-09-19: 183 x 252 px
-// around the centred box, incl. the watch image's overhang above it) plus room for
-// a second stage-text line.
+// Shown over the console canvas until the console is visible; the stage line follows window.bwBootStage(...).
+// When the iframe cannot hold the artwork, the whole group is scaled by one factor so every offset stays proportional.
+// DESIGN_W/H: the group's visible bounds at 1x (with the watch image's overhang) plus room for a second stage line.
 const DESIGN_W = 212;
 const DESIGN_H = 280;
 // the composition is shown whole, once the artwork has decoded and its font has loaded (at

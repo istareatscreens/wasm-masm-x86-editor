@@ -9,9 +9,11 @@ import AppLayout from "./layout/AppLayout.jsx";
 import useViewMode from "./layout/useViewMode.js";
 import playSnake from "./snake/playSnake.js";
 import { loadX86Decoder } from "./crash/x86Decoder";
-import { classifyInvalidOpcode, EMULATED_CPU } from "./crash/invalidOpcode";
-import { invalidOpcodeIssue, emulatorCrashIssue } from "./crash/bugReport";
+import { classifyInvalidOpcode, invalidOpcodeHint } from "./crash/invalidOpcode";
+import { CRASH_HINTS } from "./utility/debug/session/exceptionHints";
+import { invalidOpcodeIssue, emulatorCrashIssue, terminalResetIssue } from "./crash/bugReport";
 import FreezeBanner from "./cmd/FreezeBanner.jsx";
+import { recentResets, resetPageInfo, resetTerminal, setResetHooks } from "./cmd/terminalReset";
 import RetroNotice from "../common/RetroNotice.jsx";
 import ConfirmWindow from "./filedrawer/dialogs/ConfirmWindow.jsx";
 import { windowToggle } from "../common/useWindowToggle.js";
@@ -21,6 +23,9 @@ import useImportQuestions from "./share/useImportQuestions.jsx";
 import { importLink, fragmentLink, clearFragment, openPathOf, isDesktop } from "./utility/share/ShareService.js";
 import { preloadDecoder } from "./utility/share/brotli";
 import { startTabSync } from "./utility/session/tabSync.js";
+import DebugSidebar from "./debugger/DebugSidebar.jsx";
+import useDebugController from "./debugger/session/useDebugController.js";
+import useDebugKeys from "./debugger/keyboard/useDebugKeys.js";
 
 import FileSystem from "./utility/FileSystem";
 import { preloadImages } from "./utility/assets.js";
@@ -28,6 +33,7 @@ import { getFromLocalStorage } from "./utility/filesystem/FSHelperFunctions.js";
 import { postMessage, createMessageListner, reconcileEmulatorFiles } from "../../utility/utilityFunctions.ts";
 import { labelProblem, driveRoot, driveName, rootOf, isDrivePath } from "./utility/filesystem/drives";
 import { guestPath } from "./utility/filesystem/paths";
+import { DEFAULT_FILE_TYPE, parseFileType } from "./filedrawer/model/fileTypes";
 import { themeList as cmThemeList, normalizeThemeId } from "./editor/library/themes";
 
 // the page's cover (#app-splash in the HTML) stays at most this long: a picture or font that
@@ -64,6 +70,8 @@ function App() {
   const [crashNotice, setCrashNotice] = useState(null);
   // The emulator itself stopped (a WebAssembly trap): {message, stack, build, runtime}
   const [emulatorCrash, setEmulatorCrash] = useState(null);
+  // a reset whose emulator page did not load, even on its retry
+  const [resetFailed, setResetFailed] = useState(false);
   // the file open in the editor, for a bug report
   const filenameRef = useRef(filename);
   filenameRef.current = filename;
@@ -110,10 +118,8 @@ function App() {
   const migrateThemeSetting = (stored, dark) =>
     findThemeByKey(normalizeThemeId(stored && (stored.key || stored.text), dark));
 
-  //editor settings. Persisted as the "settings" key of window.localStorage: read
-  //synchronously here (the first render already needs them) and written by the
-  //effect below - the SAME store, unlike the app's files (IndexedDB). The hard
-  //reset keeps this key on purpose.
+  //editor settings: the "settings" key of window.localStorage, read synchronously (the first render needs them).
+  //The hard reset keeps this key on purpose.
   const settingsDefaults = () => ({
     fontSize: 16,
     selectedFont: fontList[0],
@@ -122,6 +128,9 @@ function App() {
     lightMode: false,
     vimMode: false,
     handlesHidden: false,
+    debugMode: false, // the banner's Debug switch: RUN debugs, and the debug sidebar and the breakpoint gutter show
+    bannerCollapsed: false, // the main toolbar clipped to its first row while its controls need more
+    newFileType: DEFAULT_FILE_TYPE, // the type the Create file window chose last (filedrawer/model/fileTypes.ts)
     workspaceName: "", // the name links from D: carry (generated at the first share; D: has no label)
   });
   // Stored JSON -> a valid settings object (null when unusable).
@@ -143,6 +152,9 @@ function App() {
       selectedNightTheme: migrateThemeSetting(parsed.selectedNightTheme, true),
       vimMode: !!parsed.vimMode,
       handlesHidden: !!parsed.handlesHidden,
+      debugMode: !!parsed.debugMode,
+      bannerCollapsed: !!parsed.bannerCollapsed,
+      newFileType: parseFileType(parsed.newFileType),
       workspaceName: typeof parsed.workspaceName === "string" && !labelProblem(parsed.workspaceName) ? parsed.workspaceName : "",
     };
   };
@@ -188,6 +200,18 @@ function App() {
     setSettings({ ...settings, handlesHidden });
   };
 
+  const setBannerCollapsed = (bannerCollapsed) => {
+    setSettings({ ...settings, bannerCollapsed });
+  };
+
+  const setDebugMode = (debugMode) => {
+    setSettings({ ...settings, debugMode });
+  };
+
+  const setNewFileType = (newFileType) => {
+    setSettings({ ...settings, newFileType });
+  };
+
   const setWorkspaceName = useCallback((workspaceName) => {
     setSettings((current) => ({ ...current, workspaceName }));
   }, []);
@@ -206,9 +230,7 @@ function App() {
     }
   }, [settings]);
 
-  // One-time recovery: earlier versions saved the settings through the file
-  // store (IndexedDB) while reading window.localStorage, so nothing persisted.
-  // When window.localStorage holds no settings yet, apply that last saved copy.
+  // Settings saved by older versions are in the file store (IndexedDB): used when localStorage has none.
   useEffect(() => {
     if (storedAtStart) return;
     let cancelled = false;
@@ -229,19 +251,23 @@ function App() {
   }, [filename]);
 
   const refApp = useRef(null);
-  useBannerRows(refApp);
+  useBannerRows(refApp, settings.bannerCollapsed);
   const viewMode = useViewMode();
+
+  // the debugger (debugger/session/debugController.ts), its keys, and the editor's place for them
+  const debug = useDebugController({ on: settings.debugMode, filename, switchFile: (file) => switchFile(file), viewMode, terminalDown: !!emulatorCrash || emulatorFrozen });
+  const editorPlace = useRef(() => null);
+  const debugEditor = useCallback(() => editorPlace.current(), []);
+  useDebugKeys(settings.debugMode, debug.controller, debugEditor);
 
   // the drawer read again; with no .asm left, test.asm is made and opened (unless `create` is false: a link is
   // about to be imported)
   const refreshFileList = useCallback(
     async (initialRun = false, create = true) => {
       let fileList = FileSystem.getFileList();
-      //remove all files
       const asmFiles = fileList
         .filter((filename) => /.asm$/g.test(filename))
         .map((filename, index) => ({ id: index, filename: filename })); //remove all non .asm files from list
-      //.map((filename) => filename.substring(0, filename.length - 4)); //remove .asm
       //set create and set focused file
       if (!fileList || !asmFiles.length) {
         if (!create) {
@@ -406,20 +432,19 @@ function App() {
     };
   }, []);
 
-  // Receive iframe -> parent messages (the emulator posts these) and re-dispatch
-  // them as window CustomEvents. Then pull build outputs (.obj/.exe/.lst read back
-  // from the guest D:) into app storage so they show in the drawer's non-.asm view
-  // and open in the hex viewer — matching the legacy output/hex-view behaviour.
+  // The emulator page's messages arrive as window CustomEvents (createMessageListner); build outputs read back
+  // from D: are stored so the drawer and the hex viewer show them.
   useEffect(() => {
     createMessageListner();
     const handleBuildOutputs = (event) => {
-      const { name, outputs, ok } = event.detail || {};
+      const { name, outputs, ok, removed } = event.detail || {};
       const existing = FileSystem.getFileList();
       const produced = new Set((outputs || []).map((o) => o && o.filename).filter(Boolean));
-      // Artifacts of THIS source that the build did not (re)produce are stale: the
-      // emulator deleted them from D: before assembling, so drop them from the
-      // drawer too — a failed build must not leave yesterday's .exe looking current.
-      if (name) {
+      // Outputs the build did not (re)produce are stale: the emulator deleted them from D: before building, so the
+      // drawer drops them too (a build plan lists them in `removed`).
+      if (removed) {
+        for (const f of removed) if (!produced.has(f) && existing.includes(f)) FileSystem.deleteFile(f);
+      } else if (name) {
         for (const ext of [".obj", ".exe", ".lst", ".map"]) {
           const f = name + ext;
           if (!produced.has(f) && existing.includes(f)) FileSystem.deleteFile(f);
@@ -429,20 +454,16 @@ function App() {
       for (const o of outputs || []) {
         if (!o || !o.filename) continue;
         const isDuplicate = existing.includes(o.filename);
-        // shouldWriteCommand=true => do NOT re-sync to the guest (the artifact is
-        // already on D:; syncing empty text would clobber it). dataIsEncoded=true
-        // => store the base64 bytes as-is for the hex viewer (getRawFileData).
+        // shouldWriteCommand=true: no re-sync (the file is already on D:); dataIsEncoded=true: the base64 bytes are
+        // stored as they are.
         FileSystem.createFile(o.filename, o.base64 || "", Date.now(), true, true, o.size || 0, isDuplicate);
       }
       refreshFileList();
     };
     window.addEventListener("build-outputs", handleBuildOutputs);
 
-    // Emulator hardlock detection (Boxedwine.jsx startFreezeDetector re-posted here
-    // by createMessageListner). Show the retro freeze banner; auto-hide on recovery.
-    // Second line of defence against a banner during loading: accept the event only
-    // while the iframe reports an ACTIVE terminal (input gate open) and a confirmed
-    // detection; anything else is logged and ignored.
+    // Freeze reports (Boxedwine.jsx startFreezeDetector): as a second guard against a banner during loading, one is
+    // accepted only while the iframe's input gate is open and the detection was confirmed.
     const handleFrozen = (event) => {
       const d = (event && event.detail) || {};
       let active = false;
@@ -454,14 +475,9 @@ function App() {
     window.addEventListener("emulator-frozen", handleFrozen);
     window.addEventListener("emulator-recovered", handleRecovered);
 
-    // Reliability notices from the emulator page (boxedwine.html runtime policy +
-    // bw-snapshot.js watchdog). All are informational: the terminal has ALREADY
-    // self-healed onto a working path; nothing here touches the user's files.
-    // Informational notices about a self-healed start (runtime downgrade) are
-    // DEFERRED until the terminal is ready: every notice uses the
-    // retro chrome and one that pops up while the loading screen is still up reads
-    // as a failure notice. Only a start that can never finish
-    // (wasm failed to load) is shown immediately.
+    // Notices from the emulator page (runtime policy, snapshot watchdog); none touches the user's files. A notice
+    // about a self-healed start (runtime downgrade) waits until the terminal is ready, since one shown over the
+    // loading screen reads as a failure; only a start that can never finish is shown at once.
     const deferredNotice = { current: null };
     const showWhenReady = (notice) => { deferredNotice.current = notice; };
     const handleDowngraded = (event) => {
@@ -487,9 +503,8 @@ function App() {
       }
       // (a merely slow start is reported by the loading screen's stage text, never by a notice)
     };
-    // The factory state was captured but could not be written to the browser's
-    // storage (typically a nearly full disk): every later start cold-boots until a
-    // save succeeds. Arrives a few seconds after the terminal is ready => shown at once.
+    // The factory state could not be stored (typically a nearly full disk), so every later start cold-boots until a
+    // save succeeds. It arrives after the terminal is ready, so it is shown at once.
     const handleSnapshotNotSaved = (event) => {
       const d = (event && event.detail) || {};
       setEmulatorNotice({
@@ -502,40 +517,25 @@ function App() {
     window.addEventListener("runtime-downgraded", handleDowngraded);
     window.addEventListener("snapshot-not-saved", handleSnapshotNotSaved);
     window.addEventListener("emulator-slow", handleSlow);
-    const crashHints = {
-      fault: "It touched an address it does not own (the .lst file shows where each instruction lives).",
-      stack: "It ran out of stack: a PROC calling itself with no exit, or PUSH/CALL without a matching POP/RET.",
-      divzero: "DIV/IDIV by zero, or a quotient too big for the register: check the divisor and clear EDX (CDQ) first.",
-      illegal: "The CPU refused an instruction: execution probably ran past the end of the code (missing exit/RET) into data.",
-      privileged: "Programs may not run privileged instructions (HLT, CLI, STI, IN, OUT, LGDT, ...): Windows ends them, as it does here.",
-      other: "Fix the code and run it again.",
-    };
-    // an illegal instruction: what the bytes at the address are (emulator-bug: Report bug)
-    const invalidOpcodeHints = {
-      data: (found) => "The bytes there (" + found.bytes + ") are not an instruction: execution probably ran past the end of the code (missing exit/RET) into data.",
-      undefined: (found) => "It executed " + found.text.toUpperCase() + ", which always raises the invalid-instruction exception.",
-      "missing-feature": (found) => "It executed " + found.text + ", which needs " + found.features.join(", ") + ": the emulated CPU (" + EMULATED_CPU + ") does not have it.",
-      "emulator-bug": (found) => "It executed " + found.text + ", which the emulated CPU (" + EMULATED_CPU + ") should run: this is a bug in the emulator. Please report it.",
-    };
     let crashCount = 0;
     const handleCrashed = (event) => {
       const d = (event && event.detail) || {};
       const id = ++crashCount;
       setCrashNotice({
         id,
-        // Wine's wording minus the noise: "Unhandled page fault on write access to
-        // 00000000 at address 0040100C (thread 011c)" -> "page fault on write access
-        // to 00000000 at address 0040100C"
+        // Wine's wording minus the noise: "Unhandled page fault on write access to 00000000 at address 0040100C
+        // (thread 011c)" -> "page fault on write access to 00000000 at address 0040100C"
         reason: String(d.reason || "unhandled exception").replace(/^Unhandled /, "").replace(/\s*\(thread [0-9a-f]+\)/i, ""),
-        hint: crashHints[d.kind] || crashHints.other,
+        hint: CRASH_HINTS[d.kind] || CRASH_HINTS.other,
       });
       if (d.kind !== "illegal" || !d.bytes) return;
       loadX86Decoder()
         .then((iced) => {
+          // an illegal instruction: what the bytes at the address are (emulator-bug: Report bug)
           const found = classifyInvalidOpcode(iced, parseInt(d.address, 16), d.bytes);
           setCrashNotice((notice) => notice && notice.id === id ? {
             ...notice,
-            hint: invalidOpcodeHints[found.kind](found),
+            hint: invalidOpcodeHint(found),
             report: found.kind === "emulator-bug" ? () => invalidOpcodeIssue(found, d.address, d, filenameRef.current) : null,
           } : notice);
         })
@@ -551,17 +551,16 @@ function App() {
       });
     };
     window.addEventListener("run-refused", handleRunRefused);
-    const handleEmulatorCrashed = (event) => setEmulatorCrash((event && event.detail) || {});
+    // what a debugging session was doing when the emulator crashed, for the report; the session is then over
+    const handleEmulatorCrashed = (event) => {
+      setEmulatorCrash({ ...((event && event.detail) || {}), debugger: debug.controller.crashContext() });
+      debug.controller.terminalLost();
+    };
     window.addEventListener("emulator-crashed", handleEmulatorCrashed);
 
-    // Drawer -> guest reconciliation once the environment is ready:
-    // the WHOLE drawer is handed to the iframe in one call; it rebuilds D: from it
-    // (every folder, then every file's stored bytes via bwWriteFileBytes, so the
-    // guest copy is byte-identical to storage), verifies the tree and only then opens
-    // its input gate. Runs on every start — the factory snapshot holds no user file —
-    // so files created before the iframe was listening (the initial test.asm), a file
-    // deleted in an earlier session, or any other drift can never survive a reload.
-    // Idempotent (identical bytes).
+    // Once the environment is ready, the whole drawer goes to the iframe in one call, as stored bytes; it rebuilds
+    // D: from it, then opens its input gate. Every start does this (the factory snapshot holds no user file), so no
+    // drift between the drawer and D: survives a reload.
     const handleEmulatorReady = () => {
       const files = [];
       let folders = [];
@@ -577,14 +576,9 @@ function App() {
       if (deferredNotice.current) { setEmulatorNotice(deferredNotice.current); deferredNotice.current = null; }
     };
     window.addEventListener("emulator-ready", handleEmulatorReady);
-    // Guest -> drawer import: files and folders the guest created on D: (program
-    // output, a redirected echo, mkdir) and files from the legacy IDBFS store are
-    // offered by the iframe; anything the drawer does not have yet is imported under its
-    // exact path. Text (by extension) is stored as text, everything else as base64 for
-    // the hex viewer. What the guest created is already on D: (shouldWriteCommand=true /
-    // a registered folder: no re-sync); files from the legacy store are not, so those
-    // are synced into the guest as they are imported. Nothing is ever deleted from the
-    // drawer here.
+    // Guest -> drawer import: what the drawer lacks is imported under its exact path, text (by extension) as text,
+    // the rest as base64. Guest files are already on D: (no re-sync); files from the legacy IDBFS store are not, so
+    // they are synced in as they are imported. Nothing is ever deleted from the drawer here.
     const handleGuestFiles = (event) => {
       const { files = [], folders = [], source } = event.detail || {};
       if (!(Array.isArray(files) && files.length) && !(Array.isArray(folders) && folders.length)) return;
@@ -647,20 +641,21 @@ function App() {
     return () => window.removeEventListener("play-snake", handlePlaySnake);
   }, [refreshFileList, viewMode.showOnlyTerminal]);
 
-  // Recover a hardlocked terminal by RELOADING the emulator iframe. This is the
-  // browser tearing down the stuck wasm instance (works even when the emulator's
-  // own JS is wedged, unlike an embind restartBW call), and it is DATA-SAFE: the
-  // user's files live in the app's IndexedDB and the editor content in this parent
-  // React app — neither is in the iframe, so a reload cannot lose them. On reload
-  // the instant-startup snapshot restores a clean prompt.
-  const resetFrozenTerminal = useCallback(() => {
-    const iframe = document.getElementById("boxedwine");
-    if (iframe) {
-      try { iframe.contentWindow.location.reload(); }
-      catch (e) { try { iframe.src = iframe.src; } catch (_) {} }
-    }
-    setEmulatorCrash(null);
-    setEmulatorFrozen(false);
+  // Every reset control goes through cmd/terminalReset.ts. A debugging session ends without being waited for, and
+  // the terminal's notices go with the old page.
+  useEffect(() => {
+    setResetHooks({
+      beforeReset: () => {
+        debug.controller.endQuietly("The terminal was reset").catch((error) => console.warn("[reset] the debugging session did not end cleanly", error));
+        setEmulatorCrash(null);
+        setEmulatorFrozen(false);
+        setResetFailed(false);
+      },
+      onFailed: () => setResetFailed(true),
+    });
+  }, []);
+  const onResetTerminal = useCallback(() => {
+    void resetTerminal();
   }, []);
 
   const handleClick = () => {
@@ -668,26 +663,22 @@ function App() {
     postMessage("editor-selected", {});
   };
 
-  //change current file
   const switchFile = (filename) => {
     setFilename(filename);
   };
 
   const createFile = useCallback(
     (filename) => {
-      // createAssemblyFile -> FileSystem.createFile places the file on the guest
-      // D: directly (bwWriteFile) — no `echo.>name` command is typed any more.
-      FileSystem.createAssemblyFile(filename);
+      // createNewFile also writes the file to the guest's D: (bwWriteFile).
+      FileSystem.createNewFile(filename);
       switchFile(filename);
       refreshFileList();
     },
     [filename]
   );
 
-  // The terminal notice banner (one at a time, hardlock first): rendered INSIDE the
-  // terminal panel so it floats over the top edge of the cmd window.
-  // Memoised on the notice state so the (memo) terminal panel does not re-render on
-  // unrelated App renders.
+  // One terminal notice at a time, rendered inside the terminal panel over the cmd window's top edge; memoised so
+  // the (memo) terminal panel does not re-render on unrelated App renders.
   const terminalNotice = useMemo(() => {
     if (emulatorCrash) {
       return (
@@ -696,8 +687,8 @@ function App() {
           title="Terminal stopped:"
           onDismiss={() => setEmulatorCrash(null)}
           actions={[
-            { label: "Report bug", onClick: () => window.open(emulatorCrashIssue(emulatorCrash, filenameRef.current)) },
-            { label: "Reset terminal", onClick: resetFrozenTerminal },
+            { label: "Report bug", onClick: () => window.open(emulatorCrashIssue(emulatorCrash, filenameRef.current, emulatorCrash.debugger, recentResets())) },
+            { label: "Reset terminal", onClick: onResetTerminal },
           ]}
         >
           <span className="freeze-banner__msg">Emulator error ({String(emulatorCrash.message || "unknown").slice(0, 120)}).</span>
@@ -709,7 +700,26 @@ function App() {
       );
     }
     if (emulatorFrozen) {
-      return <FreezeBanner onReset={resetFrozenTerminal} onDismiss={() => setEmulatorFrozen(false)} />;
+      return <FreezeBanner onReset={onResetTerminal} onDismiss={() => setEmulatorFrozen(false)} />;
+    }
+    if (resetFailed) {
+      return (
+        <RetroNotice
+          id="reset-failed-notice"
+          title="Terminal not reloaded:"
+          onDismiss={() => setResetFailed(false)}
+          actions={[
+            { label: "Report bug", onClick: () => window.open(terminalResetIssue(recentResets(), resetPageInfo(), filenameRef.current)) },
+            { label: "Reset terminal", onClick: onResetTerminal },
+          ]}
+        >
+          <span className="freeze-banner__msg">The terminal's page did not load, even on a second try.</span>
+          <span className="freeze-banner__hint">Reset the terminal again. If it still does not come back, reload this page.</span>
+          <span className="freeze-banner__safe">
+            <strong>Your files are safe:</strong> resetting only restarts the terminal.
+          </span>
+        </RetroNotice>
+      );
     }
     if (emulatorNotice) {
       return (
@@ -736,12 +746,13 @@ function App() {
       );
     }
     return null;
-  }, [emulatorCrash, emulatorFrozen, emulatorNotice, crashNotice, resetFrozenTerminal]);
+  }, [emulatorCrash, emulatorFrozen, resetFailed, emulatorNotice, crashNotice, onResetTerminal]);
 
   //TODO Throw common props in objects
   return (
     <>
-      <AppLayout ref={refApp} onClick={handleClick} modifier={viewMode.modifier} handles={!settings.handlesHidden}>
+      <AppLayout ref={refApp} onClick={handleClick} modifier={viewMode.modifier} handles={!settings.handlesHidden} debug={settings.debugMode}>
+        {settings.debugMode && <DebugSidebar controller={debug.controller} lightMode={!settings.lightMode} editor={debugEditor} filename={filename} onResetTerminal={onResetTerminal} />}
         <FileDrawer
           fileList={fileList}
           drives={drives}
@@ -757,6 +768,8 @@ function App() {
           setEditorLock={setEditorLock}
           forceUpdate={{ refreshFile, setRefreshFile }}
           lightMode={!settings.lightMode} //flip boolean so light is true, dark is false
+          newFileType={settings.newFileType}
+          setNewFileType={setNewFileType}
         />
         <Banner
           //theme variables
@@ -773,6 +786,13 @@ function App() {
           //resize handles
           handlesHidden={settings.handlesHidden}
           setHandlesHidden={setHandlesHidden}
+          //collapsing the toolbar to one row
+          bannerCollapsed={settings.bannerCollapsed}
+          setBannerCollapsed={setBannerCollapsed}
+          //debugging
+          debugMode={settings.debugMode}
+          setDebugMode={setDebugMode}
+          debugController={debug.controller}
           //drives
           drives={drives}
           deleteExtraDrives={deleteExtraDrives}
@@ -801,6 +821,9 @@ function App() {
           selectedFont={settings.selectedFont}
           lightMode={!settings.lightMode}
           vimMode={settings.vimMode}
+          debug={debug.controller}
+          debugOn={settings.debugMode}
+          debugPlace={editorPlace}
         />
         <CommandPrompt notice={terminalNotice} />
       </AppLayout>
@@ -841,6 +864,7 @@ function App() {
         />
       )}
       {questions.element}
+      {debug.element}
     </>
   );
 }

@@ -25,6 +25,34 @@
     outline: 1px dotted #000;
     outline-offset: -1px;
   }
+
+  // a Windows 98 gripper (the raised bars at a toolbar's left, turned across) in the middle of a strip that sets a
+  // height: two bars, each a highlight border over a shadow border, a face-grey line between. 5 px in all, so an
+  // odd-height strip keeps it on whole pixels.
+  &--grip {
+    position: relative;
+
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      left: calc(50% - 12px);
+      width: 24px;
+      height: 2px;
+      box-sizing: border-box;
+      border-top: 1px solid variables.$button-highlight;
+      border-bottom: 1px solid variables.$button-shadow;
+      pointer-events: none;
+    }
+
+    &::before {
+      top: calc(50% - 2.5px);
+    }
+
+    &::after {
+      top: calc(50% + 0.5px);
+    }
+  }
 }
 
 // while a splitter is dragged: its cursor everywhere, no text selection, and the terminal's iframe

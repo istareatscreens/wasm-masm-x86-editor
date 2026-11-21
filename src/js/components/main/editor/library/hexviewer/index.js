@@ -1,17 +1,7 @@
-/**
- * HexViewer Library - Optimized hex viewer with virtual scrolling
- * 
- * High-performance hex viewer component designed for:
- * - Large file handling (100MB+)
- * - Web Worker processing
- * - WASM-ready architecture
- * - Virtual scrolling
- * - Progress tracking
- */
-
-export { HexViewer } from './hex-viewer.js';
-export { Hex } from './hex.js';
-export { DataProcessor } from './data-processor.js';
-export { Row } from './row.js';
-export { Set } from './set.js';
-export { Item } from './item.js';
+// The hex viewer's public surface (README.md): the component, the byte source over bytes held in memory, the
+// row-heading formats, and the theme's token names and presets.
+export { HexViewer } from "./hex-viewer.js";
+export { byteSource } from "./sources/byteSource.js";
+export { decodeData } from "./sources/decode.js";
+export { hexOffset, decimalOffset } from "./format/cellText.js";
+export { TOKENS, PRESETS } from "./theme/tokens.js";

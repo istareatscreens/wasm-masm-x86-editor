@@ -1,20 +1,11 @@
 /*
- * bw-cache.js — boot-asset cache for the BoxedWine terminal.
+ * bw-cache.js — serves the boot assets (guest zip, toolchain zip, wasm, glue) from the Cache API,
+ * keyed by the build id. Without `caches` (Electron file://, plain http) or on any cache error,
+ * every call degrades to a plain fetch().
  *
- * Serves the boot assets (guest zip, toolchain zip, wasm, glue) from the Cache API,
- * keyed by the build id, so a repeat visit does not download them again.
- *
- * Chunked guest image (Cloudflare Pages 25 MiB limit): bw-chunk-sw.js answers
- * latest26/<name> with the assembled bytes and keeps them in its own cache
- * "bw-chunks-<version>" (versions injected as BW_GUEST_CHUNKS). This layer
- *   - reads such a file straight from that cache, in a Worker (fetchBuffer), and then
- *     deletes the worker's caches of other versions,
- *   - waits for the worker (window.__swReady) only before fetching such a file,
- *   - does not store worker-assembled responses (X-BW-Assembled) a second time,
- *   - assembles the chunks in-page if the network fails for such a file.
- *
- * Fallback-safe: without `caches` (Electron file://, plain http) or on any cache error,
- * every call degrades to a plain fetch(). Caches of other build ids are deleted.
+ * The chunked guest image (Cloudflare Pages 25 MiB limit) lives in bw-chunk-sw.js's own cache
+ * "bw-chunks-<version>" (versions in BW_GUEST_CHUNKS): it is read from there in a Worker, never
+ * stored a second time, and assembled in-page when the network fails.
  */
 (function () {
   "use strict";
@@ -106,8 +97,8 @@
       return hit;
     }).catch(function () { return null; });
   }
-  // The same entry read in a Worker and transferred back: reading the 60 MB body on the
-  // page would occupy the main thread while the restore needs it. Resolves the
+  // The same entry read in a Worker and transferred back: reading the large body on the page
+  // would occupy the main thread while the restore needs it. readChunkInWorker resolves the
   // ArrayBuffer, or null (the caller then reads on the main thread).
   function cacheReadWorkerMain() { // runs in the worker (serialised with toString)
     self.onmessage = function (e) {

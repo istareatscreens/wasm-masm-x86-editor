@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-// Ticking rows with a selection rectangle, as Windows' list view selects with its marquee. A mouse or pen press
-// outside every row's label (onLabelAt) starts it once the pointer has moved START_PX; the pointer is captured.
-// The rectangle lives in the list's content coordinates, so it stays anchored to the rows while the list scrolls,
-// and is kept inside the content. While the pointer is within EDGE_PX of an edge of the list, or past it, a timer
-// scrolls that way, on both axes, faster the further out it is, also while the pointer is still. Ctrl (or Cmd)
-// toggles the rows from their state when the drag began; Escape gives back that state and ends the drag. A touch
-// keeps scrolling the list: held still on the background for LONG_PRESS_MS and released, it opens the menu.
-//   onLabelAt(x, y): is the content point on a row's label; rowsIn(rect): the rows a content rectangle touches;
-//   onStart(): the ticks when a drag begins; onChange(rows, toggle, start); onCancel(start); onLongPress(x, y).
+import holdTextSelection from "./holdTextSelection.js";
+
+// Ticking rows with a selection rectangle, as Windows' list view does. The rectangle is in the list's content
+// coordinates (as are onLabelAt and rowsIn), so it stays anchored to the rows while the list scrolls. A touch keeps
+// scrolling the list: held still on the background for LONG_PRESS_MS and released, it opens the menu.
 const START_PX = 4;
 const TOUCH_SLOP_PX = 8;
 const LONG_PRESS_MS = 400;
@@ -53,6 +49,7 @@ export default function useMarquee({ list, onLabelAt, rowsIn, onStart, onChange,
       if (!s) return;
       const ended = s;
       s = null;
+      if (ended.release) ended.release();
       clearTimeout(ended.pressTimer);
       clearInterval(ended.scrollTimer);
       window.removeEventListener("pointermove", onMove, true);
@@ -124,6 +121,7 @@ export default function useMarquee({ list, onLabelAt, rowsIn, onStart, onChange,
       const touch = e.pointerType === "touch";
       if (touch ? !!e.target.closest("[data-path]") : handlers.current.onLabelAt(p.x, p.y)) return;
       s = { touch, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, clientX: e.clientX, clientY: e.clientY, ax: p.x, ay: p.y, toggle: e.ctrlKey || e.metaKey, active: false };
+      if (!touch) s.release = holdTextSelection();
       if (touch) {
         s.pressTimer = setTimeout(() => {
           if (s) s.armed = true;

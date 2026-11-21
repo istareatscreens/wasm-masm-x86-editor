@@ -1,0 +1,70 @@
+@use "../abstracts/variables";
+
+// This app's hex viewer themes: they set only the component's tokens (editor/library/hexviewer).
+
+// memory in the debug sidebar (the sunken field and its bevel are the section's own)
+.hexviewer[data-hexviewer-theme="win98-field"],
+.hexviewer[data-hexviewer-theme="win98-field-dark"] {
+  --hexviewer-font-family: "Liberation Mono", monospace;
+  --hexviewer-font-size: 1.4rem;
+  --hexviewer-background: #{variables.$button-highlight};
+  --hexviewer-color: #{variables.$black-color};
+  --hexviewer-heading-color: #{variables.$dialog-blue};
+  --hexviewer-ascii-color: #{variables.$black-color};
+  --hexviewer-header-background: #{variables.$surface};
+  --hexviewer-header-color: #{variables.$black-color};
+  --hexviewer-header-shadow: #{variables.$border-raised-outer}, #{variables.$border-raised-inner};
+  --hexviewer-hover-background: transparent;
+  --hexviewer-hover-color: inherit;
+  --hexviewer-set-hover-color: inherit;
+  --hexviewer-selection-background: #{variables.$dialog-blue};
+  --hexviewer-selection-color: #{variables.$button-highlight};
+  --hexviewer-selection-inactive-background: #{variables.$selected-blue};
+  --hexviewer-selection-inactive-color: #{variables.$black-color};
+  --hexviewer-caret-outline: 1px dotted #{variables.$black-color};
+  --hexviewer-caret-mirror-background: #{variables.$button-face};
+  --hexviewer-changed-color: #{variables.$changed-red};
+  --hexviewer-unreadable-color: #{variables.$button-shadow};
+  --hexviewer-disabled-background: #{variables.$surface};
+  --hexviewer-disabled-color: #{variables.$button-shadow};
+}
+
+// the dark editor themes: the fields black with silver text, as the file drawer's list is
+.hexviewer[data-hexviewer-theme="win98-field-dark"] {
+  --hexviewer-background: black;
+  --hexviewer-color: silver;
+  --hexviewer-heading-color: #{variables.$dialog-blue-light};
+  --hexviewer-ascii-color: silver;
+  --hexviewer-selection-inactive-color: black;
+  --hexviewer-caret-outline: 1px dotted silver;
+  --hexviewer-caret-mirror-background: #{variables.$black-color};
+  --hexviewer-changed-color: #{variables.$changed-red-dark};
+  --hexviewer-disabled-background: black;
+}
+
+// a file in the editor pane (the editor's font and size come with the theme object)
+.hexviewer[data-hexviewer-theme="editor-document"],
+.hexviewer[data-hexviewer-theme="editor-document-dark"] {
+  --hexviewer-background: #{variables.$document-background};
+  --hexviewer-color: #{variables.$document-color};
+  --hexviewer-heading-color: #{variables.$document-heading};
+  --hexviewer-header-background: #{variables.$document-header};
+  --hexviewer-hover-background: #{variables.$selected-blue};
+  --hexviewer-hover-color: #{variables.$black-color};
+  --hexviewer-set-hover-color: #{variables.$document-heading};
+  --hexviewer-selection-background: #{variables.$dialog-blue};
+  --hexviewer-selection-color: #{variables.$button-highlight};
+  --hexviewer-selection-inactive-background: #{variables.$selected-blue};
+  --hexviewer-selection-inactive-color: #{variables.$black-color};
+  --hexviewer-caret-mirror-background: #{variables.$selected-blue};
+}
+
+.hexviewer[data-hexviewer-theme="editor-document-dark"] {
+  --hexviewer-background: #{variables.$document-background-dark};
+  --hexviewer-color: #{variables.$document-color-dark};
+  --hexviewer-heading-color: #{variables.$document-heading-dark};
+  --hexviewer-header-background: #{variables.$document-header-dark};
+  --hexviewer-set-hover-color: #{variables.$document-heading-dark};
+  --hexviewer-caret-outline: 1px dotted #{variables.$document-color-dark};
+  --hexviewer-unreadable-color: #{variables.$button-shadow};
+}

@@ -81,14 +81,12 @@
     }
 
     &__mid {
-        //transform: scale(.8,1);
         text-align: left;
         transform: scale(0.8, 1);
         margin: 0;
         padding: 0;
         font-size: 3.2rem;
         font-weight: 400;
-        //line-height: 2.1rem;
         position: relative;
     }
 
@@ -102,14 +100,12 @@
         left: 17.2rem;
         width: 0rem;
         height: 0rem;
-        /* width: 0rem; */
         display: block;
     }
 
     &__bottom {
         font-size: 2rem;
         font-weight: 400;
-        //line-height: 2.1rem;
         margin: 0;
         padding: 0;
         position: relative;
@@ -122,7 +118,6 @@
         padding: 0;
         margin: 0;
         position: relative;
-        /* transform: scale(0.2,0.2); */
         z-index: -1;
         width: 13rem;
         height: auto;

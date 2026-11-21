@@ -10,13 +10,9 @@ import iconError from "../../../../../images/msgError.png";
 
 const ICONS = { warning: iconWarning, information: iconInformation, question: iconQuestion, error: iconError };
 
-// A Windows 98 message box: its icon (warning, information, question or error) beside the text (a string, or
-// a list of paragraphs), and its buttons, one per choice. `choices` is one group of choices or a list of groups;
-// the groups stand apart, and a narrow page moves a group to the next line whole. The box is as wide as its text
-// needs, up to a limit, and as its buttons. The `defaultChoice` (a label; else the first choice) has the focus,
-// Escape closes as the title bar's X does. A choice closes the box first; `dismiss`, when given, is what the X and
-// Escape do instead of `close`. `option` adds a tick box under the text ({ label, checked, onChange }); `details`
-// (lines) are listed in a list box.
+// A Windows 98 message box. `choices` is one group of choices or a list of groups (a narrow page wraps whole
+// groups); `defaultChoice` (a label, else the first) has the focus. A choice closes the box first; `dismiss`, when
+// given, is what the X and Escape do instead of `close`. `option` adds a tick box; `details` go in a list box.
 function ConfirmWindow({ title, message, details, choices, defaultChoice, close, dismiss, option, icon }) {
   const focused = useRef(null);
   useEffect(() => {

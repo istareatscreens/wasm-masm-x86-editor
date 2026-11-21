@@ -1,11 +1,15 @@
 import { FC } from "react";
+
+/** One group of cells of a row */
 export declare const Set: FC<{
-    active: boolean;
-    activeItem: number;
-    activateItem(idx: number): void;
-    activateSet(idx: number): void;
-    clearSet(): void;
-    clearItem(): void;
-    index: number;
-    set: number[];
+  values: Int16Array;
+  from: number;
+  to: number;
+  rowOffset: number;
+  unit: number;
+  hovered: boolean;
+  cellState(at: number, kind: "cell" | "char"): string;
+  idOf(column: string, offset: number): string;
+  changedAt(at: number, length: number): boolean;
+  onHover: ((at: number) => void) | null;
 }>;

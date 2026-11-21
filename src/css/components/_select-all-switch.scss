@@ -1,0 +1,29 @@
+@use "../abstracts/variables";
+
+// common/SelectAllSwitch.jsx: a text push button that stays pushed in while it is on
+.select-all-switch {
+  flex: none;
+  padding: 0 0.8rem;
+  white-space: nowrap;
+
+  &[aria-checked="true"]:not(:disabled) {
+    box-shadow: variables.$border-sunken-outer, variables.$border-sunken-inner;
+  }
+
+  &:disabled {
+    color: variables.$button-shadow;
+    text-shadow: 1px 1px variables.$button-highlight;
+  }
+
+  &__labels {
+    display: inline-grid;
+  }
+
+  &__label {
+    grid-area: 1 / 1;
+
+    &--hidden {
+      visibility: hidden;
+    }
+  }
+}

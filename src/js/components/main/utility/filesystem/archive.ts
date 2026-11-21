@@ -68,10 +68,9 @@ export interface ImportPlan {
   skipped: { name: string; reason: string }[];
 }
 
-// Where each entry goes under `target`. Names match existing files and folders
-// case-insensitively (Windows semantics): an existing folder keeps its spelling and an
-// existing file is replaced under its key; a file where a folder is (or the reverse) is
-// skipped.
+// Where each entry goes under `target`. Names match existing files and folders case-insensitively
+// (Windows semantics): an existing folder keeps its spelling and an existing file is replaced under its
+// key; a file where a folder is (or the reverse) is skipped.
 export function planImport(entries: ImportEntry[], target: string, files: string[], folders: string[]): ImportPlan {
   const plan: ImportPlan = { refused: null, folders: [], files: [], skipped: [] };
   if (entries.length > MAX_ARCHIVE_ENTRIES) {

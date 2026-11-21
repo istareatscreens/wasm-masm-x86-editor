@@ -1,18 +1,19 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 
 import Button from "../../../common/ImageButton.jsx";
 import Window from "../../../common/Window.jsx";
+import TextField from "../../../common/TextField.jsx";
 
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
 
-// "Create file in D:\lab1" / "Create folder in D:\lab1" / "Create Drive". The typed name (`initial` to
-// start with, selected) is trimmed and NFC-normalised; problemFor(name) returns the first broken rule (shown
-// as the box's tooltip) or null. Enter is evaluated synchronously, so a name typed and confirmed at once is
-// never swallowed.
-function NameWindow({ title, label, initial = "", problemFor, onCreate, close }) {
+// The typed name is trimmed and NFC-normalised; problemFor(name) returns the first broken rule or null. Enter is
+// evaluated synchronously, so a name typed and confirmed at once is never swallowed. finalName(name) is the name
+// created; `children` are further controls, where Enter creates and Escape closes too.
+function NameWindow({ title, label, initial = "", problemFor, finalName = (name) => name, onCreate, close, children }) {
   const [value, setValue] = useState(initial);
   const input = useRef(null);
+  const lineId = useId();
 
   useEffect(() => {
     input.current.focus();
@@ -21,11 +22,22 @@ function NameWindow({ title, label, initial = "", problemFor, onCreate, close })
 
   const name = value.trim().normalize("NFC");
   const problem = problemFor(name);
+  const shownProblem = value && problem ? problem : "";
+  const final = finalName(name);
 
   const create = () => {
     if (problem) return;
     onCreate(name);
     close();
+  };
+
+  // a handled Enter is cancelled: its keypress would otherwise reach the control the focus returns to (the
+  // toolbar button) and open the window again
+  const onKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      create();
+    } else if (event.key === "Escape") close();
   };
 
   return (
@@ -47,27 +59,25 @@ function NameWindow({ title, label, initial = "", problemFor, onCreate, close })
         </div>
       }
     >
-      <input
-        type="text"
-        className="input-box"
+      <TextField
         value={value}
         aria-label={label}
-        aria-invalid={!!(value && problem)}
+        aria-invalid={!!shownProblem}
+        aria-describedby={lineId}
         title={problem || label}
-        onKeyDown={(event) => {
-          // a handled Enter is cancelled: its keypress would otherwise reach the control
-          // the focus returns to (the toolbar button) and open the window again
-          if (event.key === "Enter") {
-            event.preventDefault();
-            create();
-          } else if (event.key === "Escape") close();
-        }}
+        onKeyDown={onKeyDown}
         onChange={(event) => setValue(event.target.value)}
         ref={input}
       />
-      <p className="window__name-problem" aria-live="polite">
-        {value && problem ? problem : "\u00a0"}
+      <p id={lineId} className="window__name-problem">
+        <span aria-live="polite">{shownProblem}</span>
+        {shownProblem ? "" : value && final !== name ? "Creates " + final : "\u00a0"}
       </p>
+      {children && (
+        <div className="window__name-more" onKeyDown={onKeyDown}>
+          {children}
+        </div>
+      )}
     </Window>
   );
 }

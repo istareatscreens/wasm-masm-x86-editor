@@ -173,10 +173,9 @@ export function selectAllState(checked: Set<string>, index: TreeIndex, asmOnly: 
 export const checkAll = (value: boolean, index: TreeIndex, asmOnly: boolean): Set<string> =>
   value ? index.roots.reduce((set, root) => toggleChecked(root.path, "root", true, set, index, asmOnly), new Set<string>()) : new Set<string>();
 
-// The entries a checkbox selection stands for, outermost first: a fully checked folder
-// is one entry (with all its contents); otherwise its checked children are. `drives` are the
-// other drives whose own box was ticked (the box, a double-click, Select All) and shows checked:
-// a delete removes them. Ticking every file of a drive one by one leaves the drive; D: is never one.
+// The entries a checkbox selection stands for, outermost first: a fully checked folder is one entry.
+// `drives` are the other drives whose own box is ticked and shows checked (a delete removes them);
+// ticking every file of a drive one by one leaves the drive, and D: is never one.
 export function resolveTargets(checked: Set<string>, index: TreeIndex, asmOnly: boolean): { files: string[]; folders: string[]; drives: string[] } {
   const files: string[] = [], folders: string[] = [], drives: string[] = [];
   const walk = (folder: string) => {

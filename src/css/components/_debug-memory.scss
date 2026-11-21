@@ -1,0 +1,58 @@
+@use "../abstracts/variables";
+
+// the Memory section: its tools on the window grey, and the hex viewer in a sunken field like the others'
+.debug-section[data-section="memory"] .debug-section__body {
+  background: variables.$surface;
+  box-shadow: none;
+  padding: 0;
+}
+
+.debug-memory {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+
+  &__tools {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  &__address {
+    flex: 1 1 10rem;
+    width: auto;
+    height: 2.4rem;
+  }
+
+  &__goto {
+    flex: none;
+    width: auto;
+    min-width: 0;
+    height: 2.4rem;
+    padding: 0 0.8rem;
+  }
+
+  &__message {
+    flex: none;
+    padding: 0 0.2rem;
+    color: variables.$changed-red;
+    line-height: 1.8rem;
+  }
+
+  &__field {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    padding: 2px;
+    background: variables.$button-highlight;
+    box-shadow: variables.$border-field;
+  }
+
+  &__field:has(.hexviewer--disabled) {
+    background: variables.$surface;
+  }
+}

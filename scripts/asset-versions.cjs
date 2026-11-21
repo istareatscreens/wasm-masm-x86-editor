@@ -6,8 +6,8 @@ const { createHash } = require("node:crypto");
 // they load (style.css, index-editor.js, index-bw.js, ...) with the zone's Browser Cache TTL, max-age=14400, under
 // names that never change. Each cached file's four hours run from its own last fetch, and the clocks drift apart
 // (style.css is loaded by the editor page and by the terminal's frame, index-editor.js by the editor page only), so
-// for up to four hours after a deploy a browser can run a mix of builds: on 2026-11-15 Firefox ran the previous
-// index-editor.js under the new style.css (no share/import link buttons, a 256-px icon in the hard reset window).
+// for up to four hours after a deploy a browser can run a mix of builds, such as an old index-editor.js under a new
+// style.css.
 // So each page names every local file it loads with ?v=<hash of the built file>: a new page asks for URLs no
 // cache holds yet, and a cached file only ever serves the page it was built with.
 

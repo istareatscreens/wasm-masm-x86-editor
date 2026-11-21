@@ -6,13 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MASM x86 Editor User Guide | Toolbar and Irvine32 Example</title>
   <meta name="description"
-    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
+    content="Learn to compile, link and run MASM-compatible x86 assembly online. A user manual covering programs in several files, DLLs, debugging, toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <link rel="canonical" href="https://masm.isas.dev/guide/" />
   <link rel="icon" href="/favicon.ico" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="MASM x86 Editor User Guide | Toolbar and Irvine32 Example" />
   <meta property="og:description"
-    content="Learn to compile and run MASM-compatible x86 assembly online. A user manual covering toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
+    content="Learn to compile, link and run MASM-compatible x86 assembly online. A user manual covering programs in several files, DLLs, debugging, toolbar buttons, file backups, troubleshooting and an Irvine32 example." />
   <meta property="og:url" content="https://masm.isas.dev/guide/" />
   <meta property="og:image" content="https://masm.isas.dev/masm-icon-512w.png" />
   <meta property="og:image:alt" content="WASM MASM x86 Editor icon" />
@@ -282,7 +282,11 @@
       <p>Write, compile, link and run MASM (Microsoft Macro Assembler) assembly online with <strong>WASM MASM x86
           Editor</strong>.
         The editor uses JWasm to assemble source code, JWlink to create executables, and BoxedWine
-        to run 32-bit x86 programs. The <strong>Irvine32 library</strong> is included.</p>
+        to run 32-bit x86 programs. The <strong>Irvine32 library</strong> is included.
+        A program split into several files is linked as Microsoft's MASM and LINK link it, with no project file, and
+        a module-definition file builds a DLL: see <a href="#several-files">Programs in several files and DLLs</a>.
+        The debugger stops a program at breakpoints and shows its registers, variables and memory: see <a
+          href="#debugging">Debug a program</a>.</p>
       <p>This manual covers the browser editor, its toolbar controls and the steps to build and back up a program.
         Use a browser with JavaScript and WebAssembly enabled; no local assembler installation is required.</p>
       <p><a class="launch" href="/">Launch the MASM editor</a></p>
@@ -293,6 +297,8 @@
       <ol>
         <li><a href="#first-program">Compile and run your first program</a></li>
         <li><a href="#utf8-output">Print text in any language</a></li>
+        <li><a href="#several-files">Programs in several files and DLLs</a></li>
+        <li><a href="#debugging">Debug a program</a></li>
         <li><a href="#toolbar">Toolbar button reference</a></li>
         <li><a href="#files">Manage and back up files</a></li>
         <li><a href="#copy">Copy console text</a></li>
@@ -366,6 +372,318 @@ END main</code></pre>
         library.</p>
     </section>
 
+    <section aria-labelledby="several-files">
+      <h2 id="several-files">Programs in several files and DLLs</h2>
+      <p>A program can be split into modules, with no project file: MASM's own <code>END</code>, <code>PROTO</code>
+        and <code>INCLUDE</code> say what goes together. Make these three files in one folder, open
+        <code>main.asm</code> and select <strong>Compile, link and run .asm file</strong>. It prints
+        <code>42</code>.</p>
+      <pre aria-label="MASM source for math.inc" tabindex="0"><code>; math.inc: what math.asm offers
+INCLUDE Irvine32.inc
+AddTwo PROTO                ; EAX = EAX + EBX</code></pre>
+      <pre aria-label="MASM source for math.asm" tabindex="0"><code>INCLUDE math.inc
+
+.code
+AddTwo PROC
+    add eax, ebx
+    ret
+AddTwo ENDP
+END</code></pre>
+      <pre aria-label="MASM source for main.asm" tabindex="0"><code>INCLUDE math.inc
+
+.code
+main PROC
+    mov eax, 20
+    mov ebx, 22
+    call AddTwo
+    call WriteDec           ; prints EAX
+    call Crlf
+    exit
+main ENDP
+END main</code></pre>
+      <p>To make <code>math.inc</code>, choose <strong>Include file (.inc)</strong> under <strong>Type</strong> in the
+        Create file window.</p>
+      <p>What is linked follows from the sources:</p>
+      <ul>
+        <li>A <strong>module</strong> is an <code>.asm</code> file whose <code>END</code> names no entry point.
+          <code>END main</code> makes a program.</li>
+        <li>A program links the modules that define what it uses (what it calls, or declares with
+          <code>PROTO</code> or <code>EXTERN</code>) and its libraries do not.</li>
+        <li>Modules are found in the program's folder, the folders below it, and the folders of the
+          <code>.inc</code> files it includes.</li>
+        <li>A name a library defines, such as Irvine's <code>WriteString</code>, comes from the library: a module
+          defining its own <code>WriteString</code> is not linked for it.</li>
+      </ul>
+      <p>With a module open, <strong>Compile, link and run .asm file</strong> builds and runs the program that uses
+        it, and <strong>Run compiled binary</strong> runs that program. A module that two programs use is only
+        assembled, and a message names the programs. When two files define a name the program needs, a message
+        names them and nothing is built: keep one, or give the program a folder of its own.</p>
+      <p>In the terminal, <code>assemble main math</code> builds the same program by hand from its folder: each file
+        is assembled into the <code>bin</code> folder beside it, then the objects are linked, the program's first,
+        into <code>bin\main.exe</code>, which runs. <code>assemble /c math</code> only assembles, and an
+        <code>.obj</code> file in the list is linked as it is: <code>assemble main bin\math.obj</code>. Quote a name
+        that holds spaces. A name with <code>%</code> in it cannot be built: the terminal's <code>cmd</code> changes
+        it.</p>
+
+      <h3 id="dll">Build a DLL</h3>
+      <p>A program builds as a DLL when a <code>.def</code> file of the same name beside it starts with
+        <code>LIBRARY</code> and the DLL's name. <strong>Compile, link and run .asm file</strong> then makes
+        <code>bin\mathdll.dll</code> and its import library <code>bin\mathdll.lib</code>, and runs nothing; by hand,
+        <code>assemble /dll mathdll</code> does the same, exporting the procedures marked <code>PROC EXPORT</code>.
+        Give a DLL a name in ASCII characters, in its file names and after <code>LIBRARY</code>: a program finds
+        the DLLs it imports by names that Windows reads in its ANSI code page.
+        Make these files in a folder of their own:</p>
+      <pre aria-label="MASM source for mathdll.asm" tabindex="0"><code>INCLUDE Irvine32.inc
+
+.code
+DllEntry PROC hInst:DWORD, reason:DWORD, reserved:DWORD
+    mov eax, TRUE           ; the DLL loads
+    ret
+DllEntry ENDP
+
+AddTwo PROC a:DWORD, b:DWORD
+    mov eax, a
+    add eax, b
+    ret
+AddTwo ENDP
+END DllEntry</code></pre>
+      <pre aria-label="Module-definition file mathdll.def" tabindex="0"><code>LIBRARY mathdll
+EXPORTS
+    AddTwo</code></pre>
+      <p>A program in the same folder uses the DLL through its import library. Build <code>mathdll.asm</code>
+        first, then <code>usedll.asm</code>, which prints <code>42</code>:</p>
+      <pre aria-label="MASM source for usedll.asm" tabindex="0"><code>INCLUDE Irvine32.inc
+INCLUDELIB bin\mathdll.lib
+AddTwo PROTO, a:DWORD, b:DWORD
+
+.code
+main PROC
+    INVOKE AddTwo, 40, 2
+    call WriteDec
+    call Crlf
+    exit
+main ENDP
+END main</code></pre>
+    </section>
+
+    <section aria-labelledby="debugging">
+      <h2 id="debugging">Debug a program</h2>
+      <p>The debugger stops your program at a line, shows its registers, variables, stack and memory, and runs it a
+        line or an instruction at a time. There is nothing to set up:</p>
+      <ol>
+        <li><strong>Turn debugging on.</strong> Select the bug, the third button of the main toolbar. The debug
+          sidebar opens left of the editor, and a margin for breakpoints appears beside the line numbers of
+          <code>.asm</code>, <code>.inc</code> and <code>.mac</code> files.</li>
+        <li><strong>Set a breakpoint.</strong> Click the margin beside a line, or press <kbd>F9</kbd> on it. A red
+          circle marks it.</li>
+        <li><strong>Start.</strong> Select <strong>Compile, link and run .asm file</strong>, or press
+          <kbd>F5</kbd>. The program is built with debug information and runs until it reaches a breakpoint. A
+          yellow arrow marks the line that runs next, in whichever file of the program it is.</li>
+        <li><strong>Step.</strong> <kbd>F10</kbd> runs the line, <kbd>F11</kbd> goes into the procedure it calls,
+          <kbd>Shift</kbd> + <kbd>F11</kbd> runs to the end of the procedure, and <kbd>F5</kbd> continues to the
+          next breakpoint.</li>
+      </ol>
+      <p>With debugging off, programs are built without debug information, as before. While a program is being
+        debugged, <strong>Compile, link and run .asm file</strong> continues it when it is stopped, <strong>Run
+        compiled binary</strong> is unavailable, <strong>Cancel the running command</strong> stops debugging, and
+        <strong>Reset command prompt</strong> and <strong>Hard reset</strong> end the session. The debugger's keys
+        work everywhere but in the terminal, whose keys go to your program.</p>
+      <p>In zen mode the sidebar folds into a thin bar with a bug on it, at the left edge; select the bar to bring
+        the sidebar back. The sidebar's splitter has a button that folds it the same way, and one that stretches
+        the terminal under the sidebar or extends the sidebar to the bottom of the page.</p>
+
+      <h3 id="debug-toolbar">Debug toolbar</h3>
+      <table>
+        <caption>The debug sidebar's toolbar, left to right, with each command's key.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Control</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugGo.png" width="19"
+                    height="19" alt="" /></span><span>Go / Continue (F5)</span></span></th>
+            <td>Starts debugging the open program, or continues a stopped one to the next breakpoint.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugBreak.png" width="19"
+                    height="19" alt="" /></span><span>Break (Ctrl+Alt+Break)</span></span></th>
+            <td>Stops the running program where it is.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugStop.png" width="19"
+                    height="19" alt="" /></span><span>Stop Debugging (Shift+F5)</span></span></th>
+            <td>Ends the program and the session.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugRestart.png" width="19"
+                    height="19" alt="" /></span><span>Restart (Ctrl+Shift+F5)</span></span></th>
+            <td>While a program is being debugged, builds it again and starts it from the beginning.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugShowNext.png" width="19"
+                    height="19" alt="" /></span><span>Show Next Statement (Alt+Num *)</span></span></th>
+            <td>Shows the line that runs next.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugStepInto.png" width="19"
+                    height="19" alt="" /></span><span>Step Into (F11 or F8)</span></span></th>
+            <td>Runs to the next line, going into a procedure the line calls. With no program being debugged, it starts
+              one at its first statement.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugStepOver.png" width="19"
+                    height="19" alt="" /></span><span>Step Over (F10)</span></span></th>
+            <td>Runs to the next line, running the procedures the line calls to their end. With no program being
+              debugged, it starts one at its first statement.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugStepOut.png" width="19"
+                    height="19" alt="" /></span><span>Step Out (Shift+F11)</span></span></th>
+            <td>Runs to the end of the procedure; Autos shows the value it returned.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugStepBack.png" width="19"
+                    height="19" alt="" /></span><span>Step Back (Alt+[)</span></span></th>
+            <td>Undoes the last step: the registers and the memory the program wrote are as they were.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugRunToCursor.png" width="19"
+                    height="19" alt="" /></span><span>Run to Cursor (Ctrl+F10)</span></span></th>
+            <td>Runs to the editor's line. With no program being debugged, it starts one.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugAnimate.png" width="19"
+                    height="19" alt="" /></span><span>Animate</span></span></th>
+            <td>Steps again and again, at the speed chosen in the list beside it (1 to 10 steps a second), so you can
+              watch the program run. <kbd>Esc</kbd> or the button stops it.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugByInstruction.png" width="19"
+                    height="19" alt="" /></span><span>Step by instruction</span></span></th>
+            <td>Makes every step one machine instruction, not one line. The Disassembly section shows them.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugCount.png" width="19"
+                    height="19" alt="" /></span><span>Count instructions</span></span></th>
+            <td>Adds to each stop how many instructions ran since the previous one. The program runs slower while
+              counting.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debugHex.png" width="19"
+                    height="19" alt="" /></span><span>Hexadecimal</span></span></th>
+            <td>Shows values in hexadecimal instead of decimal.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>More keys: <kbd>F9</kbd> inserts or removes a breakpoint at the editor's line, <kbd>Ctrl</kbd> +
+        <kbd>F9</kbd> disables or enables it, <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F10</kbd> makes the
+        editor's line the next statement, <kbd>Shift</kbd> + <kbd>F9</kbd> shows the value of the expression at
+        the cursor (or the selected text) in the Console, and <kbd>Ctrl</kbd> + <kbd>F5</kbd> runs the program
+        without debugging. In full screen the browser keeps <kbd>F11</kbd> to leave full screen: <kbd>F8</kbd> steps
+        into as well, as in WinDbg.</p>
+
+      <h3 id="debug-breakpoints">Breakpoints</h3>
+      <p>Right-click the margin beside a line for its menu: insert or remove a breakpoint, disable or enable it, its
+        properties, Run to Cursor and Set Next Statement. In <strong>Properties</strong>, a breakpoint can stop only
+        when a condition is true (<code>eax == 5</code>) or when its value has changed; only when its hit count is
+        equal to, at least, or a multiple of a number; or write a message to the Console and keep running instead
+        of stopping, with each <code>{expression}</code> in the message replaced by its value. A breakpoint on a
+        line without code, such as data, a directive or a macro's body, is grey: a macro's code belongs to the
+        lines that use it.</p>
+      <p>The <strong>Breakpoints</strong> section lists them all. <strong>Remove All</strong> removes every
+        breakpoint once you confirm, and <strong>Select All</strong> / <strong>Select None</strong> ticks or unticks
+        them all. There you can add a breakpoint at a procedure or label by its name, add a data breakpoint, which
+        stops the program when a value in memory changes, and choose which exceptions stop the program (access
+        violation, integer division by zero and others), with the same switch for all of them at once.
+        Breakpoints are kept with your files: they follow a file that is renamed or moved, and go when it is
+        deleted.</p>
+      <p>Breakpoints work in every file of a program, and the editor follows the program from file to file as it
+        stops and steps. To debug a DLL, open its <code>.asm</code> file with debugging on and select
+        <strong>Compile, link and run .asm file</strong>: the DLL is built with debug information. Then debug the
+        program that uses it: the DLL's breakpoints stop it there, and Step Into goes into its procedures.</p>
+
+      <h3 id="debug-stepping">Stepping</h3>
+      <p>Step Into goes into your own procedures, in any file of the program. A call into code without debug
+        information, such as Irvine32's <code>WriteString</code> or Windows, runs at full speed to its return, so
+        a step never stops inside a library. Step Back undoes the steps made in your own code, the last 256 at
+        most. It cannot go back past a step that ran code outside your program or made a system call, or past a
+        value you changed by hand; its tooltip then says why.</p>
+
+      <h3 id="debug-sections">The debug sidebar</h3>
+      <dl>
+        <dt>Registers</dt>
+        <dd>The general registers, EIP and EFLAGS with each flag, then the segment, FPU, MMX and SSE registers. A
+          value that changed since the last stop is red, with a mark beside it, and its tooltip gives the value it
+          had. Double-click a value to change it.</dd>
+        <dt>Watch</dt>
+        <dd>Expressions you type, evaluated at every stop. Select one and press <strong>Remove</strong> (or
+          <kbd>Delete</kbd>) to remove it; <strong>Remove All</strong> asks, then removes them all.</dd>
+        <dt>Autos</dt>
+        <dd>The registers and variables the current and previous lines use, and the value a procedure returned
+          when you stepped over or out of it.</dd>
+        <dt>Locals</dt>
+        <dd>The parameters and <code>LOCAL</code> variables of the procedure selected in the call stack.</dd>
+        <dt>Call Stack</dt>
+        <dd>The procedures the program is in, the current one first. Select one to see its line and its locals.
+          <strong>[External Code]</strong> stands for Irvine32 and Windows.</dd>
+        <dt>Memory</dt>
+        <dd>The program's memory as bytes, words or doublewords, with their characters, opened at the program's
+          <code>.data</code>. Type an address or an expression (<code>esp</code>, <code>total</code>,
+          <code>[ebx+4]</code>) and press <kbd>Enter</kbd>, or choose from <strong>Go to</strong>:
+          <code>.data</code>, <code>.data?</code>, <code>.const</code>, the stack and the code. With
+          <strong>Follow</strong> ticked, the address is evaluated again at every stop. Bytes that changed are red.
+          Type hexadecimal digits over a byte, or characters in the character column, to change memory;
+          <kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes, and <kbd>Ctrl</kbd> + <kbd>C</kbd> copies the selected bytes.
+          Code cannot be changed. The <strong>View memory</strong> button beside a value opens it here.</dd>
+        <dt>Stack</dt>
+        <dd>The stack from ESP up, a doubleword a row, each named where that is known: a return address by its file
+          and line, a saved EBP, a parameter or a <code>LOCAL</code>.</dd>
+        <dt>Disassembly</dt>
+        <dd>The machine instructions around the next one, under their source lines. Click the margin beside an
+          instruction for a breakpoint there.</dd>
+        <dt>Breakpoints</dt>
+        <dd>Every breakpoint, with the data breakpoints and the exceptions that stop the program.</dd>
+        <dt>Globals</dt>
+        <dd>The program's variables.</dd>
+        <dt>Console</dt>
+        <dd>Type an expression and press <kbd>Enter</kbd> for its value. <code>target = expression</code> changes a
+          register or memory: <code>eax = 5</code>, <code>total = 0</code>, <code>BYTE PTR [esi] = 'A'</code>.
+          <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> bring back earlier lines. Breakpoint messages appear here too,
+          and the last 1,000 lines are kept.</dd>
+      </dl>
+      <p>Each section opens and closes from its title. Memory, Stack, Disassembly and the Console have a strip under
+        them, marked by a gripper of two raised bars: drag it to change the section's height, or double-click it for
+        the default height. Held at the top or bottom of the sidebar, the drag scrolls the sidebar and keeps
+        going.</p>
+
+      <h3 id="debug-expressions">Expressions</h3>
+      <p>Watch, the Console, the Memory section's address, conditions and breakpoint messages take MASM's
+        expressions: registers (<code>eax</code>, <code>al</code>, <code>ST(0)</code>, <code>xmm0</code>),
+        variables and labels, numbers as MASM writes them (<code>0FFh</code>, <code>1010b</code>,
+        <code>'A'</code>) or as C does (<code>0xFF</code>), the operators <code>+ - * / MOD SHL SHR AND OR XOR
+        NOT</code>, comparisons (<code>EQ NE LT LE GT GE</code>, or <code>== != &lt; &lt;= &gt; &gt;=</code>),
+        <code>[address]</code> for memory, <code>TYPE PTR</code> (<code>WORD PTR [esi]</code>),
+        <code>record.field</code>, <code>array[4]</code> (a byte offset, as in MASM), <code>OFFSET</code>,
+        <code>TYPE</code>, <code>SIZEOF</code> and <code>LENGTHOF</code>. After a comma comes a format:
+        <code>,x</code> hexadecimal, <code>,d</code> signed, <code>,u</code> unsigned, <code>,o</code> octal,
+        <code>,b</code> binary, <code>,c</code> with its character, <code>,s</code> the string at an address,
+        <code>,su</code> a UTF-16 string, or a number of elements: <code>array,5</code>. While instructions are
+        counted, <code>$instructions</code> is the count since the previous stop and <code>$total</code> since the
+        start. Constants defined with <code>EQU</code> or <code>=</code> are not available: the debug information
+        does not keep them.</p>
+
+      <h3 id="debug-terminal">Debug builds in the terminal</h3>
+      <p><code>assemble [/debug] [/c | /dll] program [file ...]</code> builds without debug information unless
+        <code>/debug</code> is given: <code>assemble /debug main math</code> builds the example above with it. A
+        program started from the prompt runs without the debugger, which starts only from <strong>Compile, link and
+        run .asm file</strong> or <kbd>F5</kbd> with debugging on.</p>
+      <p>If the debugger itself fails, the session ends, the terminal keeps working, and a notice at the top of the
+        sidebar offers <strong>Report bug</strong>, which opens a GitHub issue with the details filled in.</p>
+    </section>
+
     <section aria-labelledby="toolbar">
       <h2 id="toolbar">Toolbar button reference</h2>
       <p> Controls are listed from left to right within each group and exist at the top banner of the page.</p>
@@ -383,16 +701,25 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/buildFile.png" width="22"
                     height="22" alt="" /></span><span>Compile, link and run .asm file</span></span></th>
-            <td>Builds and runs the open <code>.asm</code> file. Select an assembly source file from the file drawer to
-              enable this button. The <code>.obj</code> and <code>.exe</code> go into a <code>bin</code> folder next
-              to the source: <code>lab1\hello.asm</code> builds <code>lab1\bin\hello.exe</code>.
+            <td>Builds and runs the open <code>.asm</code> file, with the modules it uses; with a module open, the
+              program that uses it (see <a href="#several-files">Programs in several files and DLLs</a>). Select an assembly
+              source file from the file drawer to enable this button. The <code>.obj</code> and <code>.exe</code> go
+              into a <code>bin</code> folder next to the source: <code>lab1\hello.asm</code> builds
+              <code>lab1\bin\hello.exe</code>.
             </td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/runBinary.png" width="19"
                     height="19" alt="" /></span><span>Run compiled binary</span></span></th>
-            <td>Runs the <code>.exe</code> associated with the open <code>.asm</code> file (<code>bin\</code> in its
-              folder). A compiled executable must exist. Source edits are not included until you rebuild.</td>
+            <td>Runs the <code>.exe</code> of the open <code>.asm</code> file's program (<code>bin\</code> in the
+              program's folder). A compiled executable must exist. Source edits are not included until you
+              rebuild.</td>
+          </tr>
+          <tr>
+            <th scope="row"><span class="control"><span class="icon"><img src="icons/debug.png" width="19"
+                    height="19" alt="" /></span><span>Turn debugging on / off</span></span></th>
+            <td>With debugging on, programs are built with debug information, breakpoints can be set beside the
+              lines, and the debug sidebar opens. See <a href="#debugging">Debug a program</a>.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/cmdCancel.png" width="24"
@@ -484,6 +811,15 @@ END main</code></pre>
               buttons on them that move the terminal. Your choice is remembered in this browser.</td>
           </tr>
           <tr>
+            <th scope="row"><span class="control"><span class="icon"><svg width="14" height="8" viewBox="0 0 7 4"
+                    shape-rendering="crispEdges" aria-hidden="true">
+                    <path d="M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z" />
+                  </svg></span><span>Collapse the toolbar / show all toolbar buttons</span></span></th>
+            <td>Shown only when the main toolbar's buttons need more than one row. The up arrow collapses the toolbar
+              to its first row, giving the space to the editor and the terminal; the down arrow shows every row
+              again. Your choice is remembered in this browser.</td>
+          </tr>
+          <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/about.png" width="24" height="24"
                     alt="" /></span><span>Application info</span></span></th>
             <td>Opens information window about the project.</td>
@@ -510,8 +846,11 @@ END main</code></pre>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/newFile.png" width="15" height="15"
                     alt="" /></span><span>Create new assembly (.asm) text file</span></span></th>
-            <td>Opens the Create file dialog for the selected folder. Enter a filename and press <kbd>Enter</kbd>.
-              The editor adds <code>.asm</code> if needed.
+            <td>Opens the Create file dialog for the selected folder. Enter a filename, choose its type and press
+              <kbd>Enter</kbd>. The type adds its extension if needed: <strong>Assembly source (.asm)</strong>, the
+              first time; <strong>Include file (.inc)</strong>; <strong>Macro file (.mac)</strong>;
+              <strong>Module definition (.def)</strong>; or <strong>Custom name</strong>, which keeps the name as typed. A new <code>.asm</code> file starts with a
+              program to edit, any other file empty. The type you choose is chosen the next time.
             </td>
           </tr>
           <tr>
@@ -524,8 +863,7 @@ END main</code></pre>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/newDrive.png" width="16" height="16"
                     alt="" /></span><span>Create new drive</span></span></th>
             <td>Opens the Create Drive dialog with a free label such as <code>New_Drive</code>. The new drive gets a
-              letter and a new <code>test.asm</code>, which opens in the editor. See
-              <a href="#share">Share files by link</a> for how drives work.</td>
+              letter and a new <code>test.asm</code>, which opens in the editor.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/uploadFile.png" width="16"
@@ -564,8 +902,9 @@ END main</code></pre>
                     height="24" alt="" /></span><span>Delete selected file(s)</span></span></th>
             <td>Removes the checked files and folders from the project and terminal (a folder with everything in it;
               you are asked first when it is not empty), and every drive whose box is checked, empty ones included
-              (<code>D:</code> is only emptied). With no boxes checked, deletes the open file. Download a backup before
-              deleting files you may need.</td>
+              (<code>D:</code> is only emptied). With no boxes checked, deletes the selected file or folder, or the
+              selected drive once you confirm (never <code>D:</code>). Download a backup before deleting files you may
+              need.</td>
           </tr>
           <tr>
             <th scope="row"><span class="control"><span class="icon"><img src="icons/files.png" width="24" height="24"
@@ -591,10 +930,13 @@ END main</code></pre>
         link brought, each with its letter. Click a file to open it.
         Checking its box selects it for download or deletion; it does not open it. Double-click a file to rename it,
         then press <kbd>Enter</kbd>, or press <kbd>F2</kbd> (or right-click and choose <strong>Rename</strong>) to
-        rename a file or a folder. Keep the <code>.asm</code> extension on assembly source files.</p>
+        rename a file, a folder or a drive. As in Windows, clicking the name of the selected one once more, then
+        waiting a moment, renames it too. Keep the <code>.asm</code> extension on assembly source files.</p>
       <p>Files other than <code>.asm</code> show a bar above the editor: <strong>Edit as text</strong> opens them in
         the editor, <strong>View in hex</strong> in the hex viewer. Binary files such as <code>.exe</code> and
-        <code>.obj</code> open in hex; other files open as text.</p>
+        <code>.obj</code> open in hex; other files open as text. Include files (<code>.inc</code>), macro libraries
+        (<code>.mac</code>) and module-definition files (<code>.def</code>) always open as text, with their syntax
+        highlighted.</p>
 
       <h3>Folders</h3>
       <p>Click a folder to select it; double-click it, or click its <kbd>+</kbd>/<kbd>-</kbd> box, to open or close
@@ -736,6 +1078,21 @@ END main</code></pre>
       <p>The library files are those of Kip Irvine's current distribution. Only <code>Clrscr</code> in
         <code>Irvine32.lib</code> is rewritten to clear the screen faster, with the same result, so a program
         written here links the same way with the standard library.</p>
+      <p><code>INCLUDE</code> finds a file as Microsoft MASM (ML 14) does. A name with a drive letter, or starting
+        with <code>\</code>, is taken as written. A name starting with <code>.\</code> or <code>..\</code> is looked
+        for in the folder the build runs in: the program's. Any other name is looked for beside the file that
+        includes it, then beside each file including that one, out to the program, and then in
+        <code>C:\files\irvine</code>.</p>
+      <p><code>INCLUDELIB</code> finds a library as Microsoft's LINK does: in the program's folder, then in
+        <code>C:\files\irvine</code> and <code>C:\files\lib</code>. A name without an extension gets
+        <code>.lib</code>.</p>
+      <p>Irvine's files are also in <code>C:\Irvine</code>, where Kip Irvine's Visual Studio setup puts them, so a
+        source that writes <code>INCLUDE C:\Irvine\Irvine32.inc</code> builds here unchanged.</p>
+      <p><code>C:\files\lib</code> holds import libraries for the Windows DLLs of the terminal (Wine 6.0), such as
+        <code>gdi32.lib</code>, <code>advapi32.lib</code>, <code>winmm.lib</code> and <code>msvcrt.lib</code> (the C
+        library's <code>printf</code>): declare the function with <code>PROTO</code> and name its library, as in
+        <code>INCLUDELIB gdi32.lib</code>. <code>kernel32.lib</code> and <code>user32.lib</code> come with Irvine32
+        and are always linked.</p>
       <p>The emulated processor is a Pentium 4: the 386 and 486 integer instructions, x87, MMX, SSE and SSE2.
         Instructions of later processors (SSE3 and newer) stop the program with a notice that names them.</p>
     </section>

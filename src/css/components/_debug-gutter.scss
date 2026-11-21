@@ -1,0 +1,68 @@
+@use "../abstracts/variables";
+
+// The debugger in the editor (editor/debug). The tints differ for light and dark editor themes, which only
+// CodeMirror knows: editor/debug/editorTheme.ts picks one of the two custom properties below.
+.editor {
+  --debug-statement: #{variables.$statement-light};
+  --debug-statement-dark: #{variables.$statement-dark};
+  --debug-caller: #{variables.$caller-light};
+  --debug-caller-dark: #{variables.$caller-dark};
+}
+
+.cm-debug-gutter {
+  cursor: default;
+
+  .cm-gutterElement {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+  }
+}
+
+.cm-debug-icon {
+  display: block;
+  flex: none;
+
+  // the arrow lies on the breakpoint's mark, as Visual Studio draws it
+  &--arrow {
+    position: absolute;
+  }
+}
+
+// a value tip: the Windows 98 info tip (COLOR_INFOBK on black, a 1 px frame), in the page's font
+.cm-debug-tip {
+  padding: 0.1rem 0.5rem;
+  background: variables.$info-background;
+  color: variables.$black-color;
+  border: 1px solid variables.$window-frame;
+  font-family: "Liberation Mono", Arial, sans-serif;
+  font-size: 1.3rem;
+  line-height: 1.7rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 60rem;
+}
+
+// the editor theme's own tooltip box gives way to the tip's
+.cm-editor .cm-tooltip.cm-tooltip-hover:has(> .cm-debug-tip) {
+  border: 0;
+  background: transparent;
+}
+
+@media (forced-colors: active) {
+  .cm-debug-current-line {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+
+  .cm-debug-caller-line {
+    outline: 1px dotted Highlight;
+    outline-offset: -1px;
+  }
+
+  .cm-debug-tip {
+    border-color: CanvasText;
+  }
+}
