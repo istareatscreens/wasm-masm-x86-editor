@@ -1,6 +1,7 @@
 // Tabs share the drawer's store; each has its own terminal. A tab the user leaves writes its editor's pending
 // save. A tab the user comes back to (focus, shown again, back-forward cache), or a shown tab another tab wrote
 // under, reads the store again and applies the changes to its terminal and, through onSynced, its drawer and editor.
+// Settings go the same way: a shown tab takes another tab's at once, a hidden one reads them when it is shown.
 import FileSystem from "../FileSystem.js";
 import hf, { VERSION_KEY } from "../FileSystemAdapter.js";
 import {
@@ -49,7 +50,11 @@ export function startTabSync({ onSynced, onSettings }) {
     timer = setTimeout(check, SETTLE_MS);
   };
   const leave = () => FileSystem.flushPendingSaves();
-  const onVisibility = () => (document.visibilityState === "visible" ? check() : leave());
+  const onVisibility = () => {
+    if (document.visibilityState !== "visible") return leave();
+    onSettings(readSettings());
+    check();
+  };
   const onShow = (event) => {
     if (!event.persisted) return;
     onSettings(readSettings());
@@ -59,7 +64,7 @@ export function startTabSync({ onSynced, onSettings }) {
     if (event.key === VERSION_KEY || event.key === null) {
       hf.markBehind();
       settle();
-    } else if (event.key === "settings") onSettings(event.newValue);
+    } else if (event.key === "settings" && document.visibilityState === "visible") onSettings(event.newValue);
   };
   hf.onBehind(settle);
   window.addEventListener("focus", check);

@@ -215,14 +215,19 @@ function App() {
   const setWorkspaceName = useCallback((workspaceName) => {
     setSettings((current) => ({ ...current, workspaceName }));
   }, []);
-  // settings another tab saved (session/tabSync.js)
+  // Settings another tab saved (session/tabSync.js) are taken, not saved again: a tab that took them late would put
+  // an older value over a newer one, which every tab would then take in turn.
+  const takenSettings = useRef(null);
   const takeSettings = (stored) => {
     const next = settingsFromStored(stored);
-    if (next) setSettings(next);
+    if (!next) return;
+    takenSettings.current = next;
+    setSettings((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
   };
 
   //save user settings to local storage (the store the loader above reads)
   useEffect(() => {
+    if (settings === takenSettings.current) return;
     try {
       localStorage.setItem("settings", JSON.stringify(settings));
     } catch (error) {
