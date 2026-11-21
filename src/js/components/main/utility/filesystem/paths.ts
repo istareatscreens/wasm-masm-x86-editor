@@ -1,7 +1,6 @@
-// Drawer paths: a file's storage key is its path relative to D:\ with "/" separators
-// ("lab1/io/print.inc"); a root file's key is its plain name. "/" and "\" are never part
-// of a name (invalidFilenameReason), so the separator is unambiguous. A file of another drive is
-// "drive:<id>/<path from that drive's root>" (drives.ts); a drive's root is like D:'s.
+// Drawer paths: a file's storage key is its path relative to D:\ with "/" separators ("lab1/io/print.inc").
+// "/" and "\" are never part of a name (invalidFilenameReason), so the separator is unambiguous. A file of
+// another drive is "drive:<id>/<path from that drive's root>" (drives.ts).
 import { invalidFilenameReason } from "../../../../utility/utilityFunctions";
 import { splitDrive, isDrivePath, driveRoot, withRoot, driveSpec } from "./drives";
 import { nameKey } from "../build/fileNames";
@@ -20,8 +19,8 @@ export const parentOf = (path: string): string => path.slice(0, Math.max(path.la
 export const baseOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 export const depthOf = (path: string): number => splitPath(splitDrive(path).rel).length;
 export const isAsm = (path: string): boolean => /\.asm$/.test(path);
-// a MASM source or include file: the editor highlights these as MASM
-export const isMasmSource = (path: string): boolean => /\.(asm|inc)$/i.test(path);
+// a MASM source, include file or macro library: the editor highlights these as MASM
+export const isMasmSource = (path: string): boolean => /\.(asm|inc|mac)$/i.test(path);
 // a module-definition file (LINK's /DEF input): the editor highlights its statements
 export const isModuleDefinition = (path: string): boolean => /\.def$/i.test(path);
 // a text file the toolchain reads: opened as text whatever its bytes look like (a comment in a legacy code page can

@@ -1,6 +1,5 @@
-// Where INCLUDE and INCLUDELIB find their files, by Microsoft's rules (ML 14.44 and LINK, measured in
-// openspec/changes/implement-masm-file-linking/reference/masm-semantics.py), over the drawer's files, the drives'
-// letters and the toolchain's folders: C:\files\irvine (also C:\Irvine) and C:\files\lib.
+// Where INCLUDE and INCLUDELIB find their files, by Microsoft's rules (ML 14.44 and LINK), over the drawer's files,
+// the drives' letters and the toolchain's folders: C:\files\irvine (also C:\Irvine) and C:\files\lib.
 
 import { nameKey, sameName } from "./fileNames";
 

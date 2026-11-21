@@ -1,24 +1,13 @@
 /*
- * bw-snapshot.js — instant startup for BoxedWine via a WASM linear-memory snapshot.
- * The whole guest lives in the 512MB linear memory, so a cold boot's end state is
- * captured once and restored on later loads instead of booting Wine again.
- *
- * Fallback-safe: every failure (unsupported browser, missing/corrupt snapshot, quota,
- * restore error) falls through to a normal cold boot.
- *
- * The snapshot is keyed by BW_BUILD_ID + SCHEMA + the boot configuration; any change
- * ignores the old snapshot and the next cold boot captures a new one.
+ * bw-snapshot.js — instant startup: the whole guest lives in the wasm linear memory, so a cold
+ * boot's end state is captured once and restored on later loads. Every failure falls back to a
+ * cold boot. Keyed by BW_BUILD_ID + SCHEMA + the boot configuration.
  *
  * Record (IndexedDB store "snap", written in one transaction):
  *   meta     {version, schema, heapLen, pageSize, pages, bitmap (1 bit per 4KB page,
  *             set = non-zero), segments [{pages, bytes}], ...}
  *   seg0..7  the non-zero pages in address order, each segment zlib-compressed
  *   overlay  the guest's /root tree, gzip
- * Restore: begin() starts decoding the segments in Web Workers while the wasm and zips
- * load; doRestore() copies them into the heap and resumes. Capture: an atomic page
- * pack, then compression in Workers and the IndexedDB write in the background.
- * Watchdog: a restore without a usable console within 8s of visible time is discarded
- * and the page cold-boots.
  */
 (function () {
   "use strict";
@@ -81,7 +70,6 @@
       });
     });
   }
-  // replace the whole record atomically: clear + puts in ONE readwrite transaction
   function idbReplaceAll(records) {
     return openDB().then(function (db) {
       return new Promise(function (res, rej) {
@@ -108,8 +96,8 @@
       .catch(function () {});
   }
 
-  // gzip into an ArrayBuffer, then a Blob. Not `Response(...).blob()`: Chrome spills a
-  // stream-built Blob over 5MB to disk and fails when the disk is nearly full.
+  // gzip into an ArrayBuffer, then a Blob. Not `Response(...).blob()`: Chrome spills a large
+  // stream-built Blob to disk and fails when the disk is nearly full.
   function gzipBytes(bytes) {
     return new Response(bwStreamOf(bytes.buffer, bytes.byteOffset, bytes.byteLength).pipeThrough(new CompressionStream("gzip"))).arrayBuffer().then(function (buf) {
       return new Blob([buf]);
@@ -117,9 +105,8 @@
   }
 
   // ------------------------------------------------------------ codec
-  // Segment (de)compression, in Web Workers or on the main thread as the fallback. These
-  // functions are serialised into the worker's Blob source with toString(), so they must
-  // not use anything outside their own bodies and each other.
+  // Segment (de)compression, serialised into the worker with toString(): these functions may
+  // use nothing outside their own bodies and each other.
   function bwStreamOf(buffer, offset, length) {
     var u8 = new Uint8Array(buffer, offset || 0, length === undefined ? buffer.byteLength - (offset || 0) : length), off = 0, CH = 1048576;
     return new ReadableStream({
@@ -345,11 +332,9 @@
     }
     return { runs: runs, filled: filled };
   }
-  // Fault in the fresh heap's pages while the guest zip loads, so the restore's writes do
-  // not pay the first-touch page faults. Atomics.add(..., 0) writes without changing a
-  // value (a plain x[i] = x[i] may be optimised away); slices yield via MessageChannel.
-  // Phase 1: the image's non-zero pages. Phase 2 (all other pages) only when the wasm has
-  // no bwHeapTop, i.e. the restore will write every page; it waits for embind (sendText).
+  // Fault in the fresh heap's pages while the guest zip loads, so the restore does not pay the
+  // first-touch faults. Atomics.add(..., 0) writes without changing a value (x[i] = x[i] may be
+  // optimised away). Phase 2 (the zero pages) runs only without bwHeapTop: the restore writes every page.
   function prefaultHeap(heap, state, bitmap, Module) {
     if (typeof Atomics === "undefined" || typeof MessageChannel === "undefined") { state.done = true; return; }
     var i32 = new Int32Array(heap.buffer, heap.byteOffset, heap.length >> 2);
@@ -459,7 +444,6 @@
           self._meta = meta;
           self._heapLen = meta.heapLen;
           self.mode = "restore";
-          // decode every segment now, while the wasm and zips load
           var dec = { t0: performance.now(), t1: 0, workers: 0, inline: 0, error: null };
           var p = codecPool(), inline0 = self._inlineRuns;
           dec.workers = p.broken ? 0 : p.size;
@@ -495,10 +479,9 @@
       });
     },
 
-    // In-place restore, once the runtime is initialised (static constructors would
-    // overwrite restored globals) and the shell has mounted the same zips as a cold boot.
-    // Resolves true; on any failure it counts the failure, discards the snapshot and
-    // reloads into a cold boot.
+    // In-place restore, once the runtime is initialised (static constructors would overwrite
+    // restored globals) and the shell has mounted the same zips as a cold boot. Resolves true;
+    // any failure is counted, discards the snapshot and reloads into a cold boot.
     doRestore: function (Module) {
       var self = this, dec = this._decode, meta = this._meta, timer = null;
       self._restoring = true;
@@ -590,7 +573,6 @@
         } catch (e) {}
       }
     },
-    // Replace /root with the captured overlay (synchronously).
     _writeOverlay: function (Module, raw) {
       var t0 = performance.now(), FS = Module.FS;
       var mlen = new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getUint32(0, true);
@@ -617,12 +599,9 @@
         }
       } catch (e) {}
     },
-    // Capture the factory state (cold boot, console idle, input gate still closed):
-    //   1. atomic: pack the non-zero heap pages and the /root overlay at the same instant;
-    //      the returned promise resolves here, so the terminal can open at once;
-    //   2. persist (background, Workers): compress, store, set the marker. Any error is
-    //      non-fatal: the next visit cold-boots and captures again.
-    // Resolves { copied, persisted } (persisted = the phase-2 promise).
+    // Capture the factory state (cold boot, console idle, input gate still closed). Resolves
+    // { copied, persisted } right after the atomic copy, so the terminal can open at once;
+    // `persisted` settles after the background compress and store (on failure the next visit cold-boots).
     capture: async function (Module, info) {
       var self = this, packed = null, overlay = null, heap = null, t0 = performance.now();
       if (!supported() || !this.version || !this._didColdBoot) return { copied: false, reason: "not-cold" };
@@ -715,9 +694,9 @@
 
     markColdBoot: function () { this._didColdBoot = true; },
 
-    // Resolve { idle: true, waitedMs } once IDLE_WINDOWS consecutive windows (the first
-    // ends settleMs after the call) show no queued input and < 2M guest instructions per
-    // second (an idle prompt runs well under 1M/s), or { idle: false } after maxWaitMs.
+    // Resolve { idle: true, waitedMs } once IDLE_WINDOWS consecutive windows (the first ends
+    // settleMs after the call) show no queued input and < 2M guest instructions per second,
+    // or { idle: false } after maxWaitMs.
     waitIdle: function (Module, settleMs, maxWaitMs) {
       var IDLE_WINDOW_MS = 250, IDLE_WINDOWS = 3;
       var t0 = performance.now(), lastP = null, quietWindows = 0;
@@ -764,8 +743,7 @@
     },
     // Resolve true when usable (two consecutive lit samples and guest progress since the
     // first sample), false after maxMs of visible time: a hidden page stops the emulator
-    // loop (requestAnimationFrame), so hidden time is not counted. Samples at once, then
-    // every intervalMs (default 50).
+    // loop (requestAnimationFrame), so hidden time is not counted.
     _waitUsable: function (Module, maxMs, intervalMs) {
       var self = this;
       return new Promise(function (resolve) {
@@ -854,7 +832,6 @@
     // After a cold boot starts: MT without a usable console in 150s records a failure and
     // reloads into ST. ST keeps waiting (a slow machine still gets its terminal): the
     // loading screen's text changes at 60s, and the parent is told after 4 minutes.
-    // Resolves true when the console is usable.
     watchBoot: function (Module) {
       var self = this, isMT = this._rt() === "mt";
       return this._waitUsable(Module, isMT ? 150000 : 60000).then(function (ok) {

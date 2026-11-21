@@ -1,7 +1,6 @@
-// The extra drives. Each is a folder of the store the terminal mounts at /mnt/bw_drives (native /bw_drives),
-// mapped to a letter of E: to Y: while it has one, with file lists of its own in the drawer's storage. There can be
-// any number of drives: past 21, the letters go to the drives in use (FileSystem.useDrive). In the app a drive's
-// files are paths under "drive:<id>/"; ":" is never part of a D: name, so no D: path can take that form.
+// The extra drives: folders of the store the terminal mounts at STORE_GUEST, each with a letter of E: to Y: while it
+// has one (past 21 drives, the drives in use get them: FileSystem.useDrive). App paths are "drive:<id>/..."; ":" is
+// never part of a D: name, so no D: path can take that form.
 export const DRIVE_PREFIX = "drive:";
 export const D_GUEST = "/mnt/drive_d";
 export const D_NATIVE = "/d_drive";
@@ -164,10 +163,9 @@ export function randomSuffix(bytes: Uint8Array, length: number = 4): string | nu
   return out.length === length ? out : null;
 }
 
-// The folders of a download that spans drives, by drive root: D:'s "D", every other drive's its label, never its
-// letter (letters move between drives, and past 21 drives some have none). A name the download already uses, in
-// any letter case, gets "_2", "_3", ...: labels can repeat, and a drive may be labelled D. The drives are named in
-// the order they were made, so the same drives get the same folders every time.
+// The folders of a download that spans drives, by drive root: "D" for D:, else the drive's label, never its letter
+// (letters move, and some drives have none). A name taken in any letter case (labels repeat, a drive may be labelled
+// D) gets "_2", "_3", ...; drives go in creation order, so the same drives always get the same folders.
 export function exportFolders(roots: string[], drives: Drive[]): Map<string, string> {
   const folders = new Map<string, string>();
   const taken = new Set<string>();

@@ -11,10 +11,20 @@
   --hbar: calc(var(--hbar-size) * var(--shown));
   --x: var(--split-wide-x, 0.6);
   --y: var(--split-wide-y, 0.4);
+  // the debug sidebar's two tracks (layout/debugPlace.ts) are always there, 0 wide while debugging is off, so
+  // the other panes' grid lines are the same in every state; --debug-space is what it and its splitter take
+  --d: var(--split-wide-d, 0.24);
+  --reveal: 10px;
+  --dbar-size: 0px;
+  --dbar: calc(var(--dbar-size) * var(--shown));
+  --debug-share: clamp(min(160px, 40%), calc(var(--d) * 100%), 50%);
+  --debug-space: 0px;
+  --debug-track: calc(var(--debug-space) - var(--dbar));
+  --content: calc(100% - var(--debug-space));
   --left-share: clamp(
-    min(120px, 50%),
-    calc(var(--x) * (100% - var(--vbar-size))),
-    max(calc(100% - 120px - var(--vbar-size)), 50%)
+    min(120px, calc(var(--content) / 2)),
+    calc(var(--x) * (var(--content) - var(--vbar-size))),
+    max(calc(var(--content) - 120px - var(--vbar-size)), calc(var(--content) / 2))
   );
   --left: calc(var(--left-share) + var(--vbar-size) - var(--vbar));
   --rest: calc(100% - var(--banner-height) - var(--hbar-size));
@@ -31,24 +41,25 @@
   display: grid;
   grid-auto-rows: 0;
   grid-auto-columns: 0;
-  grid-template-columns: minmax(0, var(--left)) var(--vbar) minmax(0, 1fr);
+  grid-template-columns: var(--debug-track) var(--dbar) minmax(0, var(--left)) var(--vbar) minmax(0, 1fr);
   grid-template-rows: var(--banner-height) minmax(0, var(--top)) var(
       --hbar
     ) minmax(0, 1fr);
   grid-template-areas:
-    "banner banner file_drawer"
-    "editor vsplit file_drawer"
-    "editor vsplit hsplit"
-    "editor vsplit cmd";
+    "banner banner banner banner file_drawer"
+    "debug dsplit editor vsplit file_drawer"
+    "debug dsplit editor vsplit hsplit"
+    "debug dsplit editor vsplit cmd";
 
   // whole pixels where the browser can round them: Firefox resolves a fractional share to different layout units with
   // and without the handle's track, so hiding the handles would move a boundary
   @supports (width: round(1.5px, 1px)) {
+    --debug-share: round(clamp(min(160px, 40%), calc(var(--d) * 100%), 50%), 1px);
     --left-share: round(
       clamp(
-        min(120px, 50%),
-        calc(var(--x) * (100% - var(--vbar-size))),
-        max(calc(100% - 120px - var(--vbar-size)), 50%)
+        min(120px, calc(var(--content) / 2)),
+        calc(var(--x) * (var(--content) - var(--vbar-size))),
+        max(calc(var(--content) - 120px - var(--vbar-size)), calc(var(--content) / 2))
       ),
       1px
     );
@@ -65,29 +76,31 @@
   // a finger needs a wider splitter
   @media (pointer: coarse) {
     --splitter: 14px;
+    --reveal: 16px;
   }
 
   @include mixins.respond(half-width) {
     --x: var(--split-narrow-x, 0.7);
     --y: var(--split-narrow-y, 0.5);
+    --d: var(--split-narrow-d, 0.4);
   }
 
-  // where the terminal sits with every pane shown (layout/terminalPlace.ts): the template above has it
-  // under the drawer; AppLayout sets data-terminal on the layouts the place changes, by breakpoint
+  // the terminal's place with every pane shown (layout/terminalPlace.ts); the template above has it under
+  // the drawer
   &[data-terminal="bottom"] {
     grid-template-areas:
-      "banner banner file_drawer"
-      "editor vsplit file_drawer"
-      "hsplit hsplit hsplit"
-      "cmd cmd cmd";
+      "banner banner banner banner file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "debug dsplit hsplit hsplit hsplit"
+      "debug dsplit cmd cmd cmd";
   }
 
   &[data-terminal="left"] {
     grid-template-areas:
-      "banner banner file_drawer"
-      "editor vsplit file_drawer"
-      "hsplit vsplit file_drawer"
-      "cmd vsplit file_drawer";
+      "banner banner banner banner file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "debug dsplit hsplit vsplit file_drawer"
+      "debug dsplit cmd vsplit file_drawer";
   }
 
   // the resize handles hidden (the banner's switch): no splitter tracks, the panes meet
@@ -95,63 +108,99 @@
     --shown: 0;
   }
 
+  // the debug sidebar shown with its splitter, or hidden to its reveal bar (layout/DebugRevealBar.jsx)
+  &[data-debug="shown"] {
+    --dbar-size: var(--splitter);
+    --debug-space: calc(var(--debug-share) + var(--dbar-size));
+  }
+
+  &[data-debug="hidden"] {
+    --debug-space: var(--reveal);
+  }
+
   &--no-editor {
     --hbar-size: 0px;
     grid-template-areas:
-      "banner banner file_drawer"
-      "cmd vsplit file_drawer"
-      "cmd vsplit file_drawer"
-      "cmd vsplit file_drawer";
+      "banner banner banner banner file_drawer"
+      "debug dsplit cmd vsplit file_drawer"
+      "debug dsplit cmd vsplit file_drawer"
+      "debug dsplit cmd vsplit file_drawer";
   }
 
   &--no-cmd {
     --hbar-size: 0px;
     grid-template-areas:
-      "banner banner file_drawer"
-      "editor vsplit file_drawer"
-      "editor vsplit file_drawer"
-      "editor vsplit file_drawer";
+      "banner banner banner banner file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "debug dsplit editor vsplit file_drawer";
   }
 
   // the terminal stays where it was: beside the editor when it was under the drawer, under it otherwise
   &--no-file-drawer {
     --hbar-size: 0px;
     grid-template-areas:
-      "banner banner cmd"
-      "editor vsplit cmd"
-      "editor vsplit cmd"
-      "editor vsplit cmd";
+      "banner banner banner banner cmd"
+      "debug dsplit editor vsplit cmd"
+      "debug dsplit editor vsplit cmd"
+      "debug dsplit editor vsplit cmd";
 
     &[data-terminal="bottom"],
     &[data-terminal="left"] {
       --vbar-size: 0px;
       --hbar-size: var(--splitter);
       grid-template-areas:
-        "banner banner banner"
-        "editor editor editor"
-        "hsplit hsplit hsplit"
-        "cmd cmd cmd";
+        "banner banner banner banner banner"
+        "debug dsplit editor editor editor"
+        "debug dsplit hsplit hsplit hsplit"
+        "debug dsplit cmd cmd cmd";
     }
+  }
+
+  // the terminal under the editor also runs under the debug sidebar (data-debug-to, layout/debugPlace.ts)
+  &[data-debug-to="terminal"][data-terminal="bottom"] {
+    grid-template-areas:
+      "banner banner banner banner file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "hsplit hsplit hsplit hsplit hsplit"
+      "cmd cmd cmd cmd cmd";
+  }
+
+  &[data-debug-to="terminal"][data-terminal="left"] {
+    grid-template-areas:
+      "banner banner banner banner file_drawer"
+      "debug dsplit editor vsplit file_drawer"
+      "hsplit hsplit hsplit vsplit file_drawer"
+      "cmd cmd cmd vsplit file_drawer";
+  }
+
+  &--no-file-drawer[data-debug-to="terminal"][data-terminal="bottom"],
+  &--no-file-drawer[data-debug-to="terminal"][data-terminal="left"] {
+    grid-template-areas:
+      "banner banner banner banner banner"
+      "debug dsplit editor editor editor"
+      "hsplit hsplit hsplit hsplit hsplit"
+      "cmd cmd cmd cmd cmd";
   }
 
   &--only-editor {
     --vbar-size: 0px;
     --hbar-size: 0px;
     grid-template-areas:
-      "banner banner banner"
-      "editor editor editor"
-      "editor editor editor"
-      "editor editor editor";
+      "banner banner banner banner banner"
+      "debug dsplit editor editor editor"
+      "debug dsplit editor editor editor"
+      "debug dsplit editor editor editor";
   }
 
   &--only-cmd {
     --vbar-size: 0px;
     --hbar-size: 0px;
     grid-template-areas:
-      "banner banner banner"
-      "cmd cmd cmd"
-      "cmd cmd cmd"
-      "cmd cmd cmd";
+      "banner banner banner banner banner"
+      "debug dsplit cmd cmd cmd"
+      "debug dsplit cmd cmd cmd"
+      "debug dsplit cmd cmd cmd";
   }
 
   // A panel without an area is not drawn: off the template it would sit in an implicit
@@ -171,6 +220,11 @@
       display: none;
     }
   }
+
+  // hidden to its reveal bar, the sidebar keeps what it shows but is not drawn
+  &[data-debug="hidden"] > .debug-sidebar {
+    display: none;
+  }
 }
 
 .app-layout__vsplit {
@@ -181,12 +235,17 @@
   grid-area: hsplit;
 }
 
+.app-layout__dsplit {
+  grid-area: dsplit;
+}
+
 // a move button (layout/AppLayout.jsx, placed by its grid row and column) lies inside its splitter's
 // track, as thick as the splitter, above it
 .app-layout__move {
   z-index: 4;
 
-  &--x {
+  &--x,
+  &--d {
     align-self: center;
     height: 32px;
   }
@@ -197,7 +256,8 @@
   }
 
   @media (pointer: coarse) {
-    &--x {
+    &--x,
+    &--d {
       height: 48px;
     }
 
@@ -241,12 +301,19 @@
   grid-area: editor;
 }
 
-// the file drawer's column (filedrawer/FileDrawer.jsx): its toolbar at the top, as many rows tall as its
-// own controls need, and its list under it
+// the file drawer's column (filedrawer/FileDrawer.jsx)
 .file-drawer {
   grid-area: file_drawer;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+// the debug sidebar's column (debugger/DebugSidebar.jsx), and the bar that stands for it while it is hidden
+.debug-sidebar,
+.debug-reveal-bar {
+  grid-area: debug;
   min-width: 0;
   min-height: 0;
 }

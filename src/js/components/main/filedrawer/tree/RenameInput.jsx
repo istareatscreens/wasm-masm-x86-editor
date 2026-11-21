@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
+import TextField from "../../../common/TextField.jsx";
+
 // In-place rename. Enter or leaving the box commits, Escape cancels; a name that breaks
 // a rule (problemFor) leaves the old one, its reason shown as the box's tooltip.
 function RenameInput({ initial, problemFor, onCommit, onCancel }) {
@@ -25,10 +27,9 @@ function RenameInput({ initial, problemFor, onCommit, onCancel }) {
   };
 
   return (
-    <input
+    <TextField
       ref={input}
-      type="text"
-      className={"input-box file-tree__rename" + (problem ? " file-tree__rename--invalid" : "")}
+      className={"file-tree__rename" + (problem ? " file-tree__rename--invalid" : "")}
       value={value}
       aria-label="New name"
       aria-invalid={!!problem}

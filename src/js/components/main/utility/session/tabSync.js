@@ -1,8 +1,6 @@
-// Tabs of the app share the drawer's store, and each has its own terminal. What the user does is written at
-// once, and a tab the user leaves writes its editor's pending save. A tab the user comes back to (focus,
-// shown again, back from the back-forward cache), and a shown tab another tab wrote under, reads the store
-// again and applies what changed to its terminal and, through onSynced, to its drawer and editor. The editor
-// settings follow the storage event (onSettings).
+// Tabs share the drawer's store; each has its own terminal. A tab the user leaves writes its editor's pending
+// save. A tab the user comes back to (focus, shown again, back-forward cache), or a shown tab another tab wrote
+// under, reads the store again and applies the changes to its terminal and, through onSynced, its drawer and editor.
 import FileSystem from "../FileSystem.js";
 import hf, { VERSION_KEY } from "../FileSystemAdapter.js";
 import {

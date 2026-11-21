@@ -1,7 +1,7 @@
-// CodeMirror 6 language for module-definition (.def) files, the statements LINK reads with /DEF. The format is
-// line-oriented with no nesting, so a stream parser reads it: words as Microsoft's reference defines them
-// (vocabulary.js), each token named by its category in scripts/module-definition.corpus.json and mapped to the
-// STANDARD @lezer/highlight tag the MASM language gives the same kind of word, so every theme colors both alike.
+// CodeMirror 6 language for module-definition (.def) files, the statements LINK reads with /DEF: line-oriented, so a
+// stream parser. Words are Microsoft's (vocabulary.js); token categories match the tests' corpus
+// (Boxedwine/scripts/tests/module-definition.corpus.json) and map to the standard tags the MASM language gives the
+// same kind of word, so every theme colours both alike.
 import { StreamLanguage, LanguageSupport } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { STATEMENTS, RESERVED_WORDS, SECTION_WORDS, FILE_NAME_STATEMENTS, LIST_STATEMENTS } from "./vocabulary.js";

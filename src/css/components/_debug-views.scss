@@ -1,0 +1,123 @@
+@use "../abstracts/variables";
+
+// a field of rows of which only those on screen are drawn (sections/VirtualList.jsx)
+.debug-virtual {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+
+  &__list {
+    outline: none;
+  }
+
+  &--stale {
+    color: variables.$button-shadow;
+  }
+}
+
+.debug-stack__row,
+.debug-disasm__row,
+.debug-console__row {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  padding: 0 2px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.debug-stack {
+  &__address {
+    color: var(--debug-secondary-text);
+  }
+
+  &__note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.debug-disasm {
+  &__row {
+    width: max-content;
+    min-width: 100%;
+
+    &--label {
+      font-weight: bold;
+    }
+
+    &--source {
+      font-weight: normal;
+      color: var(--debug-secondary-text);
+    }
+
+    &--current {
+      background-color: variables.$current-line;
+      color: variables.$black-color;
+    }
+  }
+
+  &__mark {
+    position: relative;
+    flex: none;
+    width: 14px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  &__arrow {
+    position: absolute;
+  }
+
+  &__address,
+  &__bytes {
+    flex: none;
+    color: var(--debug-secondary-text);
+  }
+
+  &__row--current &__address,
+  &__row--current &__bytes {
+    color: variables.$black-color;
+  }
+
+  &__bytes {
+    width: 20ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.debug-console {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  &__lines {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  &__row {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &--message,
+    &--input {
+      color: var(--debug-secondary-text);
+    }
+
+    &--error {
+      color: variables.$changed-red;
+    }
+  }
+
+  &__result {
+    flex: none;
+    border-top: 1px dotted variables.$button-shadow;
+  }
+}

@@ -1,0 +1,271 @@
+/*
+ * The hex viewer's stylesheet. Every colour, font and measure is a --hexviewer-<token> custom property with a
+ * default here (the light preset); a theme sets tokens only (README.md, theme/tokens.js). Class names are the
+ * component's own and private.
+ */
+.hexviewer {
+  --hexviewer-font-family: monospace;
+  --hexviewer-font-size: 1em;
+  --hexviewer-cell-width: 3ch;
+  --hexviewer-set-gap: 1ch;
+  --hexviewer-background: #ffffff;
+  --hexviewer-color: #000000;
+  --hexviewer-frame-shadow: none;
+  --hexviewer-border: none;
+  --hexviewer-heading-color: #0000ff;
+  --hexviewer-heading-background: transparent;
+  --hexviewer-ascii-color: var(--hexviewer-color);
+  --hexviewer-header-background: #f3f3f3;
+  --hexviewer-header-color: var(--hexviewer-heading-color);
+  --hexviewer-header-shadow: none;
+  --hexviewer-hover-background: #add6ff;
+  --hexviewer-hover-color: #000000;
+  --hexviewer-set-hover-color: var(--hexviewer-heading-color);
+  --hexviewer-selection-background: #add6ff;
+  --hexviewer-selection-color: #000000;
+  --hexviewer-selection-inactive-background: #e5ebf1;
+  --hexviewer-selection-inactive-color: #000000;
+  --hexviewer-caret-outline: 1px dotted #000000;
+  --hexviewer-caret-mirror-background: #e5ebf1;
+  --hexviewer-changed-color: #c00000;
+  --hexviewer-unreadable-color: #808080;
+  --hexviewer-disabled-background: var(--hexviewer-background);
+  --hexviewer-disabled-color: #808080;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--hexviewer-background);
+  color: var(--hexviewer-color);
+  font-family: var(--hexviewer-font-family);
+  font-size: var(--hexviewer-font-size);
+  border: var(--hexviewer-border);
+  box-shadow: var(--hexviewer-frame-shadow);
+}
+
+.hexviewer[data-hexviewer-theme="dark"] {
+  --hexviewer-background: #1e1e1e;
+  --hexviewer-color: #d4d4d4;
+  --hexviewer-heading-color: #9cdcfe;
+  --hexviewer-header-background: #252526;
+  --hexviewer-hover-background: #264f78;
+  --hexviewer-hover-color: #ffffff;
+  --hexviewer-selection-background: #264f78;
+  --hexviewer-selection-color: #ffffff;
+  --hexviewer-selection-inactive-background: #3a3d41;
+  --hexviewer-selection-inactive-color: #d4d4d4;
+  --hexviewer-caret-outline: 1px dotted #d4d4d4;
+  --hexviewer-caret-mirror-background: #3a3d41;
+  --hexviewer-changed-color: #f48771;
+  --hexviewer-unreadable-color: #858585;
+  --hexviewer-disabled-color: #858585;
+}
+
+.hexviewer--disabled {
+  background: var(--hexviewer-disabled-background);
+  color: var(--hexviewer-disabled-color);
+}
+
+.hexviewer__header {
+  flex: none;
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--hexviewer-header-background);
+  color: var(--hexviewer-header-color);
+}
+
+.hexviewer__list {
+  outline: none;
+}
+
+.hexviewer__row,
+.hexviewer__header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.hexviewer__heading {
+  flex: none;
+  box-sizing: content-box;
+  padding: 0 1ch 0 0.5ch;
+  color: var(--hexviewer-heading-color);
+  background: var(--hexviewer-heading-background);
+  font-variant-numeric: tabular-nums;
+}
+
+.hexviewer__header-cell {
+  flex: none;
+  box-sizing: border-box;
+  text-align: center;
+  box-shadow: var(--hexviewer-header-shadow);
+}
+
+.hexviewer__header .hexviewer__heading {
+  box-sizing: content-box;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+}
+
+.hexviewer__offset-button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.hexviewer__offset-button:focus-visible {
+  outline: var(--hexviewer-caret-outline);
+}
+
+.hexviewer__sets {
+  display: flex;
+  flex: none;
+}
+
+.hexviewer__set {
+  display: flex;
+  flex: none;
+  margin-right: var(--hexviewer-set-gap);
+}
+
+.hexviewer__set--hover {
+  color: var(--hexviewer-set-hover-color);
+}
+
+.hexviewer__cell {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(var(--hexviewer-cell-width) * var(--hexviewer-unit, 1) - (var(--hexviewer-unit, 1) - 1) * 1ch);
+  text-align: center;
+}
+
+.hexviewer__ascii {
+  display: flex;
+  flex: none;
+  padding-left: var(--hexviewer-set-gap);
+  color: var(--hexviewer-ascii-color);
+}
+
+.hexviewer__char {
+  flex: none;
+  width: 1ch;
+  text-align: center;
+  white-space: pre;
+}
+
+.hexviewer__header .hexviewer__ascii {
+  min-width: max-content;
+  color: inherit;
+}
+
+.hexviewer__cell--hover,
+.hexviewer__char--hover {
+  background: var(--hexviewer-hover-background);
+  color: var(--hexviewer-hover-color);
+}
+
+.hexviewer__cell--changed,
+.hexviewer__char--changed {
+  color: var(--hexviewer-changed-color);
+  text-decoration: underline;
+}
+
+.hexviewer__cell--unreadable,
+.hexviewer__char--unreadable {
+  color: var(--hexviewer-unreadable-color);
+}
+
+.hexviewer__cell--selected,
+.hexviewer__char--selected {
+  background: var(--hexviewer-selection-inactive-background);
+  color: var(--hexviewer-selection-inactive-color);
+}
+
+.hexviewer__list:focus .hexviewer__cell--selected,
+.hexviewer__list:focus .hexviewer__char--selected {
+  background: var(--hexviewer-selection-background);
+  color: var(--hexviewer-selection-color);
+}
+
+.hexviewer__cell--mirror,
+.hexviewer__char--mirror {
+  background: var(--hexviewer-caret-mirror-background);
+}
+
+.hexviewer__list:focus .hexviewer__cell--caret,
+.hexviewer__list:focus .hexviewer__char--caret {
+  outline: var(--hexviewer-caret-outline);
+  outline-offset: -1px;
+}
+
+.hexviewer__cell--pending {
+  text-decoration: underline;
+}
+
+/* the rows "auto" measures (layout/useRowLength.js): laid out, never seen */
+.hexviewer__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hexviewer__measure .hexviewer__header {
+  overflow: visible;
+}
+
+/* each measured row as wide as its own cells, not as the widest of them */
+.hexviewer__measure .hexviewer__header-row {
+  display: inline-flex;
+}
+
+/* Windows' high contrast: the system's colours, whatever the theme */
+@media (forced-colors: active) {
+  .hexviewer {
+    --hexviewer-background: Canvas !important;
+    --hexviewer-color: CanvasText !important;
+    --hexviewer-heading-color: CanvasText !important;
+    --hexviewer-heading-background: Canvas !important;
+    --hexviewer-ascii-color: CanvasText !important;
+    --hexviewer-header-background: Canvas !important;
+    --hexviewer-header-color: CanvasText !important;
+    --hexviewer-hover-background: Highlight !important;
+    --hexviewer-hover-color: HighlightText !important;
+    --hexviewer-set-hover-color: CanvasText !important;
+    --hexviewer-selection-background: Highlight !important;
+    --hexviewer-selection-color: HighlightText !important;
+    --hexviewer-selection-inactive-background: Highlight !important;
+    --hexviewer-selection-inactive-color: HighlightText !important;
+    --hexviewer-caret-outline: 1px dotted CanvasText !important;
+    --hexviewer-caret-mirror-background: Canvas !important;
+    --hexviewer-changed-color: CanvasText !important;
+    --hexviewer-unreadable-color: GrayText !important;
+    --hexviewer-disabled-background: Canvas !important;
+    --hexviewer-disabled-color: GrayText !important;
+    forced-color-adjust: none;
+  }
+
+  .hexviewer__cell--mirror,
+  .hexviewer__char--mirror {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+}

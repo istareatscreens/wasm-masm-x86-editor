@@ -1,16 +1,19 @@
 import React from "react";
 import Button from "../../common/ImageButton.jsx";
+import TextField from "../../common/TextField.jsx";
 import Switch from "../../common/ImageSwitch.jsx";
 import useWindowToggle from "../../common/useWindowToggle.js";
 import vimImage from "../../../../images/vim.svg";
 import {
-  resetEmulator,
   interruptEmulator,
   checkFileExtension,
   focusTerminal,
 } from "../../../utility/utilityFunctions.ts";
 
+import { resetTerminal } from "../cmd/terminalReset";
 import useBuild from "./build/useBuild.jsx";
+import DebugSwitch from "./debug/DebugSwitch.jsx";
+import useDebugBanner from "./debug/useDebugBanner.js";
 
 import buildFile from "../../../../images/buildFile.png";
 import cmdReset from "../../../../images/cmdReset.png";
@@ -59,6 +62,10 @@ const Banner = function Banner({
   //drives (Hard Reset Everything)
   drives,
   deleteExtraDrives,
+  //debugging
+  debugMode,
+  setDebugMode,
+  debugController,
 }) {
   const about = useWindowToggle();
   const hardReset = useWindowToggle();
@@ -68,7 +75,7 @@ const Banner = function Banner({
   const builder = useBuild({ filename, fileList, viewMode });
 
   const reset = () => {
-    resetEmulator();
+    void resetTerminal();
   };
 
   // Ctrl+C for the terminal: stops the running program/command, keeps the session.
@@ -81,6 +88,19 @@ const Banner = function Banner({
   const checkIfAsm = () => {
     return !checkFileExtension(".asm", filename);
   };
+
+  // the build buttons: RUN's own, or what they mean while Debug is on
+  const buttons = useDebugBanner({
+    on: !!debugMode,
+    controller: debugController,
+    filename,
+    plain: {
+      run: { onClick: builder.build, disabled: checkIfAsm(), title: "compile, link and run .asm file" },
+      runBinary: { onClick: builder.run, disabled: !builder.canRun, title: "run compiled binary" },
+      cancel: { onClick: cancel, title: "cancel the running command (Ctrl+C)" },
+      reset: { onClick: reset, title: "reset command prompt" },
+    },
+  });
 
   //TODO: Move props to objects
   return (
@@ -102,36 +122,13 @@ const Banner = function Banner({
       <div className={"banner"} />
       <div className={"banner__main"}>
         <div className={"banner__main__group banner__main__group--start" + (bannerCollapsed ? " banner__main__group--collapsed" : "")}>
-          <Button
-            className={"banner__main__btn"}
-            onClick={builder.build}
-            title={"compile, link and run .asm file"}
-            id={"pushData"}
-            disabled={checkIfAsm()}
-            src={buildFile}
-          />
-          <Button
-            onClick={builder.run}
-            className={"banner__main__btn"}
-            title={"run compiled binary"}
-            id={"runEXE"}
-            disabled={!builder.canRun}
-            src={runBinary}
-          />
-          <Button
-            title={"cancel the running command (Ctrl+C)"}
-            className={"banner__main__btn"}
-            onClick={cancel}
-            id={"cancelCMD"}
-            src={cmdCancel}
-          />
-          <Button
-            title={"reset command prompt"}
-            className={"banner__main__btn"}
-            onClick={reset}
-            id={"resetCMD"}
-            src={cmdReset}
-          />
+          <div className={"banner__main__together"}>
+            <Button className={"banner__main__btn"} {...buttons.run} id={"pushData"} src={buildFile} />
+            <Button className={"banner__main__btn"} {...buttons.runBinary} id={"runEXE"} src={runBinary} />
+            <DebugSwitch on={!!debugMode} onChange={setDebugMode} />
+          </div>
+          <Button className={"banner__main__btn"} {...buttons.cancel} id={"cancelCMD"} src={cmdCancel} />
+          <Button className={"banner__main__btn"} {...buttons.reset} id={"resetCMD"} src={cmdReset} />
           <Button
             title={"hard reset"}
             className={"banner__main__btn"}
@@ -139,7 +136,7 @@ const Banner = function Banner({
             {...hardReset.opener}
             src={resetCache}
           />
-          <input
+          <TextField
             type="number"
             value={fontSize}
             onChange={(event) => {
@@ -147,7 +144,7 @@ const Banner = function Banner({
                 setFontSize(event.target.value);
               }
             }}
-            className="input-box input-box--font"
+            className="input-box--font"
           />
           <Dropdown
             aria-label="Editor font"

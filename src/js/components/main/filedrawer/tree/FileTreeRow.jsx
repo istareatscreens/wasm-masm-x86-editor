@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import Checkbox from "../../../common/Checkbox.jsx";
 import useClickPreventionOnDoubleClick from "../../utility/doubleclickfix/useClickPreventionOnDoubleClick.js";
-import TreeToggle from "./TreeToggle.jsx";
+import TreeToggle from "../../../common/TreeToggle.jsx";
 import RenameInput from "./RenameInput.jsx";
 
 // Windows 98 Explorer geometry: each level is INDENT px; level L's connector column sits at
@@ -77,7 +77,7 @@ function FileTreeRow({ row, posinset, setsize, icon, check, isOpen, isSelected, 
         {lines}
         {row.kind === "folder" && row.hasChildren && (
           <span className="file-tree__toggle-slot" style={{ left: column(row.depth) - 4 }}>
-            <TreeToggle expanded={row.expanded} onToggle={() => actions.toggle(row.path)} />
+            <TreeToggle className="file-tree__toggle" expanded={row.expanded} onToggle={() => actions.toggle(row.path)} />
           </span>
         )}
       </span>

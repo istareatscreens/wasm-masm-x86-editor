@@ -3,25 +3,21 @@ import { createMessageListner } from "../../utility/utilityFunctions.ts";
 import { outputPath } from "../main/utility/filesystem/paths";
 import { guestPathOf, nativePathOf, splitDrive, driveRoot, D_GUEST, D_NATIVE, LABEL_FILES } from "../main/utility/filesystem/drives";
 import LoadingScreen from "./LoadingScreen.jsx";
+import { createDebugBridge } from "./debug/pageBridge.js";
+import { nativeFileOf } from "./debug/terminalPath.js";
 
-// The emulator canvas is a static element in boxedwine.html (the stock 26R1
-// shell captures #canvas at script load). This component owns the app-side
-// event wiring (all terminal I/O goes through direct BoxedWine embind calls —
-// no synthetic KeyboardEvents, no echo file hacks) and the click overlay.
-// Drawer paths reach the guest through guestPathOf (the emulator's file functions: D: is
-// /mnt/drive_d, another drive a folder of the drive store /mnt/bw_drives) and nativePathOf
-// (Module.FS readback: /d_drive, /bw_drives).
-// The toolchain archive boxedwine.html mounts at C:\files (getAppZipFile): the shell
-// writes it to this page's file system before the mount, and a restore keeps it.
+// The canvas is static in boxedwine.html (the shell captures #canvas at script load); this component wires the
+// app's controls to the emulator's embind calls. guestPathOf gives a drawer path's guest path (D: is /mnt/drive_d,
+// other drives are under /mnt/bw_drives), nativePathOf its Module.FS path (/d_drive, /bw_drives).
+// The toolchain archive mounted at C:\files (getAppZipFile): the shell writes it to this page's file system before
+// the mount, and a restore keeps it.
 const TOOLCHAIN_ZIP = "/assembler-dp0.zip";
 // The Irvine library's archive, mounted at C:\files\irvine and C:\Irvine (boxedwine.html: getMountedZips).
 const IRVINE_ZIP = "/irvine.zip";
 // Build artifacts to read back into the app after an assemble (skip any not produced).
 const OUTPUT_EXTS = [".obj", ".exe", ".lst", ".map"];
-// Guest -> drawer import: files and folders the guest creates on D: that the drawer
-// does not have are offered to the parent every IMPORT_EVERY_MS (and after each build
-// readback); larger files are reported once and left in the session. The walk is
-// bounded (IMPORT_MAX_DEPTH levels, IMPORT_MAX_ENTRIES entries per scan).
+// Guest -> drawer import (importScan): every IMPORT_EVERY_MS and after each build; larger files are reported once and
+// left in the session.
 const IMPORT_EVERY_MS = 5000;
 const IMPORT_MAX_BYTES = 4 * 1024 * 1024;
 const IMPORT_MAX_DEPTH = 16;
@@ -55,22 +51,16 @@ const postToParent = (eventName, payload) => {
   } catch (e) {}
 };
 
-// After an assemble, the guest produces .obj/.exe(/.lst) in the source's bin folder on
-// D: asynchronously.
-// Poll (via Module.FS on the native path) until the linker's .exe appears — it's
-// the LAST artifact (asm->obj->exe) — then read every produced artifact, base64
-// them, and post to the parent so it can store them (drawer non-.asm view + hex
-// viewer). On a failed build (no .exe) we still return whatever exists (e.g. .obj)
-// after a timeout so the user can inspect partial output.
+// Polls until the .exe (the last output: asm -> obj -> exe) is complete, then posts every output the build left to
+// the parent. A failed build (no .exe) still posts what exists at the ceiling, so partial output can be inspected.
 const readBackBuildOutputs = (name, onDone) => {
   let tries = 0,
     lastSize = -1;
-  const maxTries = 44; // ~22s ceiling (assemble+link is typically < 12s)
+  const maxTries = 44; // 22 s ceiling
   const timer = setInterval(() => {
     tries++;
-    // The .exe is complete when it is non-empty and its size did not change since
-    // the previous poll: under MT the guest's linker writes it in parallel with this
-    // poll, and reading it the moment it appears returned a 0-byte (or partial) file.
+    // Complete = non-empty and the same size as at the previous poll: under MT the linker writes it in parallel,
+    // so the file can be seen while still empty or partial.
     let exeReady = false;
     try {
       const sz = Module.FS.stat(nativePathOf(name + ".exe")).size;
@@ -151,15 +141,8 @@ function Boxedwine() {
   const createEventListeners = () => {
     createMessageListner(); // parent -> iframe postMessage bridge -> re-dispatched events (FALLBACK)
     createClickListener();
-    // Terminal I/O handlers. Each is reachable two ways with IDENTICAL behaviour:
-    //  (1) DIRECT — window.bwApp.* called cross-frame by the parent (same-origin).
-    //      This is the primary, more reliable path: a plain function call, no JSON
-    //      serialize/parse, no CustomEvent hop, and no entanglement with BoxedWine's
-    //      own internal postMessage traffic (which the message bridge has to filter).
-    //  (2) FALLBACK — the "write-command"/"sync-file"/"rename-file"/"build-file"/
-    //      "delete-file"/"reset" CustomEvents (fed by the parent's postMessage bridge) for any
-    //      caller that runs before window.bwApp is published, or if direct access is
-    //      unavailable. Both routes converge on the same do* functions below.
+    // Each control is reachable two ways that end in the same do* function: window.bwApp.* called cross-frame by the
+    // parent (primary), or these CustomEvents from the postMessage bridge, for callers that run before bwApp exists.
     [
       "write-command",
       "sync-file",
@@ -204,6 +187,7 @@ function Boxedwine() {
     window.removeEventListener("boxedwine-input-open", onInputOpen);
     stopFreezeDetector();
     stopImportScan();
+    debugBridge.close();
     try {
       if (window.bwApp && window.bwApp.__owner === Boxedwine)
         delete window.bwApp;
@@ -211,11 +195,9 @@ function Boxedwine() {
   };
 
   // --- Input gate -------------------------------------------------------
-  // Nothing reaches the guest before the environment is ready AND the drawer has been
-  // reconciled into D:: boxedwine.html drops keyboard events while BW_INPUT_OPEN is
-  // false; here every direct-API/fallback control is queued until the gate opens.
-  // The gate opens in doReconcile (normal path) or, when no parent ever reconciles
-  // (standalone iframe, harness on the iframe page), NO_PARENT_MS after ready.
+  // Nothing reaches the guest before the environment is ready and the drawer is reconciled into D:. boxedwine.html
+  // drops keys while BW_INPUT_OPEN is false, and every control here is queued until the gate opens: in doReconcile,
+  // or NO_PARENT_MS after ready when no parent reconciles (a standalone iframe).
   const NO_PARENT_MS = 5000;
   const gateState = { queue: [], reconciled: false, fallbackTimer: null };
   const inputOpen = () => window.BW_INPUT_OPEN === true;
@@ -281,10 +263,8 @@ function Boxedwine() {
     gated(() => whenModuleReady(["sendText"], () => Module.sendText(command)));
   };
 
-  // Ctrl+C into the console: the key transitions go down the emulator's
-  // direct-input queue (XServer::key -> focused window -> Wine), exactly like the
-  // keyboard; conhost raises CTRL_C_EVENT for the console's process group. Bypasses
-  // the input gate on purpose - it must work while a build/program is running.
+  // Ctrl+C goes down the emulator's key queue like the keyboard, and conhost raises CTRL_C_EVENT. Not gated on
+  // purpose: it must work while a build or program runs.
   const XK_Control_L = 0xffe3,
     XK_c = 0x63;
   const doInterrupt = () => {
@@ -298,9 +278,7 @@ function Boxedwine() {
   };
 
   // --- Guest-tree sync verification -----------------------------------
-  // Every file op is followed by a readback of the guest D: through Module.FS (the
-  // native /d_drive path the guest writes). A mismatch retries the op once, then
-  // warns (production-visible) and reports ok:false to the parent.
+  // Every file op is checked by a Module.FS readback; a mismatch retries the op once, then warns and reports ok:false.
   const guestStat = (filename) => {
     try {
       const st = Module.FS.stat(nativePathOf(filename));
@@ -344,7 +322,6 @@ function Boxedwine() {
     } catch (e) {}
     return result;
   };
-  // Run an op, verify, retry once on mismatch.
   const withVerify = (op, filename, expect, run) => {
     let rc = run();
     let res = verifyGuest(op, filename, expect);
@@ -377,7 +354,6 @@ function Boxedwine() {
     return { rc: Module.bwWriteFile(guestPathOf(filename), text), size };
   };
 
-  // Direct file sync: write a file into the guest FS so cmd sees it (no echo).
   // content is plain text, or base64 when isBinary (uploads of non-text files).
   const doSyncFile = (filename, content, isBinary) => {
     if (!filename) return;
@@ -404,9 +380,8 @@ function Boxedwine() {
     );
   };
 
-  // Direct rename inside the guest tree (bwRenameFile = the node's own rename, so
-  // the running cmd sees the new name and not the old one). Falls back to
-  // delete+write with the app's copy of the content when the vendor call fails.
+  // bwRenameFile renames the node itself, so the running cmd sees the new name; when it fails, the old file is
+  // deleted and the app's copy of the content written.
   const doRenameFile = (oldName, newName, content, isBinary) => {
     if (!oldName || !newName) return;
     gated(() =>
@@ -441,11 +416,8 @@ function Boxedwine() {
     );
   };
 
-  // Atomically sync a .asm to D: then assemble->link->run it (no write/run race,
-  // no echo). Toolchain is read-only at C:\files (drive-agnostic %~dp0 batch);
-  // the cwd is the source's folder and the outputs land in its bin folder. The readback
-  // runs here in the iframe where Module.FS is local. content: the stored bytes as
-  // base64 when isBase64 (the guest gets exactly those), else text.
+  // Writes the .asm to D: and types the build in the same step (no write/run race). The toolchain is read-only at
+  // C:\files; outputs land in the source's bin folder. content: the stored bytes as base64 when isBase64, else text.
   const doBuild = (filename, content, isBase64) => {
     if (!filename) return;
     gated(() =>
@@ -455,8 +427,7 @@ function Boxedwine() {
         const base = filename.slice(slash + 1).replace(/\.asm$/i, "");
         const name = outputPath(filename, ""); // drawer path of the outputs, minus ext
         // A name with spaces (or cmd-special characters) is quoted: assemble.bat's %1 then expands to
-        // "my program", i.e. "my program".asm / .obj / .exe, which JWasm, JWlink, FL and cmd all take as one
-        // name (harness scenario `spaces`).
+        // "my program", i.e. "my program".asm / .obj / .exe, which JWasm, JWlink, FL and cmd all take as one name.
         const command = inFolder(folder, "call C:\\files\\assemble " + quoteForCmd(base));
         if (!command) return postToParent("run-refused", { filename });
         importState.drawer.add(filename);
@@ -468,9 +439,8 @@ function Boxedwine() {
           console.error("[Boxedwine] build sync failed rc=" + rc);
           return;
         }
-        // Remove the PREVIOUS build's outputs first: assemble.bat does not, so a
-        // failed assemble would leave the old .exe on D: and the readback below would
-        // re-import it as if this build had succeeded (stale binary, ok:true).
+        // Delete the previous build's outputs first (assemble.bat does not): after a failed assemble the readback
+        // would otherwise report the old .exe as this build's.
         if (typeof Module.bwDeleteFile === "function") {
           for (const ext of OUTPUT_EXTS) {
             try {
@@ -537,12 +507,9 @@ function Boxedwine() {
     );
   };
 
-  // The command that runs `body` in `folder` (a drawer path) on the folder's own drive, whatever directory the
-  // user's prompt is in: `pushd <X:\folder> & if not errorlevel 1 (<body> & popd)`. The letter comes from this
-  // page's own drive map, and must still link to that drive's folder. A pushd that fails sets errorlevel 1, so it
-  // runs nothing and pops nothing, and a file of the same name elsewhere is never built or run (Wine 6.0's cmd runs
-  // what follows && whatever the result); popd gives the prompt its own directory back. null when the drive has no
-  // letter here.
+  // The command that runs `body` in `folder` (a drawer path) on the folder's own drive, or null when that drive has
+  // no letter here. A failed pushd sets errorlevel 1, so nothing runs and nothing pops; `&&` would not do, because
+  // Wine 6.0's cmd runs what follows it whatever the result.
   const inFolder = (folder, body) => {
     const { id, rel } = splitDrive(folder);
     let letter = "D";
@@ -587,10 +554,8 @@ function Boxedwine() {
       }),
     );
 
-  // Direct folder create / remove (bwMakeDir: mkdir -p; bwRemoveDir: an EMPTY folder,
-  // the parent deletes the files first): cmd's next `dir` shows the change, nothing is
-  // typed. A build without these calls (mismatched glue/wasm) reports ok:false and
-  // changes nothing else.
+  // bwMakeDir is mkdir -p; bwRemoveDir takes an empty folder (the parent deletes the files first). A build without
+  // these calls (mismatched glue/wasm) reports ok:false.
   const doMakeDir = (path) => {
     if (!path) return;
     gated(() => {
@@ -677,9 +642,7 @@ function Boxedwine() {
   };
   const isLabelFile = (depth, name) => depth === 0 && LABEL_FILES.indexOf(name) >= 0;
 
-  // Direct file delete: remove a file from the guest FS so cmd's `dir` no longer
-  // shows it — WITHOUT typing a `del` command (more efficient + reliable, stays
-  // cmd-synced because bwDeleteFile removes the FsNode from the parent tree).
+  // bwDeleteFile removes the node from its parent, so cmd's next `dir` no longer shows the file.
   const doDeleteFile = (filename) => {
     if (!filename) return;
     gated(() =>
@@ -694,12 +657,9 @@ function Boxedwine() {
   };
 
   // --- Reconcile --------------------------------------------------------
-  // The parent hands over the WHOLE drawer once the environment is ready; D: is
-  // rebuilt from it (folders first, shallowest first, with bwMakeDir; then text via
-  // bwWriteFile and base64 bytes via bwWriteFileBytes), the tree is verified, and only
-  // then does the input gate open. Runs on every start (cold or restored) — the factory
-  // image holds no user file — and is idempotent (identical bytes rewrite to the same
-  // result).
+  // The parent hands over the whole drawer once the environment is ready: drives, folders (shallowest first), then
+  // files are written to D: and verified, and only then does the input gate open. Runs on every start, cold or
+  // restored (the factory image holds no user file), and is idempotent.
   const doReconcile = (files, folders, driveList) => {
     const list = Array.isArray(files) ? files : [];
     const dirs = (Array.isArray(folders) ? folders : [])
@@ -790,12 +750,9 @@ function Boxedwine() {
   };
 
   // --- Guest -> drawer import -------------------------------------------
-  // D: is MEMFS: a file or folder the guest created (program output, `copy con`, a
-  // redirected echo, `mkdir`) would vanish at the next reload unless the drawer gets
-  // it. Every IMPORT_EVERY_MS (and after a build readback) walk D: and the other drives and post
-  // the files and folders the drawer does not have, under their exact guest names (a drive's
-  // under "drive:<id>/"); the label files at a drive's root are not drawer files. Nothing is
-  // ever deleted from the drawer here.
+  // D: is MEMFS: what the guest creates (program output, `copy con`, `mkdir`) is lost at the next reload unless the
+  // drawer gets it. Each scan posts what the drawer lacks under its exact guest name (a drive's under "drive:<id>/"),
+  // never a drive's label files; nothing is ever deleted from the drawer here.
   const importState = {
     drawer: new Set(),
     folders: new Set(),
@@ -929,12 +886,9 @@ function Boxedwine() {
     }
   };
 
-  // Reset = reload this iframe. ONE implementation for ST and MT: the
-  // browser tears down the wasm instance (works even when the emulator JS is
-  // wedged), the reload lands on the watchdog-protected restore/cold-boot path, and
-  // it is data-safe — the user's files live in the PARENT app's IndexedDB. The old
-  // Module.restartBW()+callMain() path is gone: callMain deadlocks thread 0 under
-  // PROXY_TO_PTHREAD (MT), and restartBW alone left the console unusable.
+  // Reset reloads the iframe, for ST and MT alike: it works even when the emulator is wedged, and is data-safe
+  // because the user's files live in the parent app's IndexedDB. Never callMain here: it deadlocks thread 0 under
+  // PROXY_TO_PTHREAD (MT); restartBW alone leaves the console unusable.
   const doReset = () => {
     try {
       location.reload();
@@ -945,8 +899,6 @@ function Boxedwine() {
     }
   };
 
-  // FALLBACK dispatcher: map the parent's postMessage-bridged CustomEvents onto the
-  // same do* functions the direct API uses (so both routes behave identically).
   const onFallbackEvent = (event) => {
     switch (event.type) {
       case "write-command":
@@ -1018,6 +970,8 @@ function Boxedwine() {
       verifyTree: () => verifyTree(),
       reset: () => doReset(),
       interrupt: () => doInterrupt(),
+      // the debugger: one end of the app's message channel (debug/pageBridge.js)
+      debugConnect: (port) => debugBridge.connect(port),
       // liveness (see startFreezeDetector): last observed heartbeat + frozen flag.
       isFrozen: () => freezeState.frozen,
       heartbeat: () =>
@@ -1028,37 +982,10 @@ function Boxedwine() {
   };
 
   // --- Emulator freeze detection --------------------------------------------------
-  // Users run arbitrary assembled code that can hardlock the wasm "system". Two
-  // signals, polled once a second, ONLY after the console is usable (arming before
-  // that fired false "FROZEN" banners during every normal MT cold boot):
-  //   (1) host liveness  — bwGetHeartbeat (bumped every main-loop tick). Stalled for
-  //       FREEZE_MS => the emulator's event loop is dead (crash/deadlock).
-  //   (2) guest liveness — bwGetGuestProgress (retired instructions, ST+MT; falls back
-  //       to getMips()>0 on ST). Stalled for FREEZE_MS WHILE we are waiting on the
-  //       guest (typed input still queued, or a build in flight) => the guest is
-  //       wedged even though the host loop ticks (what the blank MT restore looked
-  //       like). A guest program merely spinning keeps progress advancing and is NOT
-  //       a freeze — the user can Ctrl+C it.
-  // Surfaced ONCE as a critical warning + "emulator-frozen" (cleared by
-  // "emulator-recovered" when either signal resumes). Critical logs stay in production.
-  //
-  // False-positive guards (a freeze banner during a normal page load is worse than
-  // a late one), all measured causes:
-  //   - GRACE_MS after arming: the console is lit before cmd is fully up, and the
-  //     first seconds on a slow machine (wasm tiering, snapshot capture) are noisy.
-  //   - hidden tab: browsers throttle timers in background tabs (1/s, and 1/min
-  //     after 5 min) so the host loop legitimately "stalls"; suspend while hidden
-  //     and give a grace window when the tab becomes visible again.
-  //   - snapshot capture/restore (BWSnapshot.busy): the whole-heap copy/gunzip
-  //     runs on the loop's thread; not a freeze.
-  //   - the hardlock rule needs BOTH signals stalled (host loop AND guest): a
-  //     guest that keeps retiring instructions is by definition not hardlocked.
-  //   - the detector is armed only once the terminal ACCEPTS INPUT
-  //     (environment ready + drawer reconciled — never while loading),
-  //     it must have SEEN the guest alive after arming, a suspected freeze
-  //     must persist for CONFIRM_POLLS further consecutive polls before it is
-  //     reported, and a poll that itself arrived late (timer throttling: background
-  //     window, laptop sleep, a modal dialog) discards the stall it would have seen.
+  // User code can hardlock the emulator. Frozen = main-loop heartbeat and guest progress (retired instructions) both
+  // stalled for FREEZE_MS, or no guest progress for WAIT_FREEZE_MS while input or a build waits on the guest; a
+  // program that merely spins keeps progressing. A false banner is worse than a late one, so a report needs GRACE_MS
+  // since arming (cmd is still starting), a guest seen running and CONFIRM_POLLS further polls.
   const freezeState = {
     hb: -1,
     hbAt: 0,
@@ -1069,6 +996,7 @@ function Boxedwine() {
     timer: null,
     armed: false,
     buildInFlight: false,
+    debugHolding: false,
     graceUntil: 0,
     seenAlive: false,
     suspect: 0,
@@ -1090,6 +1018,8 @@ function Boxedwine() {
     return null;
   };
   const waitingOnGuest = () => {
+    // a program the debugger holds at a stop makes no progress, whatever was typed for it
+    if (freezeState.debugHolding) return false;
     if (freezeState.buildInFlight) return true;
     try {
       return (
@@ -1134,9 +1064,8 @@ function Boxedwine() {
   };
   const startFreezeDetector = () => {
     if (freezeState.timer) return;
-    // Armed only once the environment is ready AND the drawer is reconciled (the
-    // input gate opened): the factory capture's heap copy and the reconcile writes
-    // all happen before this point, so none of them can ever look like a stall.
+    // Armed once the input gate opens: the factory capture's heap copy and the reconcile writes all happen before,
+    // so none of them can look like a stall.
     const arm = () => {
       freezeState.armed = true;
       freezeState.seenAlive = false;
@@ -1162,7 +1091,7 @@ function Boxedwine() {
         resetStalls(0);
         return;
       }
-      // suspended states: never accumulate a stall through them
+      // a hidden tab (timers throttled) or a snapshot (heap copy on the loop's thread): never a stall
       if (
         document.visibilityState === "hidden" ||
         (window.BWSnapshot && window.BWSnapshot.busy)
@@ -1230,6 +1159,13 @@ function Boxedwine() {
     document.removeEventListener("visibilitychange", onVisibility);
   };
 
+  const debugBridge = createDebugBridge({
+    nativePath: (path) => nativeFileOf(path, drives, Module.FS),
+    onHolding: (held) => {
+      freezeState.debugHolding = held;
+    },
+  });
+
   const createBoxedwineLoadedListener = () => {
     window.addEventListener("boxedwine-fully-loaded", (event) => {
       const { timestamp, totalLoadTime, how } = event.detail || {};
@@ -1245,9 +1181,8 @@ function Boxedwine() {
           detail: { timestamp, totalLoadTime, how },
         }),
       );
-      // Tell the parent app: it answers with bwApp.reconcile(<whole drawer>) — D: is
-      // rebuilt from the drawer, then the input gate opens and the loading screen
-      // goes. If nobody reconciles (standalone iframe), open after NO_PARENT_MS.
+      // The parent answers with bwApp.reconcile(<whole drawer>), which opens the input gate; with no parent
+      // (a standalone iframe) the gate opens after NO_PARENT_MS.
       postToParent("emulator-ready", { totalLoadTime, how });
       if (window.bwBootStage) window.bwBootStage("Loading your files");
       gateState.fallbackTimer = setTimeout(() => {
@@ -1256,9 +1191,8 @@ function Boxedwine() {
     });
   };
 
-  // SDL takes keyboard events on the window
-  // and a mouse press inside the iframe focuses it natively - so the overlay is kept
-  // only as an inert element (styles/ids referenced elsewhere) and never blocks input.
+  // SDL takes keyboard events on the window and a click focuses the iframe natively, so the overlay is only an
+  // inert element (its id and styles are referenced elsewhere) that never blocks input.
   const createClickListener = () => {
     window.addEventListener("editor-selected", (event) => {
       event.preventDefault();

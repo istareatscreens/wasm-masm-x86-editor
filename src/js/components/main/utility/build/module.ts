@@ -1,7 +1,6 @@
 // One module as the assembler sees it: its source with every INCLUDE it reaches read in place, down to the END
 // that ends it. What the module offers other modules (publics) and needs from them or from libraries
-// (externals), spelled as its object file spells them (openspec change implement-masm-file-linking, design D1;
-// measured with ML 14.44 in reference/masm-externals.py).
+// (externals), spelled as its object file spells them.
 import { CaseMap, Statement, Visibility, sourceStatements } from "./sourceFile";
 import { fileName } from "./fileNames";
 

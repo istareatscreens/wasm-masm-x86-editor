@@ -10,7 +10,6 @@ export function baseName(linkerName: string): string | null {
   return linkerName.length > 1 && linkerName.charAt(0) === "_" ? linkerName.slice(1) : linkerName;
 }
 
-// The base names of a list of linker names, as a set.
 export function baseNames(linkerNames: string[]): Set<string> {
   const names = new Set<string>();
   for (const name of linkerNames) {

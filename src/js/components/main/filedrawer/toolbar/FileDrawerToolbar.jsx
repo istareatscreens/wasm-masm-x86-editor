@@ -15,15 +15,12 @@ import importLinkIcon from "../../../../../images/importLink.png";
 import deleteFile from "../../../../../images/deleteFile.png";
 import files from "../../../../../images/files.png";
 
-// The browser's directory picker. Hidden only where the property does not exist: older
-// mobile browsers have it but return plain files without paths, which the import
-// detects and handles (FileSystem.importDirectoryFiles).
+// The directory picker is hidden only where the property does not exist: older mobile browsers
+// have it but return plain files without paths, which FileSystem.importDirectoryFiles handles.
 const canPickFolders = typeof HTMLInputElement !== "undefined" && "webkitdirectory" in HTMLInputElement.prototype;
 
-// The drawer's top bar: the controls it always had, in their order, plus "create new
-// folder" and "import a folder". The select-all box has a column of its own, on the
-// banner's last row; the buttons wrap to its right (layout/_banner.scss). A button that opens
-// a window toggles it ({ toggle, opener }: common/useWindowToggle.js).
+// The select-all box has a column of its own, on the banner's last row; the buttons wrap to its
+// right (layout/_banner.scss). A window's button takes { toggle, opener } (common/useWindowToggle.js).
 function FileDrawerToolbar({
   fileUploadInput,
   folderUploadInput,

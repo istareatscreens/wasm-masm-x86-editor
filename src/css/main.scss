@@ -5,7 +5,7 @@
 
 @use "vendors/codemirror";
 @use "vendors/reactdragable";
-@use "vendors/_hex-viewer";
+@use "../js/components/main/editor/library/hexviewer/hex-viewer";
 
 @use "base/base";
 @use "base/typography";
@@ -17,10 +17,12 @@
 @use "components/banner";
 @use "components/list";
 @use "components/file-tree";
+@use "components/tree-menu";
 @use "components/view-mode-banner";
 @use "components/checkbox";
 @use "components/radio";
 @use "components/switch";
+@use "components/select-all-switch";
 @use "components/scrollbar";
 @use "components/retro-scrollbar";
 @use "components/split-handle";
@@ -37,9 +39,17 @@
 @use "components/editor";
 @use "components/dropdown";
 @use "components/image";
-@use "components/loading-indicator";
 @use "components/loading-screen";
 @use "components/splash";
+@use "components/debug-sidebar";
+@use "components/debug-sections";
+@use "components/debug-memory";
+@use "components/debug-lists";
+@use "components/debug-views";
+@use "components/debug-themes";
+@use "components/debug-gutter";
+@use "components/hex-themes";
+@use "components/debug-reveal-bar";
 
 @use "layout/layout";
 @use "layout/banner" as banner2;

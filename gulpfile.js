@@ -294,7 +294,7 @@ function copyGuideHtmlTask() {
 function copyGuideIconsTask() {
   // Reuse the application's toolbar icons in the static user manual.
   return src([
-    "src/images/{buildFile,runBinary,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,resizeHandles,about,newFile,newFolder,newDrive,uploadFile,importFolder,saveFile,shareLink,importLink,deleteFile,files}.png",
+    "src/images/{buildFile,runBinary,debug,cmdCancel,cmdReset,cacheReset,moon,themeMenu,zen,editor,cmd,filedrawer,fullscreen,resizeHandles,about,newFile,newFolder,newDrive,uploadFile,importFolder,saveFile,shareLink,importLink,deleteFile,files,debugGo,debugBreak,debugStop,debugRestart,debugShowNext,debugStepInto,debugStepOver,debugStepOut,debugStepBack,debugRunToCursor,debugAnimate,debugByInstruction,debugCount,debugHex}.png",
     "src/images/vim.svg",
   ], BINARY)
     .pipe(svgoTransform())

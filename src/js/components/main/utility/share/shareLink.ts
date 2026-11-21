@@ -1,14 +1,12 @@
 // Share links: files carried in the address's fragment, `<app address>#share=<data>`, where data is the
 // unpadded base64url form (RFC 4648 section 5) of a zlib stream (RFC 1950) holding a container:
-// - version 2, which makeLink writes: the stream's blocks are stored, and hold the magic, the version 2 and a
-//   Brotli stream (RFC 7932) of a version-1 container. A reader that knows only version 1 inflates it and answers
-//   that a newer version made the link;
-// - version 1, which readLink also reads: the stream is the deflated version-1 container.
-// The fragment never reaches a server. Everything here is pure, or uses only the browser's streams and the
-// Brotli module (brotli.js); ShareService.js does the rest.
+// - version 2, which makeLink writes: stored blocks holding the magic, the version 2 and a Brotli stream
+//   (RFC 7932) of a version-1 container, so a reader that knows only version 1 says a newer version made it;
+// - version 1, which readLink also reads: the deflated version-1 container.
+// The fragment never reaches a server.
 import { compressBrotli, decompressBrotli } from "./brotli";
 import { sanitizeEntryPath, MAX_ARCHIVE_BYTES } from "../filesystem/archive";
-import { pathProblem, nameKey, parentOf, baseOf, splitPath, joinPath, utf8Length, MAX_SEGMENT_BYTES, MAX_GUEST_PATH } from "../filesystem/paths";
+import { pathProblem, nameKey, parentOf, baseOf, splitPath, joinPath, utf8Length, isMasmSource, MAX_SEGMENT_BYTES, MAX_GUEST_PATH } from "../filesystem/paths";
 import { isBinary, BINARY_SNIFF_BYTES } from "../filesystem/binaryDetect";
 import { detectEncoding, decodeText } from "../filesystem/textEncoding";
 import { splitDrive } from "../filesystem/drives";
@@ -204,7 +202,7 @@ function through(bytes: Uint8Array, stream: CompressionStream | DecompressionStr
 // Links are made with the Brotli module (WebAssembly) and read with the browser's DecompressionStream.
 export const canMakeLinks = (): boolean => typeof WebAssembly === "object";
 
-// zlib deflate as version-1 links were made (tests, and the probes that compare versions)
+// zlib deflate, as version-1 links are made (tests)
 export async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
   return (await through(bytes, new CompressionStream("deflate"), Infinity)).out as Uint8Array;
 }
@@ -286,8 +284,7 @@ export function linkData(text: string): Result<string> {
   return { value: data };
 }
 
-// The Brotli quality for a container of this size: 11 while it takes at most half a second, else 9, whose calls
-// are short enough to let the page work in between.
+// Quality 11 up to BROTLI_Q11_MAX, else 9, whose calls are short enough to let the page work in between.
 export const brotliQuality = (size: number): number => (size <= BROTLI_Q11_MAX ? 11 : 9);
 
 // A link for `content` on `base` (the app's address), and back: every check of the format on the way. With
@@ -435,13 +432,10 @@ const latin1 = (bytes: Uint8Array): string => {
   return s;
 };
 
-// Every INCLUDE / INCLUDELIB line of the shared .asm and .inc text files, resolved as the build resolves it
-// (build/resolver.ts: ML 14.44's search for INCLUDE, LINK's for INCLUDELIB). Each shared .asm is followed through
-// what it includes, as its build would read it: a .\ or ..\ name from the .asm's folder (the build's current
-// folder), any other through the folders of the files including it, innermost first, then C:\files\irvine. A
-// shared .inc no shared .asm reaches is read on its own, from its own folder. `driveFiles` are every file of the
-// sharing drive, from its root; `letter` is its letter; `toolchain` the toolchain's folders (Irvine's files when
-// the terminal cannot tell them).
+// Every INCLUDE / INCLUDELIB line of the shared .asm, .inc and .mac text files, resolved as the build resolves it
+// (build/resolver.ts). Each shared .asm is followed through what it includes, as its build would read it; a shared
+// .inc or .mac no shared .asm reaches is read on its own, from its own folder. `driveFiles`: every file of the
+// sharing drive, from its root; `toolchain`: the toolchain's folders (Irvine's files when the terminal cannot tell).
 export function checkIncludes(content: ShareContent, driveFiles: string[], letter: string, toolchain: ToolchainView = { irvine: TOOLCHAIN_FILES, lib: [] }): IncludeFinding[] {
   const shared: { [key: string]: ShareFile } = {}, onDrive: { [key: string]: string } = {};
   content.files.forEach((file) => (shared[nameKey(file.path)] = file));
@@ -454,7 +448,7 @@ export function checkIncludes(content: ShareContent, driveFiles: string[], lette
   };
   const textOf = (path: string): string | null => {
     const file = shared[nameKey(path)];
-    return file && /\.(asm|inc)$/i.test(file.path) && !isBinary(sniff(file.bytes)) ? latin1(file.bytes) : null;
+    return file && isMasmSource(file.path) && !isBinary(sniff(file.bytes)) ? latin1(file.bytes) : null;
   };
   const found = new Map<string, IncludeFinding>(); // one finding per line, the first build reaching it
   const kindOf = (target: Target, argument: string): IncludeKind => {
@@ -484,7 +478,7 @@ export function checkIncludes(content: ShareContent, driveFiles: string[], lette
   }
   found.forEach((finding) => reached.add(finding.target));
   for (const file of content.files) {
-    const text = /\.inc$/i.test(file.path) && !reached.has(file.path) ? textOf(file.path) : null;
+    const text = /\.(inc|mac)$/i.test(file.path) && !reached.has(file.path) ? textOf(file.path) : null;
     if (text !== null) walk(file.path, text, [file.path], locationOf(drawer, file.path));
   }
   const order = content.files.map((file) => file.path);

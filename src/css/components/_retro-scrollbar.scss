@@ -1,11 +1,8 @@
 @use "../abstracts/variables";
 
-// Windows 95 scrollbars for the file drawer list and the CodeMirror editor
-// (retroScrollbars.js). The vertical rail is ALWAYS present in the 16 px gutter it
-// occupies: with nothing to scroll it is the classic disabled scrollbar (embossed
-// arrows, checkered track, no thumb) - never a bare gray strip. The horizontal rail
-// exists only while there is a horizontal range (the file drawer's is always there,
-// disabled the same way), the corner only with both rails.
+// Windows 95 scrollbars (retroScrollbars.js). The vertical rail is always there, drawn disabled (embossed
+// arrows, checkered track, no thumb) with nothing to scroll. The horizontal rail exists only while there is a
+// horizontal range (the file drawer's always, disabled the same way), the corner only with both rails.
 .retro-scroll-host {
   position: relative;
   min-width: 0;
@@ -115,18 +112,13 @@
   &__corner { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; background: variables.$surface; }
 }
 
-// The drawer list's scroll host, the rest of the drawer's column under its toolbar. It
-// starts 2 px above the toolbar's bottom so the field's sunken top edge (gray line over
-// black line) coincides with the toolbar's lower bevel (the same two lines): the white
-// area begins right under the bar, exactly like the editor - one ridge, not two. It
-// meets the splitters beside and below it as the editor and the terminal do, so the grey
-// between two panes is the splitter alone.
+// The drawer list's scroll host starts 2 px above the toolbar's bottom, so the field's sunken top edge
+// coincides with the toolbar's lower bevel: one ridge, not two, as in the editor.
 .file-drawer-scroll {
   flex: 1 1 auto;
   min-height: 0;
   margin: -2px 0.2rem 0 0;
-  // The field frame encloses the list AND its rails. Keep controls inside its
-  // two-pixel bevel, including the top edge shared with the banner.
+  // the field frame encloses the list and its rails; they stay inside its 2 px bevel
   padding: 2px;
   box-shadow: variables.$border-field;
 

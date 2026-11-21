@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 
-// Explorer's slow double click: a click on the name of the row that is already selected renames it once a double
-// click can no longer follow. Windows' tree and list views (TVS_EDITLABELS, LVS_EDITLABELS) start the edit the
-// system's double-click time after such a click, and a double click cancels it; a page cannot read that time, so
-// Windows' default is used. As in the list view, the press is a plain one (no Ctrl, Shift, Alt or Meta), the click
-// ends on the same name, and when the time is up the tree still has the focus and the row is still the one selected;
-// any other press in the list, or a key, cancels the wait. A touch never starts it (its long press opens the menu).
-//   canArm(row): is the row selected, may it be renamed, and is no rename or menu open (the press only ends those);
-//   canStart(path): is it still the selected and focused row, shown, with no menu, drag or rename under way;
-//   start(path): rename it.
+// Explorer's slow double click: a plain click on the selected row's name renames it after the double-click time
+// (Windows' default: a page cannot read the system's), unless a double click, another press or a key comes first.
+// A touch never starts it (its long press opens the menu).
 export const DOUBLE_CLICK_MS = 500;
 const NAME = ".file-tree__label";
 

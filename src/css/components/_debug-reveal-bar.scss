@@ -1,0 +1,43 @@
+@use "../abstracts/functions";
+@use "../abstracts/variables";
+
+// DebugRevealBar (debugger/DebugRevealBar.jsx): the hidden debug sidebar's bar
+.debug-reveal-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  background: variables.$surface;
+  box-shadow: inset -1px 0 variables.$button-shadow, inset 1px 0 variables.$button-highlight;
+  cursor: default;
+  z-index: 3;
+
+  &__arrow {
+    width: 4px;
+    height: 7px;
+    background: functions.arrowhead(right) no-repeat;
+  }
+
+  &__bug {
+    display: block;
+  }
+
+  &:active {
+    box-shadow: inset 1px 0 variables.$button-shadow, inset -1px 0 variables.$button-highlight;
+  }
+
+  &:focus-visible {
+    outline: 1px dotted #000;
+    outline-offset: -1px;
+  }
+
+  @media (forced-colors: active) {
+    border-right: 1px solid ButtonText;
+  }
+}

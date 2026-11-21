@@ -1,10 +1,9 @@
 // What an illegal-instruction crash was: the bytes at the faulting address (the emulator keeps
 // the last invalid-opcode faults, Module.bwInvalidOpcodes) decoded by iced-x86 (x86Decoder.ts).
 
-// The emulated CPU is a Pentium 4 (Boxedwine's CPUID: FPU, TSC, MSR, CX8, CMOV, CLFSH, MMX,
-// FXSR, SSE, SSE2). These are the iced CpuidFeature names of everything such a CPU runs in
-// 32-bit protected mode; FSETPM (FPU287) is a no-op there, RDPMC and the multi-byte NOPs date
-// from the Pentium Pro.
+// The emulated CPU is a Pentium 4 (Boxedwine's CPUID: FPU, TSC, MSR, CX8, CMOV, CLFSH, MMX, FXSR, SSE, SSE2).
+// These are the iced CpuidFeature names of everything it runs in 32-bit protected mode; FSETPM (FPU287) is a
+// no-op there, RDPMC and the multi-byte NOPs date from the Pentium Pro.
 export const EMULATED_CPU = "a Pentium 4 with MMX, SSE and SSE2";
 export const EMULATED_FEATURES = [
   "INTEL8086", "INTEL186", "INTEL286", "INTEL386", "INTEL486", "FPU", "FPU287", "FPU387", "CPUID",
@@ -25,6 +24,21 @@ export function hexBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(Math.floor(hex.length / 2));
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
   return bytes;
+}
+
+// What the found instruction means for the program, in a sentence: the terminal's crash notice and the debugger's
+// illegal-instruction stop say it alike.
+export function invalidOpcodeHint(found: InvalidOpcode): string {
+  switch (found.kind) {
+    case "data":
+      return "The bytes there (" + found.bytes + ") are not an instruction: execution probably ran past the end of the code (missing exit/RET) into data.";
+    case "undefined":
+      return "It executed " + found.text.toUpperCase() + ", which always raises the invalid-instruction exception.";
+    case "missing-feature":
+      return "It executed " + found.text + ", which needs " + found.features.join(", ") + ": the emulated CPU (" + EMULATED_CPU + ") does not have it.";
+    default:
+      return "It executed " + found.text + ", which the emulated CPU (" + EMULATED_CPU + ") should run: this is a bug in the emulator. Please report it.";
+  }
 }
 
 const spaced = (bytes: Uint8Array) => Array.from(bytes, (b) => ("0" + b.toString(16).toUpperCase()).slice(-2)).join(" ");

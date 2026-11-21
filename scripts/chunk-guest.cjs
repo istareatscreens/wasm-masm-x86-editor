@@ -15,8 +15,7 @@ function guestIdentity(data) {
 }
 
 // The placeholder gulp replaces in boxedwine.html with the value below. Whitespace between the
-// comment and `null` is tolerated: a formatter run over the page put a space there once and the
-// exact-string match this replaced failed the deploy build.
+// comment and `null` is allowed, because a formatter run over the page may add it.
 const GUEST_CHUNKS_PLACEHOLDER = /\/\*__BW_GUEST_CHUNKS__\*\/\s*null/g;
 
 // Injected into boxedwine.html as window.BW_GUEST_CHUNKS.

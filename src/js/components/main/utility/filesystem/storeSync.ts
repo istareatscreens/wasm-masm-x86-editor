@@ -21,10 +21,9 @@ export function mergeNames(base: string[] | null, next: string[], stored: string
   return out.sort();
 }
 
-// A drive deleted here stays deleted, and one deleted elsewhere is not brought back by a change made here. A drive's
-// fields this tab changed are this tab's, the others the store's. A letter two drives claim (two tabs gave it out
-// at once) stays with the drive the store has it for; the drive this tab gave it to takes the first free letter, or
-// none.
+// A drive deleted here stays deleted, and one deleted elsewhere is not brought back by a change made here. Fields
+// this tab changed are this tab's, the others the store's. A letter two tabs gave out at once stays with the store's
+// drive; this tab's drive takes the first free letter, or none.
 export function mergeDrives(base: Drive[] | null, next: Drive[], stored: Drive[] | null): Drive[] {
   const was = new Map((base || []).map((drive) => [drive.id, drive] as [string, Drive]));
   const now = new Set(next.map((drive) => drive.id));

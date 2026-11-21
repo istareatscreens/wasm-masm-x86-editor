@@ -1,7 +1,6 @@
 @use "../abstracts/variables";
 
 .switch {
-  //appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
   width: calc(#{variables.$banner-height} - 0.5rem);
@@ -27,8 +26,8 @@
     margin-left: 0;
     // positioning context for absolutely-centered images (see &__image--vim)
     position: relative;
-    // the image is drawn up over the checkbox from its line in the flow, below the box; Chromium hit-tests that line
-    // as this container, which took the clicks meant for the editor and the drawer beneath it
+    // the image is drawn up over the checkbox from its line below the box; Chromium hit-tests that line as this
+    // container, which would take the clicks meant for the editor and the drawer beneath it
     pointer-events: none;
 
     > input {
@@ -47,15 +46,11 @@
     &--theme-mode {
       margin-left: 0.2rem;
     }
-    // Vim-mode switch: the standard Vim logo, centered in the switch box by
-    // absolute positioning instead of the generic negative-top offset (which
-    // needs a per-icon nudge and left this one off-center).
+    // the Vim logo is centred by absolute positioning, not by the negative top offset
     &--vim {
       position: absolute;
       top: 0;
-      // the checkbox (the button the user sees) sits 0.2rem right of its container
-      // (.switch margin-left): centre on the checkbox, not on the container
-      // (measured headed: 2 px off before this offset — harness `vimicon`)
+      // the checkbox sits 0.2rem right of its container (.switch margin-left): centre on the checkbox
       left: 0.2rem;
       right: -0.2rem;
       bottom: 0;

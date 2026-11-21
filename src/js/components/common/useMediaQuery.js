@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-// Whether a media query matches, kept current as the page changes.
 export default function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => {

@@ -1,7 +1,6 @@
-// The Create file window's types (dialogs/FileTypeChoice.jsx; openspec change implement-masm-file-linking, design
-// D15): the text files ML and LINK read (sources, INCLUDE files and /DEF files), and a custom name. Everything
-// else they take is binary or an output, and there is no resource compiler here, so .rc is not offered.
-export type FileTypeId = "asm" | "inc" | "def" | "custom";
+// The Create file window's types: the text files ML and LINK read (sources, INCLUDE files, macro libraries and /DEF
+// files), and a custom name. There is no resource compiler here, so .rc is not offered.
+export type FileTypeId = "asm" | "inc" | "mac" | "def" | "custom";
 
 export interface FileType {
   id: FileTypeId;
@@ -12,6 +11,7 @@ export interface FileType {
 export const FILE_TYPES: FileType[] = [
   { id: "asm", label: "Assembly source (.asm)", extension: ".asm" },
   { id: "inc", label: "Include file (.inc)", extension: ".inc" },
+  { id: "mac", label: "Macro file (.mac)", extension: ".mac" },
   { id: "def", label: "Module definition (.def)", extension: ".def" },
   { id: "custom", label: "Custom name", extension: null },
 ];

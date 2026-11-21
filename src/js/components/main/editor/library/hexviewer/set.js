@@ -1,48 +1,26 @@
-import React from 'react';
-import { Item } from './item';
-const SetComponent = ({
-    set,
-    activeItem,
-    activateItem,
-    activateSet,
-    active,
-    clearItem,
-    clearSet,
-    index
-}) => {
-    const items = set.map((hexByte, i) => {
-        // hexByte is already a hex string like "ff", "00", etc. from the worker
-        let byteString = "";
-        if (hexByte === -1 || hexByte === "--") {
-            byteString = "--";
-        } else {
-            // Already a hex string, just ensure uppercase
-            byteString = hexByte.toUpperCase();
-        }
+import React from "react";
+import { cellText } from "./format/cellText.js";
+import { Item } from "./item.js";
 
-        return (
-            <Item
-                key={i}
-                index={i}
-                byte={byteString}
-                active={!!(activeItem === i && active)}
-                activate={activateItem}
-                clear={clearItem}
-            />
-        );
-    });
-
-    return (
-        <ul
-            className={`setHex${active ? " active" : ""}`}
-            onMouseOver={() => activateSet(index)}
-            onFocus={() => { }}
-            onMouseLeave={() => clearSet()}
-        >
-            {items}
-        </ul>
+// One group of cells in the hex column (`setLength` bytes). `cellState(at, kind)` gives a cell's state classes.
+const SetComponent = ({ values, from, to, rowOffset, unit, hovered, cellState, idOf, changedAt, onHover }) => {
+  const items = [];
+  for (let at = from; at < to; at += unit) {
+    const offset = rowOffset + at;
+    items.push(
+      <Item
+        key={at}
+        kind="cell"
+        id={idOf("h", offset)}
+        offset={offset}
+        text={cellText(values, at, unit)}
+        states={cellState(at, "cell")}
+        changed={changedAt(at, unit)}
+        onHover={onHover && (() => onHover(at))}
+      />,
     );
+  }
+  return <span className={"hexviewer__set" + (hovered ? " hexviewer__set--hover" : "")}>{items}</span>;
 };
 
-// Memoize for performance in virtual scrolling
 export const Set = React.memo(SetComponent);

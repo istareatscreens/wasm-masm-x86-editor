@@ -1,3 +1,4 @@
+@use "../abstracts/mixins";
 @use "../abstracts/variables";
 
 .file-tree {
@@ -34,7 +35,7 @@
     }
   }
 
-  // the checkbox column, left of the tree like the old list's
+  // the checkbox column, left of the tree
   &__gutter {
     flex: none;
     display: flex;
@@ -54,39 +55,8 @@
     height: 100%;
   }
 
-  // 1-px dotted connectors (rows are 20 px: the dots stay in phase from row to row)
   &__line {
-    position: absolute;
-    pointer-events: none;
-
-    &--through,
-    &--up,
-    &--down {
-      width: 0;
-      border-left: 1px dotted variables.$button-shadow;
-    }
-
-    &--through {
-      top: 0;
-      bottom: 0;
-    }
-
-    &--up {
-      top: 0;
-      height: 10px;
-    }
-
-    &--down {
-      top: 10px;
-      bottom: 0;
-    }
-
-    &--across {
-      top: 10px;
-      width: 10px;
-      height: 0;
-      border-top: 1px dotted variables.$button-shadow;
-    }
+    @include mixins.tree-lines(variables.$button-shadow);
   }
 
   &__toggle-slot {
@@ -96,41 +66,8 @@
     height: 9px;
   }
 
-  // the 9-px +/- box: a 5-px minus, plus a 5-px bar while collapsed
   &__toggle {
-    position: relative;
-    display: block;
-    box-sizing: border-box;
-    width: 9px;
-    height: 9px;
-    border: 1px solid variables.$button-shadow;
-    background: variables.$button-highlight;
-    cursor: pointer;
-
-    &::before,
-    &::after {
-      content: "";
-      position: absolute;
-      background: #000;
-    }
-
-    &::before {
-      left: 1px;
-      top: 3px;
-      width: 5px;
-      height: 1px;
-    }
-
-    &::after {
-      left: 3px;
-      top: 1px;
-      width: 1px;
-      height: 5px;
-    }
-
-    &--open::after {
-      display: none;
-    }
+    @include mixins.tree-toggle(variables.$button-shadow, variables.$button-highlight);
   }
 
   &__icon {
@@ -246,40 +183,15 @@ html.file-tree-no-drop * {
   cursor: no-drop !important;
 }
 
-// Win98 context menu (portal on body)
-.tree-menu {
-  position: fixed;
-  z-index: 1001;
-  min-width: 14rem;
-  margin: 0;
-  padding: 2px;
-  list-style: none;
-  font-size: 1.4rem;
-  background: variables.$surface;
-  box-shadow: variables.$border-window-outer, variables.$border-window-inner;
-  outline: none;
+// a drawer press is held (filedrawer/hooks/holdTextSelection.js): no text is selected anywhere but in text boxes
+html.no-text-selection,
+html.no-text-selection * {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
-  &__item {
-    padding: 0 2rem;
-    line-height: 2rem;
-    white-space: nowrap;
-    cursor: default;
-
-    &--active {
-      background: variables.$dialog-blue;
-      color: variables.$button-highlight;
-    }
-
-    &--disabled {
-      color: variables.$button-shadow;
-      text-shadow: 1px 1px variables.$button-highlight;
-    }
-  }
-
-  &__separator {
-    height: 0;
-    margin: 3px 1px;
-    border-top: 1px solid variables.$button-shadow;
-    border-bottom: 1px solid variables.$button-highlight;
-  }
+html.no-text-selection input,
+html.no-text-selection textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }

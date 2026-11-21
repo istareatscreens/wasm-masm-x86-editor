@@ -1,9 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import FileSystem from "../utility/FileSystem";
-import { joinPath, parentOf, baseOf, isAsm, isToolchainText, isWithin, nameProblem, folderLabel, rebase, guestPath } from "../utility/filesystem/paths";
+import { joinPath, parentOf, baseOf, isWithin, nameProblem, folderLabel, rebase, guestPath } from "../utility/filesystem/paths";
 import { driveRoot, driveName, D_NAME, splitDrive, rootOf, isRootPath, normalizeLabel, labelProblem, NO_LETTER_TIP } from "../utility/filesystem/drives";
 import { indexTree, buildRows, reuseRows, checkState, toggleChecked, resolveTargets, planMove, allDescendants, selectAllState, checkAll, marqueeTicks } from "./model/tree";
+import { fileIconKind } from "./model/fileIcons.js";
 import useTreeState from "./hooks/useTreeState.js";
 import FileTree from "./tree/FileTree.jsx";
 import FileDrawerToolbar from "./toolbar/FileDrawerToolbar.jsx";
@@ -18,8 +19,37 @@ import iconFolderOpen from "../../../../images/folderOpen.png";
 import iconFileAsm from "../../../../images/fileAsm.png";
 import iconFileText from "../../../../images/fileText.png";
 import iconFileBinary from "../../../../images/fileBinary.png";
+import iconFileInclude from "../../../../images/fileInclude.png";
+import iconFileMacro from "../../../../images/fileMacro.png";
+import iconFileDefinition from "../../../../images/fileDefinition.png";
+import iconFileDll from "../../../../images/fileDll.png";
+import iconFileObject from "../../../../images/fileObject.png";
+import iconFileLibrary from "../../../../images/fileLibrary.png";
+import iconFileListing from "../../../../images/fileListing.png";
+import iconFileError from "../../../../images/fileError.png";
+import iconFileBatch from "../../../../images/fileBatch.png";
+import iconFileImage from "../../../../images/fileImage.png";
+import iconFileArchive from "../../../../images/fileArchive.png";
+import iconFileData from "../../../../images/fileData.png";
 
-const BINARY_EXTENSIONS = /\.(exe|obj|dll|bin)$/i;
+// model/fileIcons.js's kinds
+const FILE_ICONS = {
+  asm: iconFileAsm,
+  include: iconFileInclude,
+  macro: iconFileMacro,
+  definition: iconFileDefinition,
+  program: iconFileBinary,
+  dll: iconFileDll,
+  object: iconFileObject,
+  library: iconFileLibrary,
+  listing: iconFileListing,
+  error: iconFileError,
+  batch: iconFileBatch,
+  image: iconFileImage,
+  archive: iconFileArchive,
+  text: iconFileText,
+  data: iconFileData,
+};
 const plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
 
 // Drive labels are unique in any letter case; a new drive is New_Drive, or New_Drive_<n> when that is taken.
@@ -34,7 +64,7 @@ const freeDriveLabel = (drives) => {
   return label;
 };
 
-// Upload helper (as before): a File -> {fileMetaData, data: data URL}.
+// Upload helper: a File -> {fileMetaData, data: data URL}.
 const readAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -43,8 +73,7 @@ const readAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
-// The file drawer: the Windows 98 Explorer tree of D: and the other drives, its toolbar and its
-// dialogs. Every change goes through FileSystem (storage + the guest drives together) and then
+// Every change goes through FileSystem (storage + the guest drives together) and then
 // refreshFileList; the tree is rebuilt from storage (model/tree.ts).
 const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, closeShare, importLinks, reveal, fileSelected, switchFile, createFile, refreshFileList, setEditorLock, forceUpdate, lightMode, newFileType, setNewFileType }) {
   const files = useMemo(() => fileList.filter((name) => name && name !== "/"), [fileList]);
@@ -109,18 +138,17 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
   // the toolbar's select-all box mirrors the whole view, every drive (checked, partly, or not)
   const selectAll = useMemo(() => selectAllState(checked, index, asmOnly), [checked, index, asmOnly]);
 
-  // a row's icon, worked out when the row is drawn; binary or not decides a file's icon, and
-  // only a file that is not one of the toolchain's text files and has no known binary extension
-  // is sniffed (the editor opens the same files as text)
+  // a row's icon, worked out when the row is drawn; only a file whose extension has no icon of its own is sniffed
   const iconFor = useMemo(() => {
     const binary = new Map();
+    const isBinary = (path) => {
+      if (!binary.has(path)) binary.set(path, FileSystem.isBinaryFile(path));
+      return binary.get(path);
+    };
     return (row) => {
       if (row.kind === "root") return iconDrive;
       if (row.kind === "folder") return row.expanded ? iconFolderOpen : iconFolderClosed;
-      if (isAsm(row.path)) return iconFileAsm;
-      if (isToolchainText(row.path)) return iconFileText;
-      if (!binary.has(row.path)) binary.set(row.path, BINARY_EXTENSIONS.test(row.path) || FileSystem.isBinaryFile(row.path));
-      return binary.get(row.path) ? iconFileBinary : iconFileText;
+      return FILE_ICONS[fileIconKind(row.path, () => isBinary(row.path))];
     };
   }, [fileList]);
 
@@ -136,7 +164,6 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
     const current = () => live.current;
     const rerenderEditor = () => current().forceUpdate.setRefreshFile(!current().forceUpdate.refreshFile);
     const notice = (message, details) => setDialog({ kind: "notice", message, details });
-    // the entries a checkbox selection stands for, as a flat list of paths
     const checkedTargets = () => {
       const { files, folders } = resolveTargets(current().checked, current().index, current().asmOnly);
       return folders.concat(files);
@@ -400,7 +427,7 @@ const FileDrawer = function FileDrawer({ fileList, drives, onShare, shareOpen, c
       const replacingOpen = list.some((file) => joinPath(folder, file.name.normalize("NFC")).toLowerCase() === (open || "").toLowerCase());
       FileSystem.createDataFile(await Promise.all(list.map(readAsDataUrl)), () => {
         if (folder) toggle(folder, true);
-        refreshFileList(); // the uploaded files show in the drawer at once
+        refreshFileList();
         if (replacingOpen) {
           switchFile(open);
           live.current.forceUpdate.setRefreshFile(!live.current.forceUpdate.refreshFile);

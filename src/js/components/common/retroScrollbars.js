@@ -2,15 +2,8 @@ let nextId = 0;
 const clamp = (value, max) => Math.max(0, Math.min(max, value));
 
 // Keep the native scroll element: CodeMirror uses it for selection and reveal.
-//
-// Windows 95 rule: the vertical scrollbar of a scrollable control is ALWAYS there.
-// When the content fits it is drawn disabled (both arrows embossed, checkered track,
-// no thumb) - it never disappears and it never leaves a bare gutter. The horizontal
-// bar only exists while there is a horizontal range (a wrapped editor never has
-// one), and the corner only while both bars are live. With horizontal: "always" the
-// horizontal bar follows the vertical rule (disabled when nothing scrolls sideways)
-// and the corner sits between the two bars. With vertical: "auto" (a window's body) the
-// vertical bar, and its gutter, only exist while there is a vertical range.
+// Windows 95 rule: the vertical bar is always there, drawn disabled when the content fits (vertical: "auto" drops
+// it instead). The horizontal bar only exists while there is a horizontal range, unless horizontal: "always".
 export function attachRetroScrollbars(surface, host, label, { horizontal = "auto", vertical = "always" } = {}) {
   const win = surface.ownerDocument.defaultView;
   const doc = surface.ownerDocument;
@@ -107,8 +100,6 @@ export function attachRetroScrollbars(surface, host, label, { horizontal = "auto
       axis.max = Math.max(0, total - client);
       const allowed = /^(auto|scroll)$/.test(axis.vertical ? style.overflowY : style.overflowX);
       const active = allowed && axis.max > 1 && client > 0;
-      // vertical: always present (disabled when nothing scrolls) unless it is "auto";
-      // horizontal: only with a range, unless it is always present too
       axis.rail.hidden = axis.vertical ? autoVertical && !active : alwaysHorizontal ? false : !active;
       if (axis.vertical) host.classList.toggle("retro-scroll-host--vertical", !axis.rail.hidden);
       setDisabled(axis, !active);

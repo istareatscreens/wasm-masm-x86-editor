@@ -46,8 +46,7 @@
     padding-left: 2px;
   }
 
-  // the collapse button (viewcontrols/CollapseButton.jsx): Windows 98's scrollbar arrowhead, as the splitters'
-  // arrow buttons draw it, at twice its size: up while every row shows, down while the bar is collapsed
+  // the collapse button (viewcontrols/CollapseButton.jsx): the scrollbar arrowhead at twice its size
   &__collapse {
     background-image: functions.arrowhead(up, 2);
     background-position: center;

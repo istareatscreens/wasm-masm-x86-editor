@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
@@ -12,6 +12,7 @@ import { languageFor } from "./library/languages";
 import { resolveTheme } from "./library/themes";
 import FileSystem from "../utility/FileSystem.js";
 import useRetroScrollbars from "../../common/useRetroScrollbars.js";
+import useEditorDebug from "./debug/useEditorDebug.js";
 
 function TextEditor({
   id,
@@ -23,11 +24,16 @@ function TextEditor({
   selectedFont,
   vimMode,
   exactLineBreaks,
+  debug,
+  debugActive,
+  debugPlace,
+  loaded,
 }) {
   const [host, setHost] = useState(null);
   const [editorView, setEditorView] = useState(null);
+  const debugging = useEditorDebug({ controller: debug, active: debugActive, filename, view: editorView, ready: loaded.file === filename, loads: loaded.count, place: debugPlace });
   const scrollbars = useRetroScrollbars(editorView && editorView.scrollDOM, host, "Editor");
-  // Debounced persistence to the virtual file system (preserves the CM5 timing).
+  // Debounced persistence to the virtual file system.
   const writeToLocalStorage = useDebouncedCallback((name, val) => {
     FileSystem.writeToFile(name, val);
   }, 400);
@@ -41,31 +47,28 @@ function TextEditor({
     };
   }, [writeToLocalStorage]);
 
-  // CM6 onChange gives (value, viewUpdate) — NOT the CM5 (editor, data, value).
-  // use-debounce v5 returns { callback, cancel, flush } (NOT a callable): calling
-  // the object threw "c is not a function" inside CodeMirror's update listener on
-  // every keystroke, so edits were never persisted (and builds used stale text).
-  const handleChange = (val) => {
-    onChange(val);
-    writeToLocalStorage.callback(filename, val);
-  };
+  // use-debounce v5 returns { callback, cancel, flush }, not a function.
+  // One function for the editor's whole life: @uiw/react-codemirror reconfigures every extension whenever its
+  // onChange changes. It calls the latest closure, which the layout effect updates before any input can come.
+  const changed = useRef(null);
+  useLayoutEffect(() => {
+    changed.current = (val) => {
+      onChange(val);
+      writeToLocalStorage.callback(filename, val);
+    };
+  });
+  const handleChange = useCallback((val) => changed.current(val), []);
 
   const fontFamily =
     (selectedFont && (selectedFont.fontFamily || selectedFont.text)) || "monospace";
   // MASM for .asm/.inc sources; any other file, and a binary shown as text, is plain text
   const language = exactLineBreaks ? null : languageFor(filename);
 
-  // Extensions are memoized and re-created only when the toggles that affect
-  // them change, so @uiw/react-codemirror reconfigures the live view in place
-  // (document/selection/history preserved) instead of churning every render.
-  //
-  // Ordering matters: vim() MUST come before basicSetup's keymaps, so we opt out
-  // of the `basicSetup` prop and include it explicitly here, after vim().
+  // Memoized so @uiw/react-codemirror reconfigures the live view in place only when a toggle changes.
+  // vim() must come before basicSetup's keymaps, hence basicSetup={false} and basicSetup listed after vim().
   const extensions = useMemo(() => {
-    // The size goes on .cm-content/.cm-gutters (two-class specificity): CodeMirror
-    // mounts its style tag at the START of <head>, so a rule on the editor root
-    // alone lost to the app stylesheet's `.cm-editor { font-size: inherit }` and the
-    // banner's font-size box changed nothing.
+    // The size also goes on .cm-content/.cm-gutters (two-class specificity): CodeMirror's style tag comes first
+    // in <head>, so a rule on the editor root alone loses to the app's `.cm-editor { font-size: inherit }`.
     const size = (Number(fontSize) || 16) + "px";
     const fontTheme = EditorView.theme({
       "&": { fontSize: size },
@@ -73,6 +76,8 @@ function TextEditor({
       ".cm-gutters": { fontFamily, fontSize: size },
     });
     return [
+      // the breakpoint gutter stands left of the line numbers: before basicSetup's
+      ...debugging.extensions,
       ...(vimMode ? [vim()] : []),
       // a binary shown as text splits lines on "\n" only, so every 0x0D byte round-trips
       // (the default also splits on "\r" and joins with "\n")
@@ -88,7 +93,7 @@ function TextEditor({
       // theme's own HighlightStyle takes precedence over this.
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     ];
-  }, [vimMode, fontSize, fontFamily, exactLineBreaks, language]);
+  }, [vimMode, fontSize, fontFamily, exactLineBreaks, language, debugging.extensions]);
 
   const theme = useMemo(() => resolveTheme(selectedTheme), [selectedTheme]);
 
@@ -104,6 +109,7 @@ function TextEditor({
         onChange={handleChange}
         onCreateEditor={setEditorView}
       />
+      {debugging.menu}
     </div>
   );
 }

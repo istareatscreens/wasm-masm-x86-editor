@@ -1,3 +1,15 @@
+// a binary file's hex view (editor/HexViewer.jsx) fills the pane
+.hex-viewer-container {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+
+  &__message {
+    padding: 1rem;
+  }
+}
+
 .editor {
   &__code-mirror {
     width: 100%;

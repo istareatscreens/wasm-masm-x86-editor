@@ -1,9 +1,7 @@
 @use "../abstracts/variables";
 
 // 98.css's radio button (https://github.com/jdan/98.css, MIT), drawn on the input itself as the tick box is
-// (_checkbox.scss): each state is one 12x12 image of 98.css's pixels, its frame (radio-border.svg), its face, white
-// or, while pressed or disabled, grey (radio-border-disabled.svg), and its 4x4 dot (radio-dot.svg) 4px in. One image
-// is snapped to the screen's pixels as one piece.
+// (_checkbox.scss): each state is one 12x12 image, snapped to the screen's pixels as one piece.
 @function radio($face, $dot: null) {
   $mark: "";
   @if $dot {

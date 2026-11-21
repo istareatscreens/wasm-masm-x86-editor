@@ -1,10 +1,5 @@
-// CodeMirror 6 language for MASM, built on the Lezer grammar vendored in this
-// directory (parser.js / parser.terms.js generated from masm.grammar; tokens.js,
-// keywords.js and mnemonics.js copied from masm-lezer-grammar - see
-// Boxedwine/scripts/build-grammar.mjs, which prints the source commit).
-//
-// Highlighting maps the grammar's node names to STANDARD @lezer/highlight tags
-// (highlight.js), so each theme's HighlightStyle colors MASM automatically.
+// CodeMirror 6 language for MASM. parser.js/parser.terms.js are generated from masm.grammar; tokens.js,
+// keywords.js and mnemonics.js come from masm-lezer-grammar (Boxedwine/scripts/build-grammar.mjs).
 import { parser } from "./parser.js";
 import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { masmHighlighting } from "./highlight.js";

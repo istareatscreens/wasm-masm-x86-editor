@@ -1,3 +1,4 @@
+@use "../abstracts/mixins";
 @use "../abstracts/variables";
 
 .text-area {
@@ -5,8 +6,13 @@
   background: variables.$button-highlight;
   box-shadow: variables.$border-field;
 
-  &--read-only {
-    background: variables.$surface;
+  &--read-only,
+  &--disabled {
+    @include mixins.field-inactive;
+  }
+
+  &--disabled &__input {
+    @include mixins.field-disabled-text;
   }
 
   &.retro-scroll-host--vertical {

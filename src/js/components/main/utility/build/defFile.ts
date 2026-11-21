@@ -1,7 +1,6 @@
-// Whether a module-definition file makes a DLL, as LINK decides it and the toolchain's JWlink (OPTION DEF) does
-// (measured: openspec/changes/implement-masm-file-linking/reference/dll-build.py): the first LIBRARY or NAME
-// statement counts, and only LIBRARY with a name makes a DLL. Keywords are upper case; ";" starts a comment; the
-// text is ANSI or UTF-8, or after a byte order mark UTF-8 or UTF-16.
+// Whether a module-definition file makes a DLL, as LINK decides it and the toolchain's JWlink (OPTION DEF) does: the
+// first LIBRARY or NAME statement counts, and only LIBRARY with a name makes a DLL. Keywords are upper case; ";"
+// starts a comment; the text is ANSI or UTF-8, or after a byte order mark UTF-8 or UTF-16.
 
 function textOf(bytes: Uint8Array): string {
   if (bytes.length >= 2 && ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff))) {

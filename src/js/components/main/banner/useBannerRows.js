@@ -1,28 +1,18 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 
-// Each top bar wraps its controls onto further rows when one row cannot hold them, and is as many rows
-// tall as it needs whatever the other bar needs: the main bar's count (--banner-rows and
-// data-banner-rows on .app-layout) is the grid's first row (layout/_layout.scss), the drawer toolbar's
-// (--drawer-banner-rows and data-drawer-banner-rows) its height at the top of the drawer's column.
-// Neither is set for one row. A bar's width comes from the splitters' columns, not from the rows, so the
-// rows cannot change what wraps (no oscillation). The drawer's select-all box is not counted: it goes to
-// the toolbar's last row.
-// The main bar collapses to its first row (settings.bannerCollapsed): its collapse button shows while its
-// controls cannot all stand on one row (data-banner-overflow), and collapsed, the bar counts as one row and
-// the controls on its further rows are inert and hidden from assistive technology.
+// Each top bar wraps onto further rows when one row cannot hold its controls; the counts go on .app-layout
+// (unset for one row). A bar's width comes from the splitters' columns, so the rows cannot change what wraps.
+// Collapsed, the main bar counts as one row and the controls on its further rows are inert.
 const BARS = [
   { selector: ".banner__main__group--start", property: "--banner-rows", attribute: "data-banner-rows", button: ".banner__collapse" },
   { selector: ".banner__file-drawer__buttons", property: "--drawer-banner-rows", attribute: "data-drawer-banner-rows" },
 ];
 const OVERFLOW = "data-banner-overflow";
-// The layout rounds each width (to 1/64 px in Chrome, 1/60 px in Firefox), so the controls' sum is known to
-// within a pixel: a bar that close to fitting counts as overflowing, and the button never hides while the
-// controls would wrap without it.
+// Layout rounds widths (1/64 px in Chrome, 1/60 px in Firefox): a bar within a pixel of fitting counts as
+// overflowing, so the button never hides while the controls would wrap without it.
 const ROUNDING_PX = 1;
 
-// A bar's controls (the children it draws) with their boxes and vertical centres (align-items: center
-// puts every centre of a line on the same height; lines are a row apart). None when the layout does
-// not draw the bar.
+// A bar's drawn controls with their boxes and vertical centres (align-items: center, so a line's centres match).
 const controlsOf = (bar) => {
   if (!bar.getBoundingClientRect().width) return [];
   const controls = [];
@@ -46,11 +36,8 @@ const outerWidth = (element, rect = element.getBoundingClientRect()) => {
   return rect.width + px(style.marginLeft) + px(style.marginRight);
 };
 
-// Whether a bar's controls fit on one row without its collapse button: their outer widths and the gaps
-// between them against the bar's width, plus the button's while it is shown. That is the width the bar has
-// without the button, so the button's own width never decides whether it shows (it cannot flicker). The
-// button's share is read from positions, as the layout gave it: from its group's start to its end (it is the
-// first control of its group, with no right margin).
+// Whether the controls fit on one row without the collapse button: the button's share (read from positions; it
+// is its group's first control) is added back while it shows, so its own width never decides whether it shows.
 const fitsOneRow = (bar, controls, button) => {
   const style = getComputedStyle(bar);
   const needed = controls.reduce((sum, control) => sum + outerWidth(control.child, control.rect), px(style.columnGap) * Math.max(0, controls.length - 1));

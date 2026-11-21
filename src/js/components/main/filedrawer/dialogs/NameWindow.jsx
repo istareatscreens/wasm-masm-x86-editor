@@ -2,15 +2,14 @@ import React, { useEffect, useId, useRef, useState } from "react";
 
 import Button from "../../../common/ImageButton.jsx";
 import Window from "../../../common/Window.jsx";
+import TextField from "../../../common/TextField.jsx";
 
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
 
-// "Create file in D:\lab1" / "Create folder in D:\lab1" / "Create Drive". The typed name (`initial` to
-// start with, selected) is trimmed and NFC-normalised; problemFor(name) returns the first broken rule (shown
-// as the box's tooltip) or null. Enter is evaluated synchronously, so a name typed and confirmed at once is
-// never swallowed. finalName(name) is the name created (the line under the box shows it when it differs from
-// the one typed); `children` are further controls under that line, where Enter creates and Escape closes too.
+// The typed name is trimmed and NFC-normalised; problemFor(name) returns the first broken rule or null. Enter is
+// evaluated synchronously, so a name typed and confirmed at once is never swallowed. finalName(name) is the name
+// created; `children` are further controls, where Enter creates and Escape closes too.
 function NameWindow({ title, label, initial = "", problemFor, finalName = (name) => name, onCreate, close, children }) {
   const [value, setValue] = useState(initial);
   const input = useRef(null);
@@ -60,9 +59,7 @@ function NameWindow({ title, label, initial = "", problemFor, finalName = (name)
         </div>
       }
     >
-      <input
-        type="text"
-        className="input-box"
+      <TextField
         value={value}
         aria-label={label}
         aria-invalid={!!shownProblem}

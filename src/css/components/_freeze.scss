@@ -1,13 +1,7 @@
 @use "../abstracts/variables";
 
-// Terminal notice banner (RetroNotice: hardlock / program crash / runtime notices).
-// A Windows 98 "information" strip that FLOATS over the top edge of the cmd window:
-// it is absolutely positioned inside .cmd-panel (position: relative, see layout), i.e.
-// out of the layout flow, so it never reflows or resizes the terminal and it follows
-// the terminal through every view layout. The strip is one or two text lines tall -
-// only the first few percent of the terminal are covered. Colours are the classic
-// tooltip/info surface: COLOR_INFOBK #ffffe1 on COLOR_INFOTEXT black with a 1 px
-// window-frame border; the icon is the Windows 98 warning triangle as pixel art.
+// Terminal notice banner (RetroNotice). It floats over the terminal's top edge, absolutely positioned in
+// .cmd-panel, so it never resizes the terminal. Colours: COLOR_INFOBK on COLOR_INFOTEXT.
 .freeze-banner {
   position: absolute;
   top: 0;
@@ -60,8 +54,7 @@
     margin-left: 0.3rem;
   }
 
-  // a narrow terminal (drawer + editor open): smaller text, and the reassurance
-  // line goes (the reason + hint are what matters)
+  // a narrow terminal: smaller text, and the reassurance line goes
   @container (max-width: 640px) {
     font-size: 1.2rem;
 

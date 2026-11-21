@@ -1,0 +1,187 @@
+@use "../abstracts/mixins";
+@use "../abstracts/variables";
+
+// The debug sidebar (debugger/DebugSidebar.jsx): layout only; its colours, bevels and controls are the page's.
+.debug-sidebar {
+  --debug-secondary-text: #{variables.$secondary-text};
+  --debug-footer: 40px; // the Windows taskbar's height at 100 % (CSS pixels scale with it)
+  display: flex;
+  flex-direction: column;
+  background: variables.$surface;
+  color: variables.$black-color;
+  font-size: 1.4rem;
+  overflow: hidden;
+
+  &__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  // the scroll padding keeps a section's edge band (SplitHandle's `scrolls`) a taskbar's height above the bottom
+  &__sections {
+    padding-bottom: 0.2rem;
+    scroll-padding-bottom: var(--debug-footer);
+  }
+
+  // empty, at the end of the sections: scrolled to the end, the last section's edge sits a taskbar's height above
+  // the bottom of the screen, so resizing it does not reveal an auto-hidden taskbar
+  &__footer {
+    height: var(--debug-footer);
+  }
+}
+
+// the toolbar (debugger/toolbar/DebugToolbar.jsx): the banner's buttons and switches, wrapping onto further rows
+.debug-toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0;
+  padding: 0.15rem 0 0.25rem;
+
+  &__btn {
+    margin-left: 0.2rem;
+  }
+
+  // the switch's image, centred on its box (the box stands 0.2rem right of its container)
+  &__switch-image {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0.2rem;
+    right: -0.2rem;
+    margin: auto;
+    width: 19px;
+    height: 19px;
+    padding: 0;
+    image-rendering: pixelated;
+  }
+
+  &__btn .btn__img {
+    image-rendering: pixelated;
+  }
+
+  &__switch:disabled + &__switch-image {
+    filter: grayscale(1);
+    opacity: 0.35;
+  }
+
+  &__speed {
+    margin-left: 0.2rem;
+  }
+}
+
+// the status line (debugger/status/DebugStatus.jsx): a read-only field
+.debug-status {
+  flex: none;
+  margin: 0 0.2rem 0.3rem;
+  padding: 0.3rem 0.6rem;
+  @include mixins.field-inactive;
+  box-shadow: variables.$border-field;
+  line-height: 1.8rem;
+  overflow-wrap: anywhere;
+
+  &__line {
+    font-weight: bold;
+  }
+
+  &__report {
+    width: auto;
+    min-width: 0;
+    height: 2.4rem;
+    margin: 0.2rem 0;
+    padding: 0 0.8rem;
+  }
+
+  &:focus-visible {
+    outline: 1px dotted variables.$black-color;
+    outline-offset: -3px;
+  }
+}
+
+// a debugger failure's notice (debugger/failure): the terminal's notice, in the sidebar's flow
+.debug-notice {
+  flex: none;
+  position: relative;
+  margin: 0 0.2rem 0.3rem;
+  container-type: inline-size;
+
+  .freeze-banner {
+    position: static;
+    border-top-width: 1px;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .freeze-banner__actions {
+    grid-column: 1 / -1;
+  }
+
+  .freeze-banner__close {
+    display: none;
+  }
+}
+
+.debug-sidebar--failed {
+  padding-top: 0.3rem;
+}
+
+// the debugger's windows (debugger/dialogs): group frames one under the other
+.window__debug {
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    min-width: min(42rem, 100%);
+    padding: 0.4rem 0.2rem;
+    font-size: 1.4rem;
+  }
+
+  &__line {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  &__count {
+    width: 8rem;
+    height: 2.5rem;
+  }
+
+  &__where {
+    font-weight: bold;
+  }
+
+  &__hint {
+    max-width: 42rem;
+  }
+
+  .input-box {
+    height: 2.5rem;
+  }
+
+  .group-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+}
+
+// RUN, "run compiled binary" and the Debug switch wrap onto the banner's next row together
+.banner__main__together {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.switch__view--debug {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0.2rem;
+  right: -0.2rem;
+  margin: auto;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  image-rendering: pixelated;
+}

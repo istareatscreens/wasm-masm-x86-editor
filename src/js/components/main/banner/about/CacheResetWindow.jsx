@@ -10,6 +10,8 @@ import ConfirmWindow from "../../filedrawer/dialogs/ConfirmWindow.jsx";
 import FileSystem from "../../utility/FileSystem.js";
 import { isResetKey } from "./resetKeys";
 import { LAYOUT_KEY, parseLayout, serializeLayout, isDefaultLayout, resetLayout } from "../../layout/layoutStorage";
+import { DEBUG_KEY, dropBreakpoints, updateDebug } from "../../debugger/session/debugStorage";
+import { HEX_OFFSETS_KEY } from "../../editor/hexOffsets.js";
 import { driveName, driveRoot, rootOf } from "../../utility/filesystem/drives";
 import accept from "../../../../../images/accept.png";
 import acceptDisabled from "../../../../../images/accept-disabled.png";
@@ -17,13 +19,9 @@ import stopIcon from "../../../../../images/msgError.png";
 import resizeHandles from "../../../../../images/resizeHandles.png";
 import deleteFile from "../../../../../images/deleteFile.png";
 
-// Factory reset of the terminal ENVIRONMENT. Deletes everything the
-// emulator persists — the instant-start snapshot (heap + overlay), the legacy
-// guest overlays of earlier builds and every emulator preference/failure record
-// in localStorage — then reloads into a cold boot that captures a fresh factory
-// image. The user's files (the file drawer's IndexedDB: D: and every drive) and their unsaved legacy
-// localStorage files are KEPT unless "also delete all my files" is ticked: a broken environment must be
-// recoverable without any data loss. The editor settings and the pane layout are always kept.
+// Factory reset of the terminal ENVIRONMENT: deletes the instant-start snapshot, the guest overlays older builds
+// left and the emulator's localStorage records, then reloads into a cold boot. The user's files (D:, every drive,
+// legacy localStorage files) are KEPT unless "also delete all my files" is ticked; settings are always kept.
 const EMULATOR_DATABASES = ["bw-snapshot", "/root", "/d_drive"];
 const DRAWER_DATABASE = "BoxedwineFileSystem";
 
@@ -33,9 +31,8 @@ const deleteDatabase = (name, onBlocked) =>
       const req = indexedDB.deleteDatabase(name);
       req.onsuccess = () => resolve({ name, ok: true });
       req.onerror = () => resolve({ name, ok: false, why: String(req.error) });
-      // another tab holds it open: the delete completes when that tab releases it (a tab
-      // of this build closes its connection at once, an older one when it is closed or
-      // reloaded); reloading before that would wait on the store forever
+      // another tab holds it open: the delete completes when that tab releases it (at once for
+      // this build, on close or reload for older ones); reloading first would wait forever
       req.onblocked = () => {
         if (onBlocked) onBlocked(name);
       };
@@ -44,8 +41,8 @@ const deleteDatabase = (name, onBlocked) =>
     }
   });
 
-// the keys "also delete all my files" keeps
-const KEPT_KEYS = ["settings", LAYOUT_KEY];
+// the keys "also delete all my files" keeps: preferences, not files
+const KEPT_KEYS = ["settings", LAYOUT_KEY, DEBUG_KEY, HEX_OFFSETS_KEY];
 
 export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {}) => {
   const report = { keysRemoved: [], databases: [] };
@@ -53,7 +50,7 @@ export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {
     const keys = [];
     for (let i = 0; i < window.localStorage.length; i++)
       keys.push(window.localStorage.key(i));
-    // with "delete all my files", every key but the editor settings and the layout (the legacy files with them)
+    // with "delete all my files", every key but the preferences (the legacy files with them)
     const remove = deleteFiles ? (k) => KEPT_KEYS.indexOf(k) < 0 : isResetKey;
     for (const k of keys) {
       if (remove(k)) {
@@ -61,6 +58,8 @@ export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {
         report.keysRemoved.push(k);
       }
     }
+    // the breakpoints were in the files that go
+    if (deleteFiles && window.localStorage.getItem(DEBUG_KEY) !== null) updateDebug((record) => dropBreakpoints(record, () => true));
   } catch (e) {
     console.warn("[factoryReset] localStorage", e);
   }
@@ -93,9 +92,7 @@ export const factoryReset = async ({ deleteFiles = false, onBlocked = null } = {
 
 const plural = (n, word) => n + " " + word + (n === 1 ? "" : "s");
 
-// The Hard Reset Everything window. Besides the reset (its footer), it restores the default layout and deletes
-// the extra drives, at once and without a reload: `drives` and `fileList` are the drawer's, `deleteExtraDrives`
-// deletes every drive but D:.
+// Besides the reset, the window restores the default layout and deletes the extra drives, at once and without a reload.
 function CacheResetWindow({ close, drives, fileList, deleteExtraDrives }) {
   const formatCountDown = (count) => ` ( ${count} )`;
   const defaultCount = 3;

@@ -1,8 +1,7 @@
 // The words of a module-definition (.def) file, as Microsoft's reference gives them
-// (https://learn.microsoft.com/en-us/cpp/build/reference/module-definition-dot-def-files and its pages; the reserved
-// words as openspec/changes/implement-masm-file-linking/reference/def-vocabulary.py extracts them). Statements,
-// attribute keywords and names are case sensitive, so every word here is upper case. scripts/module-definition.corpus.json
-// holds the same lists, and the tests hold both apps' highlighters to it.
+// (https://learn.microsoft.com/en-us/cpp/build/reference/module-definition-dot-def-files and its pages). They are
+// case sensitive, so all are upper case. The tests' corpus (Boxedwine/scripts/tests/module-definition.corpus.json)
+// holds the same lists.
 
 // the statements LINK documents (SEGMENTS is the synonym of SECTIONS)
 export const STATEMENTS = ["EXPORTS", "HEAPSIZE", "LIBRARY", "NAME", "SECTIONS", "SEGMENTS", "STACKSIZE", "STUB", "VERSION"];

@@ -14,11 +14,8 @@ const BINARY_NAME = /\.(exe|obj|dll|bin|lib|res)$/i;
 // "1 new file, 2 changed files and 3 unchanged files"
 const listed = (parts) => (parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts[0] || "no files");
 
-// The questions an import asks (ShareService.importLink's `ui`), one window at a time, as Windows asks them:
-// a drive with the link's label exists (Merge, Replace, Create new, Cancel), a changed file (Yes, No, Keep Both;
-// then Yes to All, No to All; then Cancel, each group apart, No the default), and the confirmation before Replace
-// deletes a drive's files. Each question resolves with the answer; the title bar's X and Escape answer Cancel (No
-// for the confirmation).
+// The questions an import asks (ShareService.importLink's `ui`), one window at a time, as Windows asks them.
+// Each resolves with the answer; the title bar's X and Escape answer Cancel (No for the Replace confirmation).
 export default function useImportQuestions() {
   const [question, setQuestion] = useState(null);
   const [forAll, setForAll] = useState(false);

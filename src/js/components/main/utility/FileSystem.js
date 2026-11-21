@@ -5,9 +5,7 @@ import {
   renameObjectKey,
   getFileExtension,
 } from "../../../utility/utilityFunctions.ts";
-// Storage helpers via the compatibility adapter: synchronous reads/writes go to
-// localStorage (so the existing synchronous FileSystem code works unchanged) and
-// every write also mirrors through to IndexedDB. See FileSystemAdapter.js.
+// Synchronous storage: reads come from an in-memory copy of the IndexedDB store, writes go through to it.
 import hf from "./FileSystemAdapter.js";
 import { saveAs } from "file-saver";
 
@@ -117,14 +115,10 @@ export default class FileSystem {
     // otherwise the "/" check would miss an existing root and re-bootstrap it.
     await hf.init();
     hf.setMerger(FileSystem._mergerFor);
-    // another tab's "also delete all my files" reset deletes the store: the connection is
-    // closed so the delete goes through, and this tab starts over on the new store (a
-    // moment later, so the resetting tab has made it)
+    // another tab's reset deletes the store: the connection is closed so the delete goes through, and this tab
+    // starts over on the new store a moment later, once the resetting tab has made it
     hf.onStoreDeleted(() => setTimeout(() => window.location.reload(), 1500));
-    // Bootstrap the root "/" node if missing. "/" holds an Inode whose `id` is the
-    // fileListKey — the key under which the {filename -> dataKey} map is stored.
-    // The old browserfs layer used to create this; it was removed in the storage
-    // migration, so create it here on first run (returning users already have it).
+    // First run: "/" holds an Inode whose `id` is the fileListKey, the key of the {filename -> metadata key} map.
     if (hf.getFromLocalStorage("/") == null) {
       const listKey = generateRandomID();
       const now = new Date().getTime();
@@ -132,7 +126,6 @@ export default class FileSystem {
       hf.setInLocalStorage("/", rootInode, hf.encodeFileMetaData);
       hf.setInLocalStorage(listKey, JSON.stringify({}), btoa);
     }
-    //check to see if local storage was loaded
     return callBackIsTrue(
       () => hf.getFromLocalStorage("/") != null,
       100,
@@ -186,7 +179,6 @@ export default class FileSystem {
     return id === null ? FileSystem.fileListKey + ":folders" : driveFoldersKey(FileSystem.fileListKey, id);
   }
 
-  //reads file list
   static _readFileList() {
     const list = Object.assign({}, FileSystem._readJson(FileSystem.fileListKey, {}));
     for (const drive of FileSystem.getDrives()) {
@@ -226,14 +218,12 @@ export default class FileSystem {
     writes.sort((a, b) => b.gained - a.gained).forEach((write) => hf.setInLocalStorage(write.key, write.value));
   }
 
-  //Gets file list key
   static _readFileListKey() {
     FileSystem.fileListKey = hf.decodeFileMetaData(
       hf.getFromLocalStorage("/")
     ).id;
   }
 
-  //gets all stored files
   static getFileList() {
     return Object.keys(FileSystem._readFileList());
   }
@@ -396,6 +386,19 @@ export default class FileSystem {
     return hf.flush();
   }
 
+  // Told of every file renamed or moved ({ from, to }) and deleted ({ gone }) in this tab: what is kept by
+  // file name (a file's breakpoints) follows.
+  static changeListeners = new Set();
+  static _tell(change) {
+    FileSystem.changeListeners.forEach((listener) => {
+      try {
+        listener(change);
+      } catch (e) {
+        console.warn("[FileSystem] a change listener failed", e);
+      }
+    });
+  }
+
   // Saves the editor holds back (its autosave waits for a pause in typing), written at once when the user
   // leaves this tab (session/tabSync.js).
   static pendingSaves = new Set();
@@ -464,7 +467,6 @@ export default class FileSystem {
     return (b0 === 0xff && b1 === 0xfe) || (b0 === 0xfe && b1 === 0xff);
   }
 
-  //gets data from file
   static getFileMetaData(filename) {
     const fileList = FileSystem._readFileList();
     const fileKey = fileList[filename];
@@ -510,9 +512,8 @@ export default class FileSystem {
     return { text: decodeText(bytes, encoding), encoding };
   }
 
-  // Synchronous content read straight from localStorage (the backing store).
-  // Used to hand the current file's text to the emulator for direct file sync
-  // (Module.bwWriteFile) without depending on the async storage path.
+  // A synchronous read for handing a file's text to the emulator (Module.bwWriteFile); the file list is read
+  // from window.localStorage.
   static getFileContentSync(filename) {
     try {
       const listRaw = window.localStorage.getItem(FileSystem.fileListKey);
@@ -528,13 +529,6 @@ export default class FileSystem {
       return '';
     }
   }
-  /**
-   * @description finds file in local storage and replaces its text
-   * @param {string} fileName name of assembly file exlcuding the .asm filename suffix
-   * @param {string?} text text to be written to the file
-   * @returns void
-   * @Example writeToAssemblyFile("file", "assembly code here")
-   */
   static writeToFile(filename, text) {
     let encoding = FileSystem._encodings.get(filename) || "utf-8";
     if (ASSEMBLER_SOURCE.test(filename) && encoding !== "utf-8" && encoding !== "windows-1252") {
@@ -565,7 +559,6 @@ export default class FileSystem {
   }
 
   static writeBytes(filename, bytes) {
-    //get data
     const fileMetaDataKey = FileSystem._readFileList()[filename];
     if (!fileMetaDataKey) {
       console.error(`File ${filename} not found in file list`);
@@ -578,28 +571,22 @@ export default class FileSystem {
       return;
     }
 
-    //Append changes
     const base64 = bytesToBase64(bytes);
     fileMetaData.size = bytes.length;
 
-    //save file
     hf.setInLocalStorage(fileMetaDataKey, fileMetaData, hf.encodeFileMetaData); //meta data
     hf.setInLocalStorage(fileMetaData.id, base64, (data) => data); //file data
 
-    // Mirror the (editor-debounced) save into the guest D: byte for byte so the terminal
-    // copy never diverges from the drawer copy (bwWriteFileBytes, verified, no keystrokes).
+    // the guest D: gets the same bytes, so the terminal's copy never diverges from the drawer's
     syncFileToEmulator(filename, base64, true);
   }
 
   static renameFile(filename, newFileName) {
     let fileList = FileSystem._readFileList();
-    // Rename inside the guest FIRST (Module.bwRenameFile: the node's own rename,
-    // so cmd's next `dir` shows only the new name; into another folder as well).
-    // The stored bytes are passed along for the delete+write fallback. No `ren`/`echo`
-    // keystrokes.
+    // The guest renames its own node (cmd's next `dir` shows only the new name). The stored bytes, read before
+    // the list changes, are for its delete+write fallback.
     FileSystem.ensureFolder(parentOf(newFileName));
     renameFileInEmulator(filename, newFileName, FileSystem.getRawFileData(filename) || "", true);
-    //rename file in list
 
     fileList = renameObjectKey(fileList, filename, newFileName);
     FileSystem._writeFileList(fileList);
@@ -607,6 +594,7 @@ export default class FileSystem {
       FileSystem._encodings.set(newFileName, FileSystem._encodings.get(filename));
       FileSystem._encodings.delete(filename);
     }
+    FileSystem._tell({ from: filename, to: newFileName });
   }
 
   //TODO change INCLUDE Irvine import to correct one
@@ -623,7 +611,7 @@ export default class FileSystem {
       if (/.(asm|text|txt)$/.test(name)) {
         const raw = atob(data);
         if (!FileSystem._isUtf16(raw)) {
-          data = crlf(raw); //convert end of line (eol) to dos/win32 compatiable crlf (on the bytes; UTF-16 is left alone)
+          data = crlf(raw); //convert end of line (eol) to dos/win32 compatiable crlf
           size = data.length;
           isEncoded = false;
         }
@@ -631,9 +619,7 @@ export default class FileSystem {
 
       const isDuplicate = name in FileSystem._readFileList();
 
-      // shouldWriteCommand=false -> createFile places the file into the guest FS
-      // DIRECTLY via Module.bwWriteFile (no `echo.>name` keystrokes). Text uploads
-      // get their real content; the file shows in `dir` with no echo command.
+      // shouldWriteCommand=false: createFile also writes the file straight to the guest D:
       FileSystem.createFile(
         name,
         data,
@@ -655,12 +641,9 @@ export default class FileSystem {
   }
 
   static createAssemblyFile(filename, isInitial = false) {
-    //if (!(`${filename}.asm` in fileList)) { //turn this into a call back or something
-    // always placed on the guest D: too (before the emulator is up the sync is a
-    // no-op and the start-up reconcile covers it; after it - e.g. the test.asm
-    // recreated when the last .asm was deleted - cmd must see it right away)
+    // always placed on the guest D: too: before the emulator is up the start-up reconcile covers it, after it cmd
+    // must see the file at once
     FileSystem.createFile(filename, ASM_TEMPLATE, new Date().getTime(), false);
-    //}
   }
 
   /*TODO Fix BUG should create file first in boxedwine then append (promise) to it to prevent ghost files*/
@@ -673,45 +656,29 @@ export default class FileSystem {
     size = 0,
     isDuplicate = false
   ) {
-    //console.log({ CreatedFile: filename, data: data });
     let fileList = FileSystem._readFileList();
 
-    //generate keys and creation time
     const id = isDuplicate
       ? hf.getFileMetaData(fileList[filename]).id
       : generateRandomID();
     const fileID = isDuplicate ? fileList[filename] : generateRandomID();
 
-    /*
-    console.log({ isDuplicate, id, fileID });
-    if (isDuplicate)
-      console.log({
-        id: window.localStorage.getItem(id),
-        fileID: window.localStorage.getItem(fileID),
-      });
-      */
-
-    //Delete old keys if duplicate
     if (isDuplicate) {
-      localStorage.removeItem(id); //delete file metaData
-      localStorage.removeItem(fileID); //delete file Data
+      localStorage.removeItem(id); //file data
+      localStorage.removeItem(fileID); //file metadata
     }
 
-    //Add file to list of files if not duplicate
     if (!isDuplicate) {
       fileList[filename] = fileID;
-      //store in file list
       FileSystem._writeFileList(fileList);
     }
 
-    //store file data in local storage
     hf.setInLocalStorage(
       id,
       data,
       dataIsEncoded ? (data) => data : hf.encodeFileData //only encode data that needs to be
     );
 
-    //store file meta data
     const metaData = new Inode(
       id,
       size ? size : data.length,
@@ -726,12 +693,8 @@ export default class FileSystem {
     FileSystem.ensureFolder(parentOf(filename), !shouldWriteCommand);
     FileSystem._encodings.delete(filename); // detected again when the editor opens it
     if (!shouldWriteCommand) {
-      // Place the file directly on the guest D: drive (no echo command) so it
-      // shows in the terminal `dir` — for NEW files and for uploads that replace
-      // an existing one (the guest copy must follow the app copy). Always the
-      // stored bytes, through the binary-safe bwWriteFileBytes path (the text path
-      // re-encoded every byte >= 0x80 as UTF-8: uploaded UTF-8 text arrived
-      // double-encoded).
+      // The guest D: gets the stored bytes too, for new files and replaced uploads alike. Always the bytes path:
+      // the text path re-encodes every byte >= 0x80 as UTF-8, which double-encodes UTF-8 uploads.
       syncFileToEmulator(filename, dataIsEncoded ? data : btoa(data), true);
     }
   }
@@ -749,21 +712,14 @@ export default class FileSystem {
     if (0 === FileSystem.deleteFileQueue.length) {
       return;
     }
-    // Delete each file DIRECTLY through BoxedWine (Module.bwDeleteFile) instead of
-    // typing a `del` command into cmd — more efficient + reliable, and it stays
-    // cmd-synced because bwDeleteFile removes the FsNode from the guest tree so the
-    // running `dir` no longer lists it. Also remove it from app storage so the file
-    // drawer updates (the old flow relied on a console-write handler that is no
-    // longer wired, so deletes did not persist in storage).
-    // One file's failure must not stop the others, and the queue is always drained.
+    // Each file goes from the guest tree (cmd's next `dir` no longer lists it) and from storage. One file's
+    // failure must not stop the others, and the queue is always drained.
     const queue = FileSystem.deleteFileQueue;
     FileSystem.deleteFileQueue = [];
     queue.forEach((filename) => {
-      try { deleteFileFromEmulator(filename); } catch (e) { console.warn("[FileSystem] guest delete of " + filename + " failed", e); } // guest FS (no keystrokes)
+      try { deleteFileFromEmulator(filename); } catch (e) { console.warn("[FileSystem] guest delete of " + filename + " failed", e); }
       FileSystem.deleteFile(filename);  // app storage + file list
     });
-    // (a deleted test.asm is NOT recreated here any more: App.refreshFileList creates
-    // one only when no .asm is left, so deleting it stays deleted)
   }
 
   static handleConsoleWriteEvent(event) {
@@ -787,15 +743,13 @@ export default class FileSystem {
     let fileList = FileSystem._readFileList();
     if (`${filename}` in fileList) {
       const id = fileList[filename];
-      // Remove through the storage adapter (IndexedDB-primary + sync cache) rather
-      // than raw localStorage, so the delete actually persists under the current
-      // storage (new files never touch localStorage).
-      try { hf.deleteKey(hf.getFileMetaData(id).id); } catch (e) {} //file contents (adapter: sync cache + IndexedDB)
+      // through the storage adapter, not localStorage: files are stored in IndexedDB
+      try { hf.deleteKey(hf.getFileMetaData(id).id); } catch (e) {} //file contents
       try { hf.deleteKey(id); } catch (e) {}                        //file metaData
       delete fileList[`${filename}`];
-      //remove file from file list
       FileSystem._writeFileList(fileList);
       FileSystem._encodings.delete(filename);
+      FileSystem._tell({ gone: filename });
     }
   }
 
@@ -842,12 +796,7 @@ export default class FileSystem {
     FileSystem._writeFolderList(FileSystem.getFolderList().filter((sub) => !isWithin(sub, from)).concat(folders.map(moved)));
   }
 
-  /*
-  Save file feature should be cealled from MAIN components only not Boxedwine components
-  as it uses postMessage
-  */
-  // Raw (base64) bytes of a file from the app's storage (IndexedDB-backed cache),
-  // regardless of whether it was stored as text (encoded on read) or binary.
+  // A file's stored base64, whether it was stored as text or binary.
   static _fileBase64(filename) {
     const raw = FileSystem.getRawFileData(filename);
     return raw || "";
@@ -869,9 +818,7 @@ export default class FileSystem {
     return window.JSZip;
   }
 
-  // Zip [{filename, base64}] in the PARENT and download it. The old flow posted
-  // "zip-files" to the iframe, whose handler no longer exists — downloads silently
-  // never happened.
+  // entries: [{filename, base64}]
   static async _zipAndSave(entries, zipName) {
     const JSZip = await FileSystem._getJSZip();
     if (!JSZip) throw new Error("JSZip unavailable");
@@ -886,7 +833,6 @@ export default class FileSystem {
 
   static saveFile(filename) {
     const fileExtension = getFileExtension(filename);
-    // read from the app's storage (IndexedDB-backed), not the retired localStorage
     saveAs(
       dataURItoBlob(mimeType(fileExtension) + FileSystem._fileBase64(filename)),
       baseOf(filename).substring(0, baseOf(filename).length - fileExtension.length) +
@@ -895,11 +841,9 @@ export default class FileSystem {
     );
   }
 
-  // Download entries ({files, folders}: a folder with everything in it; drives: the drives ticked whole) as one zip
-  // that keeps the folder structure: files under their paths relative to their drive's root (under a folder per
-  // drive when the entries span drives: exportFolders, by label), every folder (empty ones, and a ticked drive
-  // with nothing on it, included) as a directory entry. JSZip writes non-ASCII names in UTF-8. Resolves to false,
-  // downloading nothing, when there is nothing to put in the zip.
+  // One zip of the entries ({files, folders}: a folder with everything in it; drives: drives ticked whole). Paths
+  // are from each drive's root, under a folder per drive (by label) when they span drives; every folder, empty or
+  // not, is a directory entry. Resolves to false, downloading nothing, when there is nothing to zip.
   static async saveEntries(targets) {
     const plan = planExport(targets, FileSystem.getFileList(), FileSystem.getAllFolders());
     const drives = targets.drives || [];
@@ -954,8 +898,8 @@ export default class FileSystem {
     return { refused: null, skipped: plan.skipped, count: plan.files.length, flat };
   }
 
-  // Today's upload rules for one imported file: .asm/.txt/.text stored as text with CRLF
-  // line ends (UTF-16 left alone), everything else byte for byte.
+  // One imported file, by the upload rules: .asm/.txt/.text stored as text with CRLF line ends (UTF-16 left
+  // alone), everything else byte for byte.
   static storeImported(path, bytes) {
     const isDuplicate = path in FileSystem._readFileList();
     const raw = bytesToBinaryString(bytes);
@@ -976,15 +920,10 @@ export default class FileSystem {
     });
   }
 
-  // --- Legacy localStorage migration --------------------------------------
-  // The app is moving its filesystem to the emulator (D:); files that still
-  // live in browser localStorage are "legacy". These let the UI offer a
-  // one-click backup of them as a .zip before they are eventually retired.
+  // ---- legacy files: what older versions stored in localStorage, offered as a .zip download ----
 
-  // Resolve the LEGACY (old-app) file list straight from window.localStorage,
-  // independent of the new IndexedDB-backed storage. The old app stored a root
-  // "/" Inode whose `id` is the fileListKey holding {filename -> metaKey}. The new
-  // storage never writes localStorage, so anything found here is genuinely legacy.
+  // The store's layout ("/" -> fileListKey -> {filename -> metadata key}). Files go to IndexedDB, so anything
+  // found here is legacy.
   static _legacyList() {
     try {
       const rootRaw = window.localStorage.getItem("/");
@@ -999,7 +938,6 @@ export default class FileSystem {
     }
   }
 
-  // Sync check (reads localStorage directly): does the user have legacy files?
   static hasLegacyFiles() {
     const legacy = FileSystem._legacyList();
     return !!(
@@ -1008,8 +946,6 @@ export default class FileSystem {
     );
   }
 
-  // Zip every legacy localStorage file (read straight from localStorage, never
-  // the new IndexedDB cache) and download it, byte-for-byte.
   static async downloadLegacyFiles() {
     const legacy = FileSystem._legacyList();
     if (!legacy) return;

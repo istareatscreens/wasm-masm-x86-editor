@@ -6,25 +6,15 @@
  * latest26/<name>.<hash>.partN files and writes latest26/chunks-manifest.json:
  *   { version, chunkSize, files: { "<name>": { totalSize, hash, chunks: [...] } } }
  *
- * Lifecycle (ported from the previous deployment's chunk-assembly-sw.js):
- *   install  - fetch the manifest, pre-assemble every listed file into the
- *              Cache API (cache "bw-chunks-<version>"), then skipWaiting()
- *   activate - evict bw-chunks-* caches of other versions, clients.claim()
- *   fetch    - only requests whose path ends with "/latest26/<listed file>" are
- *              answered (GET -> assembled bytes, HEAD -> headers only); every
- *              other request falls through to the network untouched.
- *
- * Answered responses carry "X-BW-Assembled: 1" so bw-cache.js does not store a
- * second 60 MB copy in its own build-keyed cache. Registered at the site root by
- * boxedwine.html (window.__swReady); bw-cache.js waits for the worker before its
- * first network fetch and can assemble in-page if no worker is available.
+ * Only GET/HEAD of a listed latest26/<name> is answered; every other request goes to the
+ * network untouched. Answers carry "X-BW-Assembled: 1" so bw-cache.js does not store a
+ * second copy in its own build-keyed cache.
  */
 /* eslint-disable no-restricted-globals */
 var ASSET_DIR = "latest26/";
 var MANIFEST_URL = ASSET_DIR + "chunks-manifest.json";
 var CACHE_PREFIX = "bw-chunks-";
-// cache prefix of the previous deployment's worker (chunk-assembly-sw.js, one
-// 60 MB boxedwine.zip per version): evicted on activate so returning visitors
+// caches of the older chunk-assembly-sw.js: evicted on activate so returning visitors
 // do not keep a stale copy next to ours
 var LEGACY_CACHE_PREFIX = "boxedwine-cache-";
 var MARKER = "X-BW-Assembled";

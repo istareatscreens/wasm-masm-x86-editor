@@ -1,8 +1,6 @@
 import React from "react";
 
-// A radio button and its text, as Windows 98 draws one: 98.css's button (_radio.scss) centred on the text's first
-// line, the text wrapping under itself, as a tick box's option is (CheckOption, _check-option.scss). Clicking the
-// text chooses it; buttons sharing a `name` are one group, which the arrow keys move through.
+// A Windows 98 radio button and its text, laid out like CheckOption; buttons sharing a `name` are one group.
 function RadioOption({ name, value, checked, disabled, onChange, className = "", children }) {
   return (
     <label className={("check-option " + className).trim()}>

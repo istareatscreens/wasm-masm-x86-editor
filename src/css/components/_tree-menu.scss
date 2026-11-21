@@ -1,0 +1,39 @@
+@use "../abstracts/variables";
+
+// The Windows 98 context menu (common/TreeContextMenu.jsx, a portal on body)
+.tree-menu {
+  position: fixed;
+  z-index: 1001;
+  min-width: 14rem;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+  font-size: 1.4rem;
+  background: variables.$surface;
+  box-shadow: variables.$border-window-outer, variables.$border-window-inner;
+  outline: none;
+
+  &__item {
+    padding: 0 2rem;
+    line-height: 2rem;
+    white-space: nowrap;
+    cursor: default;
+
+    &--active {
+      background: variables.$dialog-blue;
+      color: variables.$button-highlight;
+    }
+
+    &--disabled {
+      color: variables.$button-shadow;
+      text-shadow: 1px 1px variables.$button-highlight;
+    }
+  }
+
+  &__separator {
+    height: 0;
+    margin: 3px 1px;
+    border-top: 1px solid variables.$button-shadow;
+    border-bottom: 1px solid variables.$button-highlight;
+  }
+}

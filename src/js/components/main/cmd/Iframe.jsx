@@ -1,5 +1,6 @@
 //refactored from: https://github.com/springload/react-iframe-click
 import React, { useEffect, useRef, useCallback } from "react";
+import { EMULATOR_PAGE } from "./emulatorPage";
 
 function Iframe(props) {
   const iframeRef = useRef(null);
@@ -34,7 +35,7 @@ function Iframe(props) {
       width="100%"
       height="100%"
       id="boxedwine"
-      src="boxedwine.html"
+      src={EMULATOR_PAGE}
       ref={iframeCallbackRef}
     />
   );

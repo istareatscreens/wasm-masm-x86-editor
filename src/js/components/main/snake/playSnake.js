@@ -3,14 +3,9 @@ import { joinPath, nameKey } from "../utility/filesystem/paths";
 import { assembleAndRun, focusTerminal, readToolchainFiles } from "../../../utility/utilityFunctions.ts";
 import md5 from "./md5.js";
 
-// The About window's Snake button: the game is built and run from its folder in the file
-// drawer with only the terminal showing. Its folder is a root folder snake or snake-<uuid>
-// (any case) whose snake.asm starts with the header line below, looked up in the drawer at
-// each click. When there is none, the game shipped on C: (C:\files\snake in the guest,
-// snake/ in the toolchain archive) is copied into D:\snake, or into D:\snake-<uuid> when a
-// root entry named snake is not the game. A copy still equal to a version shipped earlier
-// (EARLIER_MD5: the digests toolchain-zip.py records) is replaced in place by the game shipped
-// now; a copy the user changed is left alone and played as it is.
+// The About window's Snake button: the game is built and run from its drawer folder (root snake or snake-<uuid>,
+// any case, whose snake.asm starts with HEADER), else copied there from C:\files\snake. A copy equal to an earlier
+// shipped version (EARLIER_MD5: the digests toolchain-zip.py records) is updated; a changed one is played as it is.
 const FILES = { "snake.asm": "snake/snake.asm", LICENSE: "snake/LICENSE" };
 const EARLIER_MD5 = ["52c93f064e82679d7cbc7bc144505b9e", "e3ccd1f0897c0b2f0eda901c209e6cad", "9dcd92b45fb961690771c9af69dddcde", "3128fa92b0058f26aaca76f43b9d66d8", "4d59bde7c67e4e2a6c161b2058241b78"];
 const HEADER = "; Snake - https://github.com/meixinchoy/Snake-Game-Assembly-Language";

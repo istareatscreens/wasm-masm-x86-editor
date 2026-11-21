@@ -1,7 +1,6 @@
-// The build plan of a MASM program (openspec change implement-masm-file-linking, design D1 and D13): from the file
-// being built and the drawer's files, which modules a program links, found by what each declares and uses, as the
-// linker will match them. Pure: the drawer, the toolchain and the libraries' names are passed in, and nothing is
-// built or run, so a debugger can ask for a program's files too.
+// The build plan of a MASM program: from the file being built and the drawer's files, which modules a program links,
+// found by what each declares and uses, as the linker will match them. Pure: the drawer, the toolchain and the
+// libraries' names are passed in, and nothing is built or run, so a debugger can ask for a program's files too.
 import { baseNames } from "./names";
 import { libraryName, makesDll } from "./defFile";
 import { ModuleFacts, moduleFacts } from "./module";
@@ -210,8 +209,7 @@ class Planner {
 
   // Wine's cmd changes a name holding % on its way into a batch file (assemble.bat). A DLL's name outside ASCII: its
   // import library cannot be written under it (JWlink hands the name to JWlib in UTF-8 bytes, read in the ANSI code
-  // page), and Windows reads the name of a DLL a program imports in its ANSI code page, so no program could load it
-  // (measured: reference/README.md)
+  // page), and Windows reads the name of a DLL a program imports in its ANSI code page, so no program could load it.
   checkNames(plan: Plan) {
     const named = plan.modules.concat(plan.objects).filter((path) => path.indexOf("%") >= 0);
     if (named.length) plan.problems.push({ kind: "percent", files: named });

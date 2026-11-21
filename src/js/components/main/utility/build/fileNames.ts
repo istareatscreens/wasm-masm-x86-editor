@@ -1,9 +1,8 @@
 // File names as the toolchain reads and matches them. JWasm and JWlink (with the masm-editor UTF-8 patch,
 // Boxedwine/toolchain-src) read a name written in a source, an object or a directive file as UTF-8 when its bytes are
-// valid UTF-8, else in the ANSI code page. Windows and Wine match names without case one UTF-16 unit at a time, and
-// only where the case mapping round-trips (Wine 6.0's tools/make_unicode, remove_linguistic_mappings): "ς" and "Σ",
-// "ı" and "I", "ß" and "ẞ" are different letters to both (measured on NTFS and in the guest: openspec change
-// implement-masm-file-linking, reference/README.md). Neither treats a name's composed and decomposed forms alike.
+// valid UTF-8, else in the ANSI code page. Windows (NTFS) and Wine match names without case one UTF-16 unit at a time,
+// and only where the case mapping round-trips (Wine 6.0's tools/make_unicode, remove_linguistic_mappings): "ς"/"Σ",
+// "ı"/"I" and "ß"/"ẞ" are different letters to both. Neither treats a name's composed and decomposed forms alike.
 
 // The guest's ANSI code page: its registry's ACP (Wine's en-US locale).
 export const GUEST_ANSI_CODE_PAGE = "windows-1252";

@@ -1,3 +1,4 @@
+@use "../abstracts/mixins";
 @use "../abstracts/variables";
 
 .input-box {
@@ -39,5 +40,14 @@
 
   &:focus {
     outline: none;
+  }
+
+  &[readonly] {
+    @include mixins.field-inactive;
+  }
+
+  &:disabled {
+    @include mixins.field-inactive;
+    @include mixins.field-disabled-text;
   }
 }

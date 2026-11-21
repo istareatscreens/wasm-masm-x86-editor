@@ -2,11 +2,9 @@ import { useEffect } from "react";
 
 const editable = (element) => !!element && (element.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName));
 
-// The app never scrolls its document. Whatever does - a browser panning to a text field for the
-// on-screen keyboard and leaving the page shifted once it closes (iOS), an unguarded scrollIntoView - is
-// undone in the next frame, once no field has the keyboard: nothing editable has the focus, or the
-// visual viewport is as tall as the page again. The page height is the initial containing block's
-// (clientHeight), not innerHeight, which iOS can shrink while its keyboard is up.
+// The app never scrolls its document. Whatever does (iOS panning to a field for its keyboard and leaving the
+// page shifted, an unguarded scrollIntoView) is undone once no field has the keyboard. The page height is
+// clientHeight, not innerHeight, which iOS can shrink while its keyboard is up.
 export default function useDocumentAtTop() {
   useEffect(() => {
     const root = document.scrollingElement || document.documentElement;

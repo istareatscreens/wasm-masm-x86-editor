@@ -4,6 +4,7 @@ import Window from "../../common/Window.jsx";
 import GroupBox from "../../common/GroupBox.jsx";
 import ListBox from "../../common/ListBox.jsx";
 import RetroTextArea from "../../common/RetroTextArea.jsx";
+import TextField from "../../common/TextField.jsx";
 import iconShare from "../../../../images/shareLink32.png";
 import { plural, fileSize } from "./format.js";
 import { guestPath, folderLabel } from "../utility/filesystem/paths";
@@ -183,9 +184,7 @@ function ShareWindow({
           </p>
           <label className="window__share__name">
             <span>Workspace name:</span>
-            <input
-              type="text"
-              className="input-box"
+            <TextField
               value={nameText}
               aria-invalid={!!nameProblem}
               title={

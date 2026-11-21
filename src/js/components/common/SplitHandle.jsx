@@ -1,27 +1,36 @@
 import React, { useRef, useState } from "react";
 
+import { addTravel, edgeStep, keepInView, scrollParentOf, scrollTo, viewOf } from "./edgeScroll.js";
+
 const STEP = 0.01;
 const PAGE = 0.1;
 
-// A Windows 98 splitter between two panes (WAI-ARIA window splitter). `value` is the first pane's share
-// of the space `measure()` describes ({ size } in pixels and the { min, max } shares allowed). Dragging
-// (mouse, pen or touch; the pointer is captured and <html data-resizing> keeps iframes out of the drag)
-// calls onChange once per frame and onCommit at the end; Escape puts the splitter back where the drag
-// started. Focused, the arrow keys move it 1 %, Shift+arrows, Page Up and Page Down 10 %, Home and End
-// to its limits; a double-click calls onReset.
-function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset, label, controls, className = "" }) {
+// A WAI-ARIA window splitter. `value` is the first pane's share of the space `measure()` gives ({ size } in
+// pixels, { min, max } shares). A drag calls onChange once per frame and onCommit at the end, Escape puts it
+// back; <html data-resizing> keeps iframes out of the drag. A double-click calls onReset. With `scrolls` the handle
+// is inside a scrolling area: a drag held at its edge keeps resizing and scrolls it, and the keyboard keeps the
+// handle in view.
+function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset, label, title, controls, className = "", step = STEP, page = PAGE, scrolls = false }) {
   const vertical = orientation === "vertical";
   const drag = useRef(null);
   const [dragging, setDragging] = useState(false);
   const coordinate = (event) => (vertical ? event.clientX : event.clientY);
   // to 0.01 %: the stored shares stay short and the keyboard's steps do not drift
   const clamp = (share, { min, max }) => Math.round(Math.min(max, Math.max(min, share)) * 10000) / 10000;
+  const shareOf = (session) => clamp(session.start + (session.pointer - session.origin + session.travel) / session.space.size, session.space);
+  const apply = (session) => {
+    const next = shareOf(session);
+    if (next === session.value) return;
+    session.value = next;
+    onChange(next);
+  };
 
   const finish = (commit) => {
     const session = drag.current;
     if (!session) return;
     drag.current = null;
     cancelAnimationFrame(session.frame);
+    cancelAnimationFrame(session.edgeFrame);
     window.removeEventListener("keydown", session.onKey, true);
     window.removeEventListener("pointerup", session.onUp, true);
     document.documentElement.removeAttribute("data-resizing");
@@ -48,7 +57,9 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
     const space = measure();
     // the splitter has the keyboard focus for the drag, so Escape reaches it even when the focus was in
     // a frame (the terminal); preventDefault above keeps the browser from moving it
-    const session = { target, pointerId: event.pointerId, origin: coordinate(event), start: value, value, space, pending: null, frame: 0, focusBefore: document.activeElement };
+    const origin = coordinate(event);
+    const area = scrolls ? scrollParentOf(target, vertical) : null;
+    const session = { target, pointerId: event.pointerId, origin, pointer: origin, travel: 0, start: value, value, space, area, frame: 0, edgeFrame: 0, focusBefore: document.activeElement };
     target.focus({ preventScroll: true });
     session.onKey = (key) => {
       if (key.key !== "Escape") return;
@@ -59,6 +70,21 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
       finish(false);
     };
     session.onUp = (up) => onPointerUp(up);
+    // held within the area's edge band: a step a frame, the handle kept under the pointer; it stops when the
+    // pointer leaves the band or the size reaches its limit, and the next move starts it again
+    session.edge = () => {
+      session.edgeFrame = 0;
+      if (drag.current !== session) return;
+      const [from, to] = viewOf(area, vertical);
+      const step = edgeStep(session.pointer, from, to, session.pointer - session.origin);
+      if (!step) return;
+      scrollTo(target, area, Math.min(Math.max(session.pointer, from), to), vertical);
+      const travel = addTravel({ start: session.start, moved: session.pointer - session.origin, travel: session.travel, step, size: space.size, min: space.min, max: space.max });
+      if (travel === session.travel) return;
+      session.travel = travel;
+      apply(session);
+      session.edgeFrame = requestAnimationFrame(session.edge);
+    };
     try {
       target.setPointerCapture(event.pointerId);
     } catch (error) {
@@ -74,24 +100,21 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
   const onPointerMove = (event) => {
     const session = drag.current;
     if (!session || event.pointerId !== session.pointerId) return;
-    session.pending = clamp(session.start + (coordinate(event) - session.origin) / session.space.size, session.space);
+    session.pointer = coordinate(event);
     if (!session.frame) {
       session.frame = requestAnimationFrame(() => {
         session.frame = 0;
-        if (drag.current !== session || session.pending === null) return;
-        session.value = session.pending;
-        onChange(session.value);
+        if (drag.current === session) apply(session);
       });
     }
+    if (session.area && !session.edgeFrame) session.edgeFrame = requestAnimationFrame(session.edge);
   };
 
   const onPointerUp = (event) => {
     const session = drag.current;
     if (!session || event.pointerId !== session.pointerId) return;
-    if (session.pending !== null && session.pending !== session.value) {
-      session.value = session.pending;
-      onChange(session.value);
-    }
+    session.pointer = coordinate(event);
+    apply(session);
     finish(true);
   };
 
@@ -100,10 +123,10 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
     const back = vertical ? "ArrowLeft" : "ArrowUp";
     const forward = vertical ? "ArrowRight" : "ArrowDown";
     const moves = {
-      [back]: value - (event.shiftKey ? PAGE : STEP),
-      [forward]: value + (event.shiftKey ? PAGE : STEP),
-      PageUp: value - PAGE,
-      PageDown: value + PAGE,
+      [back]: value - (event.shiftKey ? page : step),
+      [forward]: value + (event.shiftKey ? page : step),
+      PageUp: value - page,
+      PageDown: value + page,
       Home: space.min,
       End: space.max,
     };
@@ -112,6 +135,13 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
     const next = clamp(moves[event.key], space);
     onChange(next);
     onCommit(next);
+    if (scrolls) {
+      const target = event.currentTarget;
+      requestAnimationFrame(() => {
+        const area = scrollParentOf(target, vertical);
+        if (area) keepInView(target, area, vertical);
+      });
+    }
   };
 
   return (
@@ -120,6 +150,7 @@ function SplitHandle({ orientation, value, measure, onChange, onCommit, onReset,
       role="separator"
       aria-orientation={vertical ? "vertical" : "horizontal"}
       aria-label={label}
+      title={title}
       aria-controls={controls}
       aria-valuenow={Math.round(value * 100)}
       aria-valuemin={0}
