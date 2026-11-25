@@ -743,7 +743,7 @@
         };
         var apply = function (text) {
           try {
-            if (!text || text.indexOf("[Console]") < 0) return finish();
+            if (!text) return finish();
             var patched = setDword(text, "WindowSize", (g.rows << 16) | g.cols);
             patched = setDword(
               patched,
@@ -756,6 +756,16 @@
               (BW_CELL_H << 16) | BW_CELL_W,
             );
             patched = setString(patched, "FaceName", "Liberation Mono");
+            // The guest Sound panel controls the system beep independently of WinMM playback.
+            var soundSection = /^(\[Control Panel\\\\Sound\][^\n]*\n)((?:[^\[\n][^\n]*\n)*)/im;
+            var beepOff = '"Beep"="No"\n';
+            if (soundSection.test(patched)) {
+              patched = patched.replace(soundSection, function (_, header, body) {
+                return header + body.replace(/^"Beep"=[^\n]*\n?/im, "") + beepOff;
+              });
+            } else {
+              patched += '\n[Control Panel\\\\Sound]\n' + beepOff;
+            }
             if (patched !== text) {
               try {
                 FS.mkdirTree("/root/home/username/.wine");

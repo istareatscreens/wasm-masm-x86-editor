@@ -29,6 +29,7 @@ import iconFileListing from "../../../../images/fileListing.png";
 import iconFileError from "../../../../images/fileError.png";
 import iconFileBatch from "../../../../images/fileBatch.png";
 import iconFileImage from "../../../../images/fileImage.png";
+import iconFileSound from "../../../../images/fileSound.png";
 import iconFileArchive from "../../../../images/fileArchive.png";
 import iconFileData from "../../../../images/fileData.png";
 
@@ -46,6 +47,7 @@ const FILE_ICONS = {
   error: iconFileError,
   batch: iconFileBatch,
   image: iconFileImage,
+  sound: iconFileSound,
   archive: iconFileArchive,
   text: iconFileText,
   data: iconFileData,

@@ -14,6 +14,7 @@
     "test:asset-versions": "node --test Boxedwine/scripts/tests/asset-versions.test.cjs",
     "test:presentation": "node --test Boxedwine/scripts/tests/boxedwine-presentation.test.cjs",
     "test:input": "node --test Boxedwine/scripts/tests/boxedwine-input.test.cjs",
+    "test:guest-audio": "node Boxedwine/harness/guest-audio.cjs chrome st && node Boxedwine/harness/guest-audio.cjs chrome mt",
     "test:shell": "node --test Boxedwine/scripts/tests/boxedwine-shell.test.cjs",
     "test:file-drawer": "node --test Boxedwine/scripts/tests/file-drawer.test.cjs",
     "test:share-link": "node --test Boxedwine/scripts/tests/share-link.test.cjs",

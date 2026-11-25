@@ -21,12 +21,18 @@ const KINDS = {
   jpeg: "image",
   gif: "image",
   ico: "image",
+  wav: "sound",
+  mp3: "sound",
+  ogg: "sound",
+  flac: "sound",
+  mid: "sound",
+  midi: "sound",
   zip: "archive",
   txt: "text",
   bin: "data",
 };
 
-export const ICON_KINDS = ["asm", "include", "macro", "definition", "program", "dll", "object", "library", "listing", "error", "batch", "image", "archive", "text", "data"];
+export const ICON_KINDS = ["asm", "include", "macro", "definition", "program", "dll", "object", "library", "listing", "error", "batch", "image", "sound", "archive", "text", "data"];
 
 const extensionOf = (path) => {
   const match = /\.([^./\\]+)$/.exec(path);

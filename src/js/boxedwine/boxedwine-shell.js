@@ -9,7 +9,7 @@
         let DEFAULT_APP_DIRECTORY = "/home/username/.wine/dosdevices/c:/files";
         let DEFAULT_BPP = 32;
         let DEFAULT_FRAME_SKIP = "0";
-        let DEFAULT_AUDIO_FREQ = 11025;
+        let DEFAULT_AUDIO_FREQ = 48000;
         let DEFAULT_ROOT_ZIP_FILE = "boxedwine.zip";
         //params
         let Config = {};
@@ -245,10 +245,8 @@
             var audioFreq = getParameter("audioFreq");
             if (!allowParameterOverride()) {
                 audioFreq = DEFAULT_AUDIO_FREQ;
-            } else if (audioFreq == "22050") {
-                audioFreq = 22050;
-            } else if (audioFreq == "11025" || audioFreq == "") {
-                audioFreq = DEFAULT_AUDIO_FREQ;
+            } else if (audioFreq == "22050" || audioFreq == "11025") {
+                audioFreq = Number(audioFreq);
             } else {
                 audioFreq = DEFAULT_AUDIO_FREQ;
             }
@@ -822,6 +820,36 @@
         try { window.parent.postMessage(JSON.stringify({ eventName: "emulator-crashed", data: { data: detail } }), "/"); } catch (e) {}
       }
       var Module = {
+        // Match the guest mix rate. The browser then resamples the continuous
+        // output to the hardware rate, including across SDL buffer boundaries.
+        bwPlaybackContext: function(Context) {
+          try { return new Context({ sampleRate: Module.bwPlaybackRate }); }
+          catch (e) { return new Context(); }
+        },
+        // SDL supplies interleaved guest PCM through fill(). Keep the next two
+        // blocks on the Web Audio clock so main-thread callback jitter cannot
+        // insert silence between them. Only a guest opening a device gets here.
+        bwOpenPlayback: function(context, channels, frames, fill) {
+          var nextFrame = Math.ceil(context.currentTime * context.sampleRate) + frames, closed = false;
+          function enqueue() {
+            if (closed) return;
+            var buffer = context.createBuffer(channels, frames, context.sampleRate);
+            fill(buffer);
+            var source = context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(context.destination);
+            source.onended = function() {
+              source.disconnect();
+              enqueue();
+            };
+            nextFrame = Math.max(nextFrame, Math.ceil(context.currentTime * context.sampleRate));
+            source.start(nextFrame / context.sampleRate);
+            nextFrame += frames;
+          }
+          // SDL finishes opening and unpausing the device on the current stack.
+          var start = setTimeout(function() { enqueue(); enqueue(); }, 0);
+          return { disconnect: function() { closed = true; clearTimeout(start); } };
+        },
         preRun: [initialSetup],
         arguments: [],
         postRun: [],
